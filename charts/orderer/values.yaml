@@ -1,0 +1,45 @@
+project: iot-blockchain
+component: orderer
+nameOverride: orderer
+fullnameOverride: orderer
+
+replicaCount: 1
+
+image:
+  repository: hyperledger/fabric-orderer
+  pullPolicy: IfNotPresent
+  tag: 2.3
+
+service:
+  type: ClusterIP
+  port: 7050
+
+ingress:
+  enabled: false
+  entrypoints:
+    - web
+    - websecure
+  tls:
+    enabled: true
+    certResolver: le
+  routes:
+    - host: orderer.com
+      paths:
+        - /
+      middlewares: []
+      services:
+        - name: orderer
+          port: 7050
+          scheme: http
+
+msp:
+  id: ordererMSP
+
+resources: {}
+
+affinity: {}
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
