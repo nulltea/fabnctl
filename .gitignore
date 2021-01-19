@@ -1,0 +1,11 @@
+# IDE & Editors configs
+.idea
+.vscode
+
+*.tx
+*.block
+
+crypto-config
+channel-artifacts
+
+bin

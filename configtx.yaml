@@ -1,0 +1,154 @@
+Organizations:
+  - &Orderer
+    Name: ordererMSP
+    ID: ordererMSP
+    MSPDir: crypto-config/ordererOrganizations/orderer.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('ordererMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('ordererMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('ordererMSP.admin')"
+
+  - &Supplier
+    Name: supplierMSP
+    ID: supplierMSP
+    MSPDir: crypto-config/peerOrganizations/supplier.com/msp
+    AnchorPeers:
+      # AnchorPeers defines the location of peers which can be used
+      # for cross org gossip communication.  Note, this value is only
+      # encoded in the genesis block in the Application section context
+      - Host: peer0.supplier.com
+        Port: 7051
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('supplierMSP.admin', 'supplierMSP.peer', 'supplierMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('supplierMSP.admin', 'supplierMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('supplierMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('supplierMSP.peer')"
+
+  - &Deliverer
+    Name: delivererMSP
+    ID: delivererMSP
+    MSPDir: crypto-config/peerOrganizations/deliverer.com/msp
+    AnchorPeers:
+      - Host: peer0.deliverer.com
+        Port: 7051
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('delivererMSP.admin', 'delivererMSP.peer', 'delivererMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('delivererMSP.admin', 'delivererMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('delivererMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('delivererMSP.peer')"
+
+Orderer: &OrdererDefaults
+  # Orderer Type: The orderer implementation to start
+  # Available types are "solo", "etcdraft", "kafka"
+  OrdererType: solo
+  Addresses:
+    - orderer.com:7050
+  EtcdRaft:
+    Consenters:
+      - Host: orderer.com
+        Port: 7050
+        ClientTLSCert: crypto-config/ordererOrganizations/orderer/orderers/orderer.com/tls/server.crt
+        ServerTLSCert: crypto-config/ordererOrganizations/orderer/orderers/orderer.com/tls/server.crt
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 512 KB
+
+  # Organizations is the list of organisations which are defined as participants on
+  # the orderer side of the network
+  Organizations:
+
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    BlockValidation:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+
+
+Application: &ApplicationDefaults
+  Organizations:
+
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    LifecycleEndorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+    Endorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+
+Channel: &ChannelDefaults
+  Policies:
+    # Who may invoke the 'Deliver' API
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    # Who may invoke the 'Broadcast' API
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    # By default, who may modify elements at this config level
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+
+
+Profiles:
+  OrdererGenesis:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *Orderer
+    Consortiums:
+      RetailConsortium:
+        Organizations:
+          - *Supplier
+          - *Deliverer
+  DeliveryChannel:
+    Consortium: DeliveryConsortium
+    <<: *ChannelDefaults
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *Supplier
+        - *Deliverer
