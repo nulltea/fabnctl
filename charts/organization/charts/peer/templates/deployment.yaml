@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "chart.fullname" . }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "chart.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        {{- include "chart.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "chart.serviceAccountName" . }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+            - containerPort: {{ .Values.service.chaincodePort }}
+          args:
+            - peer
+            - node
+            - start
+          env:
+            - name: FABRIC_LOGGING_SPEC
+              value: {{ .Values.logging }}
+            - name: CORE_PEER_ID
+              value: {{ .Values.config.domain }}
+            - name: CORE_PEER_LOCALMSPID
+              value: {{ .Values.config.mspID }}
+            - name: CORE_PEER_ADDRESS
+              value: "{{ .Values.config.domain }}:{{ .Values.service.port }}"
+            - name: CORE_PEER_LISTENADDRESS
+              value: "0.0.0.0:{{ .Values.service.port }}"
+            - name: CORE_PEER_CHAINCODEADDRESS
+              value: "{{ .Values.config.domain }}:{{ .Values.service.chaincodePort }}"
+            - name: CORE_PEER_CHAINCODELISTENADDRESS
+              value: "0.0.0.0:{{ .Values.service.chaincodePort }}"
+            - name: CORE_PEER_GOSSIP_USELEADERELECTION
+              value: "true"
+            - name: CORE_PEER_GOSSIP_BOOTSTRAP
+              value: "{{ .Values.config.domain }}:{{ .Values.service.port }}"
+            - name: CORE_PEER_GOSSIP_EXTERNALENDPOINT
+              value: "{{ .Values.config.domain }}:{{ .Values.service.port }}"
+            - name: CORE_PEER_PROFILE_ENABLED
+              value: "true"
+            - name: CORE_PEER_TLS_CERT_FILE
+              value: /etc/hyperledger/fabric/tls/server.crt
+            - name: CORE_PEER_TLS_ENABLED
+              value: "true"
+            - name: CORE_PEER_TLS_KEY_FILE
+              value: /etc/hyperledger/fabric/tls/server.key
+            - name: CORE_PEER_TLS_ROOTCERT_FILE
+              value: /etc/hyperledger/fabric/tls/ca.crt
+            - name: CORE_VM_ENDPOINT
+              value: http://localhost:2375
+          volumeMounts:
+            - mountPath: /var/hyperledger/production
+              name: orderer-persistentdata
+            - mountPath: /var/hyperledger/orderer/genesis.block
+              name: orderer-claim0
+            - mountPath: /var/hyperledger/orderer/msp
+              name: orderer-claim1
+            - mountPath: /var/hyperledger/orderer/tls
+              name: orderer-claim2
+          workingDir: /opt/gopath/src/github.com/hyperledger/fabric
+      restartPolicy: Always
+      volumes:
+        - name: orderer-persistentdata
+          hostPath:
+            path: /home/storage/orderer
+            type: DirectoryOrCreate
+        - name: orderer-claim0
+          hostPath:
+            path: /home/fabric-external-chaincodes/channel-artifacts/genesis.block
+        - name: orderer-claim1
+          hostPath:
+            path: /home/fabric-external-chaincodes/crypto-config/ordererOrganizations/consortium/orderers/orderer0/msp
+        - name: orderer-claim2
+          hostPath:
+            path: /home/fabric-external-chaincodes/crypto-config/ordererOrganizations/consortium/orderers/orderer0/tls

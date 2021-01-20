@@ -1,0 +1,45 @@
+project: iot-blockchain
+component: peer
+nameOverride: peer
+fullnameOverride: peer
+
+replicaCount: 1
+logging: INFO
+
+image:
+  repository: hyperledger/fabric-ca
+  pullPolicy: IfNotPresent
+  tag: latest
+
+service:
+  type: ClusterIP
+  port: 7054
+
+ingress:
+  enabled: false
+  entrypoints:
+    - web
+    - websecure
+  tls:
+    enabled: true
+    certResolver: le
+  routes:
+    - host: orderer.com
+      paths:
+        - /
+      middlewares: []
+      services:
+        - name: orderer
+          port: 7050
+          scheme: http
+
+
+
+resources: {}
+
+affinity: {}
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""

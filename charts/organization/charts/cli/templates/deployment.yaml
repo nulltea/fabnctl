@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "chart.fullname" . }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "chart.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        {{- include "chart.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "chart.serviceAccountName" . }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: FABRIC_LOGGING_SPEC
+              value: {{ .Values.logging }}
+            - name: CORE_PEER_ADDRESS
+              value: {{ .Values.config.peerAddress }}
+            - name: CORE_PEER_ID
+              value: {{ template "chart.fullname" . }}
+            - name: CORE_PEER_LOCALMSPID
+              value: {{ .Values.config.mspID }}
+            - name: CORE_PEER_MSPCONFIGPATH
+              value: /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1/users/Admin@org1/msp
+            - name: CORE_PEER_TLS_CERT_FILE
+              value: /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1/peers/peer0-org1/tls/server.crt
+            - name: CORE_PEER_TLS_ENABLED
+              value: "true"
+            - name: CORE_PEER_TLS_KEY_FILE
+              value: /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1/peers/peer0-org1/tls/server.key
+            - name: CORE_PEER_TLS_ROOTCERT_FILE
+              value: /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1/peers/peer0-org1/tls/ca.crt
+            - name: GOPATH
+              value: /opt/gopath
+            - name: ORDERER_CA
+              value: /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/consortium/orderers/orderer0/msp/tlscacerts/tlsca.consortium-cert.pem
+          volumeMounts:
+            - mountPath: /var/hyperledger/production
+              name: orderer-persistentdata
+            - mountPath: /var/hyperledger/orderer/genesis.block
+              name: orderer-claim0
+            - mountPath: /var/hyperledger/orderer/msp
+              name: orderer-claim1
+            - mountPath: /var/hyperledger/orderer/tls
+              name: orderer-claim2
+          workingDir: /opt/gopath/src/github.com/hyperledger/fabric
+      restartPolicy: Always
+      volumes:
+        - name: orderer-persistentdata
+          hostPath:
+            path: /home/storage/orderer
+            type: DirectoryOrCreate
+        - name: orderer-claim0
+          hostPath:
+            path: /home/fabric-external-chaincodes/channel-artifacts/genesis.block
+        - name: orderer-claim1
+          hostPath:
+            path: /home/fabric-external-chaincodes/crypto-config/ordererOrganizations/consortium/orderers/orderer0/msp
+        - name: orderer-claim2
+          hostPath:
+            path: /home/fabric-external-chaincodes/crypto-config/ordererOrganizations/consortium/orderers/orderer0/tls

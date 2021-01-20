@@ -1,0 +1,14 @@
+project: iot-blockchain
+component: cli
+
+replicaCount: 1
+logging: INFO
+
+image:
+  repository: hyperledger/fabric-tools
+  pullPolicy: IfNotPresent
+  tag: 2.3
+
+config:
+  peerAddress: peer.org.com:7051
+  mspID: peerMSP
