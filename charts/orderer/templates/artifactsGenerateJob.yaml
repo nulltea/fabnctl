@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: artifacts.generate
+spec:
+  backoffLimit: 1
+  parallelism: 1
+  template:
+    metadata:
+      name: artifacts.generate
+    spec:
+      restartPolicy: "Never"
+
+      volumes:
+        - name: shared
+          persistentVolumeClaim:
+            claimName: {{ template "chart.fullname" . }}-pvc
+        - name: config
+          configMap:
+            name: {{ template "chart.fullname" . }}.config
+        - name: dockersocket
+          hostPath:
+            path: /var/run/docker.sock
+      containers:
+        - name: cryptogen
+          image: "hyperledger/fabric-tools:{{.Values.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - cp /config/* /shared; cd /shared; cryptogen generate --config=./crypto-config.yaml; echo done.
+          volumeMounts:
+            - name: shared
+              mountPath: /shared
+            - name: config
+              mountPath: /config
+        - name: configtxgen
+          image: "hyperledger/fabric-tools:{{.Values.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - cd /shared; configtxgen -configPath . -profile OrdererGenesis -channelID system-channel -outputBlock channel-artifacts/genesis.block
+          volumeMounts:
+            - name: shared
+              mountPath: /shared

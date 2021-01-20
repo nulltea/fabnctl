@@ -27,11 +27,11 @@ spec:
             - orderer
           env:
             - name: FABRIC_LOGGING_SPEC
-              value: DEBUG
+              value: {{ .Values.logging }}
             - name: ORDERER_GENERAL_LISTENADDRESS
               value: 0.0.0.0
             - name: ORDERER_GENERAL_LISTENPORT
-              value: {{ .Values.service.port }}
+              value: "{{ .Values.service.port }}"
             - name: ORDERER_GENERAL_GENESISMETHOD
               value: file
             - name: ORDERER_GENERAL_GENESISFILE
@@ -39,7 +39,7 @@ spec:
             - name: ORDERER_GENERAL_LOCALMSPDIR
               value: /var/hyperledger/orderer/msp
             - name: ORDERER_GENERAL_LOCALMSPID
-              value: {{ .Values.msp.id }}
+              value: {{ .Values.config.mspID }}
             - name: ORDERER_GENERAL_TLS_CERTIFICATE
               value: /var/hyperledger/orderer/tls/server.crt
             - name: ORDERER_GENERAL_TLS_ENABLED
@@ -56,26 +56,21 @@ spec:
               value: "[/var/hyperledger/orderer/tls/ca.crt]"
           volumeMounts:
             - mountPath: /var/hyperledger/production
-              name: orderer-persistentdata
+              name: storage
             - mountPath: /var/hyperledger/orderer/genesis.block
-              name: orderer-claim0
+              name: config
+              subPath: channel-artifacts/genesis.block
             - mountPath: /var/hyperledger/orderer/msp
-              name: orderer-claim1
+              name: config
+              subPath: crypto-config/ordererOrganizations/orderer.com/orderers/orderer.orderer.com/msp
             - mountPath: /var/hyperledger/orderer/tls
-              name: orderer-claim2
+              name: config
+              subPath: crypto-config/ordererOrganizations/orderer.com/orderers/orderer.orderer.com/tls
           workingDir: /opt/gopath/src/github.com/hyperledger/fabric
       restartPolicy: Always
       volumes:
-        - name: orderer-persistentdata
-          hostPath:
-            path: /home/storage/orderer
-            type: DirectoryOrCreate
-        - name: orderer-claim0
-          hostPath:
-            path: /home/fabric-external-chaincodes/channel-artifacts/genesis.block
-        - name: orderer-claim1
-          hostPath:
-            path: /home/fabric-external-chaincodes/crypto-config/ordererOrganizations/consortium/orderers/orderer0/msp
-        - name: orderer-claim2
-          hostPath:
-            path: /home/fabric-external-chaincodes/crypto-config/ordererOrganizations/consortium/orderers/orderer0/tls
+        - name: storage
+          emptyDir: {} # make persistent
+        - name: config
+          persistentVolumeClaim:
+            claimName: {{ template "chart.fullname" . }}-pvc

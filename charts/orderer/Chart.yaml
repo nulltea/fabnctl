@@ -1,6 +1,6 @@
 apiVersion: v2
 name: orderer
-description: Orderer
+description: IoT enabled blockhain orderer
 type: application
 version: 0.1.0
 appVersion: 1.0.0

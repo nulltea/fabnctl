@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "chart.fullname" . }}.config
+  labels:
+  {{- include "chart.labels" . | nindent 4 }}
+data:
+  crypto-config.yaml:
+    {{ toYaml .Values.config.crypto | nindent 4 }}
+  configtx.yaml:
+    {{ toYaml .Values.config.configtx  | nindent 4  }}

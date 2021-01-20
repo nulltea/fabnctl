@@ -1,0 +1,26 @@
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: {{ template "chart.fullname" . }}-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: /tmp
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ template "chart.fullname" . }}-pvc
+spec:
+  storageClassName: ""
+  volumeName: {{ template "chart.fullname" . }}-pv
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+
