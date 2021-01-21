@@ -9,7 +9,7 @@ logging: INFO
 image:
   repository: hyperledger/fabric-orderer
   pullPolicy: IfNotPresent
-  tag: 2.3
+  tag: amd64-2.2.0
 
 service:
   type: ClusterIP
@@ -218,9 +218,6 @@ config:
           Organizations:
             - *Supplier
             - *Deliverer
-
-artifacts:
-
 
 resources: {}
 

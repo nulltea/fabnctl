@@ -9,18 +9,6 @@ spec:
     metadata:
       name: artifacts.generate
     spec:
-      restartPolicy: "Never"
-
-      volumes:
-        - name: shared
-          persistentVolumeClaim:
-            claimName: {{ template "chart.fullname" . }}-pvc
-        - name: config
-          configMap:
-            name: {{ template "chart.fullname" . }}.config
-        - name: dockersocket
-          hostPath:
-            path: /var/run/docker.sock
       containers:
         - name: cryptogen
           image: "hyperledger/fabric-tools:{{.Values.image.tag }}"
@@ -28,7 +16,7 @@ spec:
           command:
             - sh
             - -c
-            - cp /config/* /shared; cd /shared; cryptogen generate --config=./crypto-config.yaml; echo done.
+            - cp /config/* /shared; cd /shared; cryptogen generate --config=./crypto-config.yaml; echo done!
           volumeMounts:
             - name: shared
               mountPath: /shared
@@ -40,7 +28,18 @@ spec:
           command:
             - sh
             - -c
-            - cd /shared; configtxgen -configPath . -profile OrdererGenesis -channelID system-channel -outputBlock channel-artifacts/genesis.block
+            - cd /shared; configtxgen -configPath . -profile OrdererGenesis -channelID system-channel -outputBlock channel-artifacts/genesis.block; echo done!
           volumeMounts:
             - name: shared
               mountPath: /shared
+      restartPolicy: Never
+      volumes:
+        - name: shared
+          persistentVolumeClaim:
+            claimName: {{ template "chart.fullname" . }}-pvc
+        - name: config
+          configMap:
+            name: {{ template "chart.fullname" . }}.config
+        - name: dockersocket
+          hostPath:
+            path: /var/run/docker.sock
