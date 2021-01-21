@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "chart.fullname" . }}
+  labels:
+  {{- include "chart.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+  {{- include "chart.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+    {{- include "chart.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "chart.serviceAccountName" . }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.ca.image.repository }}:{{ .Values.ca.image.tag }}"
+          imagePullPolicy: {{ .Values.ca.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.ca.service.port }}
+          args:
+            - sh
+            - -c
+            - fabric-ca-server start --ca.certfile /etc/hyperledger/fabric-ca-server-config/ca.org1-cert.pem
+              --ca.keyfile /etc/hyperledger/fabric-ca-server-config/priv_sk
+              -b admin:adminpw -d
+          env:
+            - name: FABRIC_LOGGING_SPEC
+              value: {{ .Values.logging }}
+            - name: FABRIC_CA_SERVER_PORT
+              value: {{ .Values.ca.service.port }}
+            - name: FABRIC_CA_HOME
+              value: /etc/hyperledger/fabric-ca-server
+            - name: FABRIC_CA_SERVER_CA_NAME
+              value: {{ template "chart.fullname" . }}-ca
+            - name: FABRIC_CA_SERVER_TLS_ENABLED
+              value: "true"
+            - name: FABRIC_CA_SERVER_TLS_CERTFILE
+              value: /etc/hyperledger/fabric-ca-server-config/ca.org1-cert.pem
+            - name: FABRIC_CA_SERVER_TLS_KEYFILE
+              value: /etc/hyperledger/fabric-ca-server-config/priv_sk
+          volumeMounts:
+            - name: artifacts
+              mountPath: /etc/hyperledger/fabric-ca-server-config
+              subPath: crypto-config/peerOrganizations/{{ .Values.config.domain }}/ca
+              readOnly: true
+          workingDir: /opt/gopath/src/github.com/hyperledger/fabric
+      restartPolicy: Always
+      volumes:
+        - name: artifacts
+          persistentVolumeClaim:
+            claimName: {{ template "chart.fullname" . }}.artifacts.pvc

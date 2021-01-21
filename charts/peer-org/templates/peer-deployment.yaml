@@ -19,11 +19,11 @@ spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: "{{ .Values.peer.image.repository }}:{{ .Values.peer.image.tag }}"
+          imagePullPolicy: {{ .Values.peer.image.pullPolicy }}
           ports:
-            - containerPort: {{ .Values.service.port }}
-            - containerPort: {{ .Values.service.chaincodePort }}
+            - containerPort: {{ .Values.peer.service.port }}
+            - containerPort: {{ .Values.peer.service.chaincodePort }}
           args:
             - peer
             - node
@@ -32,23 +32,23 @@ spec:
             - name: FABRIC_LOGGING_SPEC
               value: {{ .Values.logging }}
             - name: CORE_PEER_ID
-              value: {{ .Values.config.domain }}
+              value: "{{ .Values.config.peerSubdomain }}.{{ .Values.config.domain }}"
             - name: CORE_PEER_LOCALMSPID
               value: {{ .Values.config.mspID }}
             - name: CORE_PEER_ADDRESS
-              value: "{{ .Values.config.domain }}:{{ .Values.service.port }}"
+              value: "{{ .Values.config.peerSubdomain }}.{{ .Values.config.domain }}:{{ .Values.peer.service.port }}"
             - name: CORE_PEER_LISTENADDRESS
-              value: "0.0.0.0:{{ .Values.service.port }}"
+              value: "0.0.0.0:{{ .Values.peer.service.port }}"
             - name: CORE_PEER_CHAINCODEADDRESS
-              value: "{{ .Values.config.domain }}:{{ .Values.service.chaincodePort }}"
+              value: "{{ .Values.config.peerSubdomain }}.{{ .Values.config.domain }}:{{ .Values.peer.service.chaincodePort }}"
             - name: CORE_PEER_CHAINCODELISTENADDRESS
-              value: "0.0.0.0:{{ .Values.service.chaincodePort }}"
+              value: "0.0.0.0:{{ .Values.peer.service.chaincodePort }}"
             - name: CORE_PEER_GOSSIP_USELEADERELECTION
               value: "true"
             - name: CORE_PEER_GOSSIP_BOOTSTRAP
-              value: "{{ .Values.config.domain }}:{{ .Values.service.port }}"
+              value: "{{ .Values.config.peerSubdomain }}.{{ .Values.config.domain }}:{{ .Values.peer.service.port }}"
             - name: CORE_PEER_GOSSIP_EXTERNALENDPOINT
-              value: "{{ .Values.config.domain }}:{{ .Values.service.port }}"
+              value: "{{ .Values.config.peerSubdomain }}.{{ .Values.config.domain }}:{{ .Values.peer.service.port }}"
             - name: CORE_PEER_PROFILE_ENABLED
               value: "true"
             - name: CORE_PEER_TLS_CERT_FILE
@@ -62,27 +62,28 @@ spec:
             - name: CORE_VM_ENDPOINT
               value: http://localhost:2375
           volumeMounts:
-            - mountPath: /var/hyperledger/production
-              name: orderer-persistentdata
-            - mountPath: /var/hyperledger/orderer/genesis.block
-              name: orderer-claim0
-            - mountPath: /var/hyperledger/orderer/msp
-              name: orderer-claim1
-            - mountPath: /var/hyperledger/orderer/tls
-              name: orderer-claim2
+            - name: storage
+              mountPath: /var/hyperledger/production
+            - name: core
+              mountPath: /etc/hyperledger/fabric/core.yaml
+              subPath: core.yaml
+            - name: artifacts
+              mountPath: /etc/hyperledger/fabric/msp
+              subPath: crypto-config/peerOrganizations/{{ .Values.config.domain }}/peers/{{ .Values.config.peerSubdomain }}.{{ .Values.config.domain }}/msp
+            - name: artifacts
+              mountPath: /etc/hyperledger/fabric/tls
+              subPath: crypto-config/peerOrganizations/{{ .Values.config.domain }}/peers/{{ .Values.config.peerSubdomain }}.{{ .Values.config.domain }}/tls
           workingDir: /opt/gopath/src/github.com/hyperledger/fabric
       restartPolicy: Always
       volumes:
-        - name: orderer-persistentdata
-          hostPath:
-            path: /home/storage/orderer
-            type: DirectoryOrCreate
-        - name: orderer-claim0
-          hostPath:
-            path: /home/fabric-external-chaincodes/channel-artifacts/genesis.block
-        - name: orderer-claim1
-          hostPath:
-            path: /home/fabric-external-chaincodes/crypto-config/ordererOrganizations/consortium/orderers/orderer0/msp
-        - name: orderer-claim2
-          hostPath:
-            path: /home/fabric-external-chaincodes/crypto-config/ordererOrganizations/consortium/orderers/orderer0/tls
+        - name: storage
+          emptyDir: {} # TODO make persistent
+        - name: artifacts
+          persistentVolumeClaim:
+            claimName: {{ template "chart.fullname" . }}.artifacts.pvc
+        - name: core
+          configMap:
+            name: {{ template "chart.fullname" . }}.core.config
+            items:
+              - key: core.yaml
+                path: core.yaml

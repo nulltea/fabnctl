@@ -6,15 +6,24 @@ fullnameOverride: peer
 replicaCount: 1
 logging: INFO
 
-image:
-  repository: hyperledger/fabric-peer
-  pullPolicy: IfNotPresent
-  tag: amd64-2.2.0
+peer:
+  image:
+    repository: hyperledger/fabric-peer
+    pullPolicy: IfNotPresent
+    tag: amd64-2.2.0
+  service:
+    type: ClusterIP
+    port: 7051
+    chaincodePort: 7052
 
-service:
-  type: ClusterIP
-  port: 7051
-  chaincodePort: 7052
+ca:
+  image:
+    repository: hyperledger/fabric-ca
+    pullPolicy: IfNotPresent
+    tag: amd64-1.4.7
+  service:
+    type: ClusterIP
+    port: 7054
 
 ingress:
   enabled: false
@@ -225,7 +234,7 @@ config:
             Organizations:
               - *Supplier
               - *Deliverer
-      SupplierChannel:
+      SupplyChannel:
         Consortium: SupplyConsortium
         <<: *ChannelDefaults
         Application:

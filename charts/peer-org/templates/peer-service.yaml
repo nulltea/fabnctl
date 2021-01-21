@@ -5,11 +5,11 @@ metadata:
   labels:
   {{- include "chart.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ .Values.peer.service.type }}
   ports:
     - name: peer
-      port: {{ .Values.service.port }}
-      targetPort: {{ .Values.service.port }}
+      port: {{ .Values.peer.service.port }}
+      targetPort: {{ .Values.peer.service.port }}
   selector:
     {{- include "chart.selectorLabels" . | nindent 4 }}
 ---
@@ -20,10 +20,10 @@ metadata:
   labels:
   {{- include "chart.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ .Values.peer.service.type }}
   ports:
     - name: chaincode
-      port: {{ .Values.service.chaincodePort }}
-      targetPort: {{ .Values.service.chaincodePort }}
+      port: {{ .Values.peer.service.chaincodePort }}
+      targetPort: {{ .Values.peer.service.chaincodePort }}
   selector:
   {{- include "chart.selectorLabels" . | nindent 4 }}
