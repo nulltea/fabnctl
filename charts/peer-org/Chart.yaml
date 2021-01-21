@@ -9,8 +9,6 @@ sources:
 maintainers:
   - name: Timothy Yalugin
 dependencies:
-  - name: peer
-    version: 0.1.0
   - name: ca
     version: 0.1.0
   - name: cli

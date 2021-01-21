@@ -9,7 +9,7 @@ logging: INFO
 image:
   repository: hyperledger/fabric-ca
   pullPolicy: IfNotPresent
-  tag: latest
+  tag: amd64-1.4.7
 
 service:
   type: ClusterIP

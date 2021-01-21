@@ -1,0 +1,57 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ template "chart.fullname" . }}.artifacts.generate
+  labels:
+  {{- include "chart.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 1
+  parallelism: 1
+  template:
+    metadata:
+      name: artifacts.generate
+    spec:
+      containers:
+        - name: cryptogen
+          image: "hyperledger/fabric-tools:{{.Values.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - cp /config/* /artifacts;
+              cd /artifacts;
+              cryptogen generate --config=./crypto-config.yaml;
+              echo Done!
+          volumeMounts:
+            - name: artifacts
+              mountPath: /artifacts
+            - name: config
+              mountPath: /config
+        - name: configtxgen
+          image: "hyperledger/fabric-tools:{{.Values.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - cd /artifacts;
+              configtxgen -configPath . -profile {{ .Values.config.ordererProfile }} -channelID system-channel
+                -outputBlock channel-artifacts/genesis.block;
+              configtxgen -configPath . -profile {{ .Values.config.channelProfile }} -channelID {{ .Values.config.channelID }}
+                -outputCreateChannelTx ./channel-artifacts/channel.tx
+              configtxgen -configPath . -profile {{ .Values.config.channelProfile }} -channelID {{ .Values.config.channelID }} -asOrg {{ .Values.config.mspID }}
+                -outputAnchorPeersUpdate ./channel-artifacts/supplierAnchors.tx
+              echo Done!
+          volumeMounts:
+            - name: artifacts
+              mountPath: /artifacts
+      restartPolicy: Never
+      volumes:
+        - name: artifacts
+          persistentVolumeClaim:
+            claimName: {{ template "chart.fullname" . }}.artifacts.pvc
+        - name: config
+          configMap:
+            name: {{ template "chart.fullname" . }}.artifacts.config
+        - name: dockersocket
+          hostPath:
+            path: /var/run/docker.sock
