@@ -44,6 +44,8 @@ serviceAccount:
 
 config:
   mspID: ordererMSP
+  domain: orderer.com
+  peerSubdomain: orderer
   ordererProfile: OrdererGenesis
   crypto: |
     OrdererOrgs:
@@ -220,7 +222,7 @@ config:
             Organizations:
               - *Supplier
               - *Deliverer
-      SupplierChannel:
+      SupplyChannel:
         Consortium: SupplyConsortium
         <<: *ChannelDefaults
         Application:
