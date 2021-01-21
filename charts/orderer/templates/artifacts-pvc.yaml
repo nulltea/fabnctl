@@ -2,7 +2,7 @@
 kind: PersistentVolume
 apiVersion: v1
 metadata:
-  name: {{ template "chart.fullname" . }}-pv
+  name: {{ template "chart.fullname" . }}.artifacts.pv
 spec:
   capacity:
     storage: 1Gi
@@ -14,10 +14,10 @@ spec:
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: {{ template "chart.fullname" . }}-pvc
+  name: {{ template "chart.fullname" . }}.artifacts.pvc
 spec:
   storageClassName: ""
-  volumeName: {{ template "chart.fullname" . }}-pv
+  volumeName: {{ template "chart.fullname" . }}.artifacts.pv
   accessModes:
     - ReadWriteMany
   resources:

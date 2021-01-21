@@ -1,7 +1,9 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: artifacts.generate
+  name: {{ template "chart.fullname" . }}.artifacts.generate
+  labels:
+  {{- include "chart.labels" . | nindent 4 }}
 spec:
   backoffLimit: 1
   parallelism: 1
@@ -16,10 +18,13 @@ spec:
           command:
             - sh
             - -c
-            - cp /config/* /shared; cd /shared; cryptogen generate --config=./crypto-config.yaml; echo done!
+            - cp /config/* /artifacts;
+              cd /artifacts;
+              cryptogen generate --config=./crypto-config.yaml;
+              echo done!
           volumeMounts:
-            - name: shared
-              mountPath: /shared
+            - name: artifacts
+              mountPath: /artifacts
             - name: config
               mountPath: /config
         - name: configtxgen
@@ -28,18 +33,21 @@ spec:
           command:
             - sh
             - -c
-            - cd /shared; configtxgen -configPath . -profile OrdererGenesis -channelID system-channel -outputBlock channel-artifacts/genesis.block; echo done!
+            - cd /artifacts;
+              configtxgen -configPath . -profile {{ .Values.config.ordererProfile }} -channelID system-channel
+                -outputBlock channel-artifacts/genesis.block;
+              echo done!
           volumeMounts:
-            - name: shared
-              mountPath: /shared
+            - name: artifacts
+              mountPath: /artifacts
       restartPolicy: Never
       volumes:
-        - name: shared
+        - name: artifacts
           persistentVolumeClaim:
-            claimName: {{ template "chart.fullname" . }}-pvc
+            claimName: {{ template "chart.fullname" . }}.artifacts.pvc
         - name: config
           configMap:
-            name: {{ template "chart.fullname" . }}.config
+            name: {{ template "chart.fullname" . }}.artifacts.config
         - name: dockersocket
           hostPath:
             path: /var/run/docker.sock

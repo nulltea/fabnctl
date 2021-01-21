@@ -33,8 +33,18 @@ ingress:
           port: 7050
           scheme: http
 
+resources: {}
+
+affinity: {}
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
 config:
   mspID: ordererMSP
+  ordererProfile: OrdererGenesis
   crypto: |
     OrdererOrgs:
       - Name: Orderer
@@ -210,20 +220,11 @@ config:
             Organizations:
               - *Supplier
               - *Deliverer
-      DeliveryChannel:
-        Consortium: DeliveryConsortium
+      SupplierChannel:
+        Consortium: SupplyConsortium
         <<: *ChannelDefaults
         Application:
           <<: *ApplicationDefaults
           Organizations:
             - *Supplier
             - *Deliverer
-
-resources: {}
-
-affinity: {}
-
-serviceAccount:
-  create: true
-  annotations: {}
-  name: ""

@@ -58,19 +58,19 @@ spec:
             - mountPath: /var/hyperledger/production
               name: storage
             - mountPath: /var/hyperledger/orderer/genesis.block
-              name: config
+              name: artifacts
               subPath: channel-artifacts/genesis.block
             - mountPath: /var/hyperledger/orderer/msp
-              name: config
+              name: artifacts
               subPath: crypto-config/ordererOrganizations/orderer.com/orderers/orderer.orderer.com/msp
             - mountPath: /var/hyperledger/orderer/tls
-              name: config
+              name: artifacts
               subPath: crypto-config/ordererOrganizations/orderer.com/orderers/orderer.orderer.com/tls
           workingDir: /opt/gopath/src/github.com/hyperledger/fabric
       restartPolicy: Always
       volumes:
         - name: storage
           emptyDir: {} # make persistent
-        - name: config
+        - name: artifacts
           persistentVolumeClaim:
-            claimName: {{ template "chart.fullname" . }}-pvc
+            claimName: {{ template "chart.fullname" . }}.artifacts.pvc
