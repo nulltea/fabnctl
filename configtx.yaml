@@ -144,8 +144,8 @@ Profiles:
         Organizations:
           - *Supplier
           - *Deliverer
-  DeliveryChannel:
-    Consortium: DeliveryConsortium
+  SupplyChannel:
+    Consortium: SupplyChannel
     <<: *ChannelDefaults
     Application:
       <<: *ApplicationDefaults
