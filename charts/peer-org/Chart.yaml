@@ -1,5 +1,5 @@
 apiVersion: v2
-name: peer
+name: peer-org
 description: IoT enabled blockhain peer organization
 type: application
 version: 0.1.0
@@ -8,8 +8,3 @@ sources:
   - https://github.com/timoth-y
 maintainers:
   - name: Timothy Yalugin
-dependencies:
-  - name: ca
-    version: 0.1.0
-  - name: cli
-    version: 0.1.0

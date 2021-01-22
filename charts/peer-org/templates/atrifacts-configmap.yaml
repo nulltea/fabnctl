@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ template "chart.fullname" . }}.atrifacts.config
+  name: {{ template "chart.fullname" . }}.artifacts.config
   labels:
     {{- include "chart.labels" . | nindent 4 }}
 data:

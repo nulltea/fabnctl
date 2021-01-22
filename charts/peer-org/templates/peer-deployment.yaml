@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "chart.fullname" . }}
+  name: {{ template "chart.fullname" . }}-peer
   labels:
     {{- include "chart.labels" . | nindent 4 }}
 spec:
@@ -17,6 +17,29 @@ spec:
         {{- include "chart.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
+      initContainers:
+      - name: artifacts-generate
+        image: "hyperledger/fabric-tools:{{.Values.peer.image.tag }}"
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+          - rm -rf /artifacts/*;
+            cp /config/* /artifacts;
+            cd /artifacts;
+            cryptogen generate --config=./crypto-config.yaml;
+            configtxgen -configPath . -profile {{ .Values.config.ordererProfile }} -channelID system-channel
+            -outputBlock channel-artifacts/genesis.block;
+            configtxgen -configPath . -profile {{ .Values.config.channelProfile }} -channelID {{ .Values.config.channelID }}
+            -outputCreateChannelTx ./channel-artifacts/channel.tx
+            configtxgen -configPath . -profile {{ .Values.config.channelProfile }} -channelID {{ .Values.config.channelID }} -asOrg {{ .Values.config.mspID }}
+            -outputAnchorPeersUpdate ./channel-artifacts/supplierAnchors.tx
+            echo done!
+        volumeMounts:
+          - name: artifacts
+            mountPath: /artifacts
+          - name: config
+            mountPath: /config
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.peer.image.repository }}:{{ .Values.peer.image.tag }}"
@@ -81,6 +104,9 @@ spec:
         - name: artifacts
           persistentVolumeClaim:
             claimName: {{ template "chart.fullname" . }}.artifacts.pvc
+        - name: config
+          configMap:
+            name: {{ template "chart.fullname" . }}.artifacts.config
         - name: core
           configMap:
             name: {{ template "chart.fullname" . }}.core.config

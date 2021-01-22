@@ -1,7 +1,5 @@
 project: iot-blockchain
 component: peer
-nameOverride: peer
-fullnameOverride: peer
 
 replicaCount: 1
 logging: INFO
@@ -53,11 +51,11 @@ serviceAccount:
   name: ""
 
 config:
-  mspID: supplierMSP
-  domain: supplier.com
-  peerSubdomain: peer
-  channelProfile: SupplierChannel
-  channelID: sypply-channel
+  mspID: delivererMSP
+  domain: deliverer.com
+  peerSubdomain: peer0
+  channelProfile: SupplyChannel
+  channelID: supply-channel
   ordererProfile: OrdererGenesis
   crypto: |
     OrdererOrgs:
