@@ -1,25 +1,11 @@
----
-kind: PersistentVolume
-apiVersion: v1
-metadata:
-  name: {{ template "chart.fullname" . }}.artifacts.pv
-spec:
-  capacity:
-    storage: 1Gi
-  accessModes:
-    - ReadWriteMany
-  hostPath:
-    path: /tmp
----
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
   name: {{ template "chart.fullname" . }}.artifacts.pvc
 spec:
-  storageClassName: ""
-  volumeName: {{ template "chart.fullname" . }}.artifacts.pv
+  storageClassName: nfs
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi

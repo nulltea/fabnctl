@@ -1,7 +1,5 @@
 project: iot-blockchain
 component: orderer
-nameOverride: orderer
-fullnameOverride: orderer
 
 replicaCount: 1
 logging: INFO
