@@ -10,7 +10,7 @@ COMMAND="$1"
 function verifyArg() {
 
     if [ $ARGS_NUMBER -ne 1 ]; then
-        echo "Usage: networkOps.sh init | status | clean | cli | peer"
+        echo "Usage: network.sh init | status | clean | cli | peer"
         exit 1;
     fi
 }
@@ -52,13 +52,18 @@ function generateChannelArtifacts(){
     echo
 }
 
+function deployOrderer(){
+  helm upgrade --install --set-file=config.configtx=./configtx.yaml,config.crypto=./crypto-config.yaml orderer-org charts/orderer
+}
+
+function deployPeers(){
+  helm upgrade --install --set-file=config.configtx=./configtx.yaml,config.crypto=./crypto-config.yaml --set=config.msdID=supplierMSD,config.domain=supplier.com supplier charts/peer-org
+  helm upgrade --install --set-file=config.configtx=./configtx.yaml,config.crypto=./crypto-config.yaml --set=config.msdID=delivererMSP,config.domain=deliverer.com deliverer charts/peer-org
+}
+
 function startNetwork() {
 
-    echo
-    echo "================================================="
-    echo "---------- Starting the network -----------------"
-    echo "================================================="
-    echo
+    echo "> Starting the network <"
 
     cd $PROJECT_DIR
     docker-compose -f docker-compose.yaml up -d
@@ -115,6 +120,12 @@ case $COMMAND in
         generateCryptoMaterials
         generateChannelArtifacts
         ;;
+    "deployOrderer")
+        deployOrderer
+        ;;
+    "deployPeers")
+        deployPeers
+        ;;
     "status")
         networkStatus
         ;;
@@ -125,6 +136,6 @@ case $COMMAND in
         dockerCli
         ;;
     *)
-        echo "Usage: networkOps.sh init | status | clean | cli "
+        echo "Usage: network.sh init | status | clean | cli "
         exit 1;
 esac
