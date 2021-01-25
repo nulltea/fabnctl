@@ -2,7 +2,7 @@ Organizations:
   - &Orderer
     Name: ordererMSP
     ID: ordererMSP
-    MSPDir: crypto-config/ordererOrganizations/orderer.com/msp
+    MSPDir: crypto-config/ordererOrganizations/orderer/msp
     Policies:
       Readers:
         Type: Signature
@@ -17,12 +17,12 @@ Organizations:
   - &Supplier
     Name: supplierMSP
     ID: supplierMSP
-    MSPDir: crypto-config/peerOrganizations/supplier.com/msp
+    MSPDir: crypto-config/peerOrganizations/supplier/msp
     AnchorPeers:
       # AnchorPeers defines the location of peers which can be used
       # for cross org gossip communication.  Note, this value is only
       # encoded in the genesis block in the Application section context
-      - Host: peer0.supplier.com
+      - Host: peer0-supplier
         Port: 7051
     Policies:
       Readers:
@@ -41,9 +41,9 @@ Organizations:
   - &Deliverer
     Name: delivererMSP
     ID: delivererMSP
-    MSPDir: crypto-config/peerOrganizations/deliverer.com/msp
+    MSPDir: crypto-config/peerOrganizations/deliverer/msp
     AnchorPeers:
-      - Host: peer0.deliverer.com
+      - Host: peer0-deliverer
         Port: 7051
     Policies:
       Readers:
@@ -64,13 +64,13 @@ Orderer: &OrdererDefaults
   # Available types are "solo", "etcdraft", "kafka"
   OrdererType: solo
   Addresses:
-    - orderer.com:7050
+    - orderer:7050
   EtcdRaft:
     Consenters:
-      - Host: orderer.com
+      - Host: orderer
         Port: 7050
-        ClientTLSCert: crypto-config/ordererOrganizations/orderer/orderers/orderer.com/tls/server.crt
-        ServerTLSCert: crypto-config/ordererOrganizations/orderer/orderers/orderer.com/tls/server.crt
+        ClientTLSCert: crypto-config/ordererOrganizations/orderer/orderers/orderer/tls/server.crt
+        ServerTLSCert: crypto-config/ordererOrganizations/orderer/orderers/orderer/tls/server.crt
   BatchTimeout: 2s
   BatchSize:
     MaxMessageCount: 10
@@ -140,12 +140,12 @@ Profiles:
       Organizations:
         - *Orderer
     Consortiums:
-      RetailConsortium:
+      SupplyConsortium:
         Organizations:
           - *Supplier
           - *Deliverer
   SupplyChannel:
-    Consortium: SupplyChannel
+    Consortium: SupplyConsortium
     <<: *ChannelDefaults
     Application:
       <<: *ApplicationDefaults

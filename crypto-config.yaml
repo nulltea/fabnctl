@@ -1,26 +1,23 @@
 OrdererOrgs:
   - Name: Orderer
-    Domain: orderer.com
+    Domain: orderer
     Specs:
       - Hostname: orderer
-        SANS:
-          - localhost
+        CommonName: orderer
 PeerOrgs:
   - Name: Supplier
-    Domain: supplier.com
+    Domain: supplier
     EnableNodeOUs: true
-    Template:
-      Count: 1
-      SANS:
-        - localhost
+    Specs:
+      - Hostname: peer0
+        CommonName: peer0-supplier
     Users:
       Count: 1
   - Name: Deliverer
-    Domain: deliverer.com
+    Domain: deliverer
     EnableNodeOUs: true
-    Template:
-      Count: 1
-      SANS:
-        - localhost
+    Specs:
+      - Hostname: peer0
+        CommonName: peer0-deliverer
     Users:
       Count: 1
