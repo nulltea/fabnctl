@@ -2,7 +2,7 @@ project: iot-blockchain
 component: peer
 
 replicaCount: 1
-logging: INFO
+logging: DEBUG
 
 peer:
   image:
@@ -50,12 +50,12 @@ serviceAccount:
   annotations: {}
   name: ""
 
+artifacts:
+  claim: artifacts.pvc
+
 config:
-  mspID: delivererMSP
-  domain: deliverer.com
-  peerSubdomain: peer0
-  channelProfile: SupplyChannel
-  channelID: supply-channel
-  ordererProfile: OrdererGenesis
-  crypto: |
-  configtx: |
+  mspID: supplierMSP
+  domain: supplier
+  peer: peer0
+  tls: true
+  orderer: orderer

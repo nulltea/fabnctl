@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "chart.fullname" . }}-peer
+  name: {{ .Release.Name }}-peer
   labels:
     {{- include "chart.labels" . | nindent 4 }}
 spec:
@@ -17,29 +17,6 @@ spec:
         {{- include "chart.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
-      initContainers:
-      - name: artifacts-generate
-        image: "hyperledger/fabric-tools:{{.Values.peer.image.tag }}"
-        imagePullPolicy: IfNotPresent
-        command:
-          - sh
-          - -c
-          - rm -rf /artifacts/*;
-            cp /config/* /artifacts;
-            cd /artifacts;
-            cryptogen generate --config=./crypto-config.yaml;
-            configtxgen -configPath . -profile {{ .Values.config.ordererProfile }} -channelID system-channel
-            -outputBlock channel-artifacts/genesis.block;
-            configtxgen -configPath . -profile {{ .Values.config.channelProfile }} -channelID {{ .Values.config.channelID }}
-            -outputCreateChannelTx ./channel-artifacts/channel.tx
-            configtxgen -configPath . -profile {{ .Values.config.channelProfile }} -channelID {{ .Values.config.channelID }} -asOrg {{ .Values.config.mspID }}
-            -outputAnchorPeersUpdate ./channel-artifacts/supplierAnchors.tx
-            echo done!
-        volumeMounts:
-          - name: artifacts
-            mountPath: /artifacts
-          - name: config
-            mountPath: /config
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.peer.image.repository }}:{{ .Values.peer.image.tag }}"
@@ -55,29 +32,29 @@ spec:
             - name: FABRIC_LOGGING_SPEC
               value: {{ .Values.logging }}
             - name: CORE_PEER_ID
-              value: "{{ .Values.config.peerSubdomain }}.{{ .Values.config.domain }}"
+              value: "{{ .Values.config.peer }}-{{ .Values.config.domain }}"
             - name: CORE_PEER_LOCALMSPID
               value: {{ .Values.config.mspID }}
             - name: CORE_PEER_ADDRESS
-              value: "{{ .Values.config.peerSubdomain }}.{{ .Values.config.domain }}:{{ .Values.peer.service.port }}"
+              value: "{{ .Values.config.peer }}-{{ .Values.config.domain }}:{{ .Values.peer.service.port }}"
             - name: CORE_PEER_LISTENADDRESS
               value: "0.0.0.0:{{ .Values.peer.service.port }}"
             - name: CORE_PEER_CHAINCODEADDRESS
-              value: "{{ .Values.config.peerSubdomain }}.{{ .Values.config.domain }}:{{ .Values.peer.service.chaincodePort }}"
+              value: "{{ .Values.config.peer }}-{{ .Values.config.domain }}:{{ .Values.peer.service.chaincodePort }}"
             - name: CORE_PEER_CHAINCODELISTENADDRESS
               value: "0.0.0.0:{{ .Values.peer.service.chaincodePort }}"
             - name: CORE_PEER_GOSSIP_USELEADERELECTION
               value: "true"
             - name: CORE_PEER_GOSSIP_BOOTSTRAP
-              value: "{{ .Values.config.peerSubdomain }}.{{ .Values.config.domain }}:{{ .Values.peer.service.port }}"
+              value: "{{ .Values.config.peer }}-{{ .Values.config.domain }}:{{ .Values.peer.service.port }}"
             - name: CORE_PEER_GOSSIP_EXTERNALENDPOINT
-              value: "{{ .Values.config.peerSubdomain }}.{{ .Values.config.domain }}:{{ .Values.peer.service.port }}"
+              value: "{{ .Values.config.peer }}-{{ .Values.config.domain }}:{{ .Values.peer.service.port }}"
             - name: CORE_PEER_PROFILE_ENABLED
               value: "true"
             - name: CORE_PEER_TLS_CERT_FILE
               value: /etc/hyperledger/fabric/tls/server.crt
             - name: CORE_PEER_TLS_ENABLED
-              value: "true"
+              value: "{{ .Values.config.tls }}"
             - name: CORE_PEER_TLS_KEY_FILE
               value: /etc/hyperledger/fabric/tls/server.key
             - name: CORE_PEER_TLS_ROOTCERT_FILE
@@ -92,10 +69,10 @@ spec:
               subPath: core.yaml
             - name: artifacts
               mountPath: /etc/hyperledger/fabric/msp
-              subPath: crypto-config/peerOrganizations/{{ .Values.config.domain }}/peers/{{ .Values.config.peerSubdomain }}.{{ .Values.config.domain }}/msp
+              subPath: crypto-config/peerOrganizations/{{ .Values.config.domain }}/peers/{{ .Values.config.peer }}-{{ .Values.config.domain }}/msp
             - name: artifacts
               mountPath: /etc/hyperledger/fabric/tls
-              subPath: crypto-config/peerOrganizations/{{ .Values.config.domain }}/peers/{{ .Values.config.peerSubdomain }}.{{ .Values.config.domain }}/tls
+              subPath: crypto-config/peerOrganizations/{{ .Values.config.domain }}/peers/{{ .Values.config.peer }}-{{ .Values.config.domain }}/tls
           workingDir: /opt/gopath/src/github.com/hyperledger/fabric
       restartPolicy: Always
       volumes:
@@ -103,13 +80,10 @@ spec:
           emptyDir: {} # TODO make persistent
         - name: artifacts
           persistentVolumeClaim:
-            claimName: {{ template "chart.fullname" . }}.artifacts.pvc
-        - name: config
-          configMap:
-            name: {{ template "chart.fullname" . }}.artifacts.config
+            claimName: {{ .Values.artifacts.claim }}
         - name: core
           configMap:
-            name: {{ template "chart.fullname" . }}.core.config
+            name: {{ .Release.Name }}.core.config
             items:
               - key: core.yaml
                 path: core.yaml

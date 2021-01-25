@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "chart.fullname" . }}-ca
+  name: {{ .Release.Name }}-ca
   labels:
   {{- include "chart.labels" . | nindent 4 }}
 spec:
@@ -37,9 +37,9 @@ spec:
             - name: FABRIC_CA_HOME
               value: /etc/hyperledger/fabric-ca-server
             - name: FABRIC_CA_SERVER_CA_NAME
-              value: {{ template "chart.fullname" . }}-ca
+              value: {{ .Release.Name }}-ca
             - name: FABRIC_CA_SERVER_TLS_ENABLED
-              value: "true"
+              value: "{{ .Values.config.tls }}"
             - name: FABRIC_CA_SERVER_TLS_CERTFILE
               value: /etc/hyperledger/fabric-ca-server-config/ca.org1-cert.pem
             - name: FABRIC_CA_SERVER_TLS_KEYFILE
@@ -53,4 +53,4 @@ spec:
       volumes:
         - name: artifacts
           persistentVolumeClaim:
-            claimName: {{ template "chart.fullname" . }}.artifacts.pvc
+            claimName: {{ .Values.artifacts.claim }}
