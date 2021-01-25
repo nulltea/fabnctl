@@ -2,7 +2,7 @@ project: iot-blockchain
 component: orderer
 
 replicaCount: 1
-logging: INFO
+logging: DEBUG
 
 image:
   repository: hyperledger/fabric-orderer
@@ -22,7 +22,7 @@ ingress:
     enabled: true
     certResolver: le
   routes:
-    - host: orderer.com
+    - host: orderer
       paths:
         - /
       middlewares: []
@@ -40,10 +40,11 @@ serviceAccount:
   annotations: {}
   name: ""
 
+artifacts:
+  claim: artifacts.pvc
+
 config:
   mspID: ordererMSP
-  domain: orderer.com
-  peerSubdomain: orderer
-  ordererProfile: OrdererGenesis
-  crypto: |
-  configtx: |
+  domain: orderer
+  profile: OrdererGenesis
+  tls: true
