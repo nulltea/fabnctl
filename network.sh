@@ -18,91 +18,23 @@ function verifyArg() {
 OS_ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')" | awk '{print tolower($0)}')
 FABRIC_ROOT=$GOPATH/src/github.com/hyperledger/fabric
 
-
-function generateCryptoMaterials(){
-
-    if [ -d ./crypto-config ]; then
-            rm -rf ./crypto-config
-    fi
-
-    echo "> Generating certificates using cryptogen tool <"
-    ./bin/cryptogen generate --config=./crypto-config.yaml
-
-    echo
-}
-
-
-function generateChannelArtifacts(){
-
-    if [ ! -d ./channel-artifacts ]; then
-        mkdir channel-artifacts
-    fi
-
-    echo "> Generating channel configuration transaction 'channel.tx' <"
-    ./bin/configtxgen -profile OrdererGenesis -channelID testchainid -outputBlock ./channel-artifacts/genesis.block
-    ./bin/configtxgen -profile DeliveryChannel -outputCreateChannelTx ./channel-artifacts/channel.tx -channelID "delivery-channel"
-
-    echo "> Generating anchor peer update for Supplier <"
-    ./bin/configtxgen -profile DeliveryChannel -outputAnchorPeersUpdate ./channel-artifacts/supplierAnchors.tx  -channelID "delivery-channel" -asOrg supplierMSP
-
-
-    echo "> Generating anchor peer update for Deliverer <"
-    ./bin/configtxgen -profile DeliveryChannel -outputAnchorPeersUpdate ./channel-artifacts/delivererAnchors.tx  -channelID "delivery-channel" -asOrg delivererMSP
-
-    echo
+function generateArtifacts(){
+  helm upgrade --install artifacts charts/artifacts
+  kubectl describe cm
 }
 
 function deployOrderer(){
-  helm upgrade --install --set-file=config.configtx=./configtx.yaml,config.crypto=./crypto-config.yaml orderer-org charts/orderer
+  helm upgrade --install orderer charts/orderer
 }
 
 function deployPeers(){
-  helm upgrade --install --set-file=config.configtx=./configtx.yaml,config.crypto=./crypto-config.yaml --set=config.msdID=supplierMSD,config.domain=supplier.com supplier charts/peer-org
-  helm upgrade --install --set-file=config.configtx=./configtx.yaml,config.crypto=./crypto-config.yaml --set=config.msdID=delivererMSP,config.domain=deliverer.com deliverer charts/peer-org
-}
-
-function startNetwork() {
-
-    echo "> Starting the network <"
-
-    cd $PROJECT_DIR
-    docker-compose -f docker-compose.yaml up -d
+  helm upgrade --install --set=config.mspID=supplierMSP,config.domain=supplier,config.peerSubdomain=peer0 peer0-supplier charts/peer-org
+  helm upgrade --install --set=config.mspID=delivererMSP,config.domain=deliverer,config.peerSubdomain=peer0 peer0-deliverer charts/peer-org
 }
 
 function cleanNetwork() {
-    cd $PROJECT_DIR
-
-    if [ -d ./channel-artifacts ]; then
-            rm -rf ./channel-artifacts
-    fi
-
-    if [ -d ./crypto-config ]; then
-            rm -rf ./crypto-config
-    fi
-
-    if [ -d ./tools ]; then
-            rm -rf ./tools
-    fi
-
-    if [ -f ./docker-compose.yaml ]; then
-        rm ./docker-compose.yaml
-    fi
-
-    if [ -f ./docker-compose.yamlt ]; then
-        rm ./docker-compose.yamlt
-    fi
-
-    # This operations removes all docker containers and images regardless
-    #
-    docker rm -f $(docker ps -aq)
-    docker rmi -f $(docker images -q)
-
-    # This removes containers used to support the running chaincode.
-    #docker rm -f $(docker ps --filter "name=dev" --filter "name=peer0.org1.example.com" --filter "name=cli" --filter "name=orderer.example.com" -q)
-
-    # This removes only images hosting a running chaincode, and in this
-    # particular case has the prefix dev-*
-    #docker rmi $(docker images | grep dev | xargs -n 1 docker images --format "{{.ID}}" | xargs -n 1 docker rmi -f)
+    helm uninstall artifacts orderer peer0-supplier peer0-deliverer
+    kubectl get pods -w
 }
 
 function networkStatus() {
@@ -117,8 +49,7 @@ function dockerCli(){
 verifyArg
 case $COMMAND in
     "init")
-        generateCryptoMaterials
-        generateChannelArtifacts
+        generateArtifacts
         ;;
     "deployOrderer")
         deployOrderer
