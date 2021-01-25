@@ -1,0 +1,47 @@
+project: iot-blockchain
+component: orderer
+
+replicaCount: 1
+logging: DEBUG
+
+image:
+  repository: hyperledger/fabric-tools
+  pullPolicy: IfNotPresent
+  tag: amd64-2.2.0
+
+config:
+  orderer:
+    name: Orderer
+    type: etcdraft # Available types are "solo", "etcdraft", "kafka"
+    mspID: ordererMSP
+    domain: orderer
+    port: 7050
+    profile: OrdererGenesis
+    channelID: system-channel
+  peerOrgs:
+    - name: Supplier
+      mspID: supplierMSP
+      domain: supplier
+      peers:
+        - subdomain: peer0
+          port: 7051
+      channelProfile: SupplyChannel
+      channelID: supply-channel
+    - name: Deliverer
+      mspID: delivererMSP
+      domain: deliverer
+      peers:
+        - subdomain: peer0
+          port: 7051
+      channelProfile: SupplyChannel
+      channelID: supply-channel
+  channels:
+    - name: SupplyChannel
+      profile: SupplyChannel
+      channelID: supply-channel
+      consortium: SupplyConsortium
+      organizations:
+        - name: Supplier
+        - name: Deliverer
+  crypto: |
+  configtx: |

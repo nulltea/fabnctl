@@ -1,0 +1,148 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}.configtx
+  labels:
+  {{- include "chart.labels" . | nindent 4 }}
+data:
+  configtx.yaml: |
+    Organizations:
+    {{- with .Values.config.orderer }}
+      - &{{ .name }}
+        Name: {{ .name }}
+        ID: {{ .mspID }}
+        MSPDir: crypto-config/ordererOrganizations/{{ .domain }}/msp
+        Policies:
+          Readers:
+            Type: Signature
+            Rule: "OR('{{ .mspID }}.member')"
+          Writers:
+            Type: Signature
+            Rule: "OR('{{ .mspID }}.member')"
+          Admins:
+            Type: Signature
+            Rule: "OR('{{ .mspID }}.admin')"
+    {{ end }}
+
+    {{- range .Values.config.peerOrgs }} {{ $domain := .domain }}
+      - &{{ .name }}
+        Name: {{ .name }}
+        ID: {{ .mspID }}
+        MSPDir: crypto-config/peerOrganizations/{{ .domain }}/msp
+        {{- range .peers }}
+        AnchorPeers:
+          - Host: {{ .subdomain }}-{{ $domain }}
+            Port: {{ .port }}
+        {{- end }}
+        Policies:
+          Readers:
+            Type: Signature
+            Rule: "OR('{{ .mspID }}.admin', '{{ .mspID }}.peer', '{{ .mspID }}.client')"
+          Writers:
+            Type: Signature
+            Rule: "OR('{{ .mspID }}.admin', '{{ .mspID }}.client')"
+          Admins:
+            Type: Signature
+            Rule: "OR('{{ .mspID }}.admin')"
+          Endorsement:
+            Type: Signature
+            Rule: "OR('{{ .mspID }}.peer')"
+    {{ end }}
+
+    {{- with .Values.config.orderer }}
+    Orderer: &OrdererDefaults
+      Addresses:
+        - {{ .domain }}:{{ .port }}
+      OrdererType: {{ .type }}
+      {{- if eq .type "etcdraft" }}
+      EtcdRaft:
+        Consenters:
+          - Host: {{ .domain }}
+            Port: {{ .port }}
+            ClientTLSCert: crypto-config/ordererOrganizations/{{ .domain }}/orderers/{{ .domain }}/tls/server.crt
+            ServerTLSCert: crypto-config/ordererOrganizations/{{ .domain }}/orderers/{{ .domain }}/tls/server.crt
+      {{- end }}
+      BatchTimeout: 2s
+      BatchSize:
+        MaxMessageCount: 10
+        AbsoluteMaxBytes: 99 MB
+        PreferredMaxBytes: 512 KB
+
+      # Organizations is the list of organisations which are defined as participants on
+      # the orderer side of the network
+      Organizations:
+
+      Policies:
+        Readers:
+          Type: ImplicitMeta
+          Rule: "ANY Readers"
+        Writers:
+          Type: ImplicitMeta
+          Rule: "ANY Writers"
+        Admins:
+          Type: ImplicitMeta
+          Rule: "MAJORITY Admins"
+        BlockValidation:
+          Type: ImplicitMeta
+          Rule: "ANY Writers"
+    {{- end }}
+
+    Application: &ApplicationDefaults
+      Organizations:
+
+      Policies:
+        Readers:
+          Type: ImplicitMeta
+          Rule: "ANY Readers"
+        Writers:
+          Type: ImplicitMeta
+          Rule: "ANY Writers"
+        Admins:
+          Type: ImplicitMeta
+          Rule: "MAJORITY Admins"
+        LifecycleEndorsement:
+          Type: ImplicitMeta
+          Rule: "MAJORITY Endorsement"
+        Endorsement:
+          Type: ImplicitMeta
+          Rule: "MAJORITY Endorsement"
+
+    Channel: &ChannelDefaults
+      Policies:
+        # Who may invoke the 'Deliver' API
+        Readers:
+          Type: ImplicitMeta
+          Rule: "ANY Readers"
+        # Who may invoke the 'Broadcast' API
+        Writers:
+          Type: ImplicitMeta
+          Rule: "ANY Writers"
+        # By default, who may modify elements at this config level
+        Admins:
+          Type: ImplicitMeta
+          Rule: "MAJORITY Admins"
+
+    Profiles:
+      {{ .Values.config.orderer.profile }}:
+        <<: *ChannelDefaults
+        Orderer:
+          <<: *OrdererDefaults
+          Organizations:
+            - *{{ .Values.config.orderer.name }}
+        Consortiums:
+          SupplyConsortium:
+            Organizations:
+            {{- range .Values.config.peerOrgs }}
+              - *{{ .name }}
+            {{- end }}
+    {{- range .Values.config.channels }}
+      {{ .name }}:
+        Consortium: SupplyConsortium
+        <<: *ChannelDefaults
+        Application:
+          <<: *ApplicationDefaults
+          Organizations:
+          {{- range .organizations }}
+            - *{{ .name }}
+          {{- end }}
+    {{ end }}

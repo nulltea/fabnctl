@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}.crypto-config
+  labels:
+  {{- include "chart.labels" . | nindent 4 }}
+data:
+  crypto-config.yaml: |
+    {{ with .Values.config.orderer }}
+    OrdererOrgs:
+      - Name: {{ .name }}
+        Domain: {{ .domain }}
+        Specs:
+          - Hostname: {{ .domain }}
+            CommonName: {{ .domain }}
+    {{ end }}
+    PeerOrgs:
+    {{- range .Values.config.peerOrgs }} {{ $domain := .domain }}
+      - Name: {{ .name }}
+        Domain: {{ .domain }}
+        EnableNodeOUs: true
+        Specs:
+        {{- range .peers }}
+          - Hostname: {{ .subdomain }}
+            CommonName: {{ .subdomain }}-{{ $domain }}
+        {{- end }}
+        Users:
+          Count: 1
+    {{ end }}
