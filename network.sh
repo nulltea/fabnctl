@@ -20,7 +20,6 @@ FABRIC_ROOT=$GOPATH/src/github.com/hyperledger/fabric
 
 function generateArtifacts(){
   helm upgrade --install artifacts charts/artifacts
-  kubectl describe cm
 }
 
 function deployOrderer(){
@@ -30,6 +29,15 @@ function deployOrderer(){
 function deployPeers(){
   helm upgrade --install --set=config.mspID=supplierMSP,config.domain=supplier,config.peerSubdomain=peer0 peer0-supplier charts/peer-org
   helm upgrade --install --set=config.mspID=delivererMSP,config.domain=deliverer,config.peerSubdomain=peer0 peer0-deliverer charts/peer-org
+}
+
+function deployChannels() {
+  peer channel create -o orderer:7050 -c supply-channel -f ./scripts/channel-artifacts/supply-channel.tx --tls true --cafile $ORDERER_CA
+}
+
+function enrollCA() {
+  fabric-ca-client enroll -u https://admin:adminpw@localhost:7054 --caname=peer0-supplier-ca --tls.certfiles=/etc/hyperledger/fabric-ca-server-config/ca-cert.pem
+  fabric-ca-client register -u https://admin:adminpw@localhost:7054 --caname=peer0-supplier-ca --id.name=supplieradmin --id.secret=supplieradminpw --id.type=admin --tls.certfiles=/etc/hyperledger/fabric-ca-server-config/ca-cert.pem
 }
 
 function cleanNetwork() {

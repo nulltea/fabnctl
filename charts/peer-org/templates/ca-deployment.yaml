@@ -26,28 +26,22 @@ spec:
           args:
             - sh
             - -c
-            - fabric-ca-server start --ca.certfile /etc/hyperledger/fabric-ca-server-config/ca.org1-cert.pem
-              --ca.keyfile /etc/hyperledger/fabric-ca-server-config/priv_sk
-              -b admin:adminpw -d
+            - fabric-ca-server start -b admin:adminpw --ca.name {{ .Release.Name }}-ca -d
           env:
             - name: FABRIC_LOGGING_SPEC
               value: {{ .Values.logging }}
             - name: FABRIC_CA_SERVER_PORT
               value: "{{ .Values.ca.service.port }}"
             - name: FABRIC_CA_HOME
-              value: /etc/hyperledger/fabric-ca-server
+              value: /etc/hyperledger/fabric-ca-server-config
             - name: FABRIC_CA_SERVER_CA_NAME
               value: {{ .Release.Name }}-ca
             - name: FABRIC_CA_SERVER_TLS_ENABLED
               value: "{{ .Values.config.tls }}"
-            - name: FABRIC_CA_SERVER_TLS_CERTFILE
-              value: /etc/hyperledger/fabric-ca-server-config/ca.org1-cert.pem
-            - name: FABRIC_CA_SERVER_TLS_KEYFILE
-              value: /etc/hyperledger/fabric-ca-server-config/priv_sk
           volumeMounts:
             - name: artifacts
               mountPath: /etc/hyperledger/fabric-ca-server-config
-              subPath: crypto-config/peerOrganizations/{{ .Values.config.domain }}/ca
+              subPath: crypto-config/peerOrganizations/{{ .Values.config.domain }}
           workingDir: /opt/gopath/src/github.com/hyperledger/fabric
       restartPolicy: Always
       volumes:
