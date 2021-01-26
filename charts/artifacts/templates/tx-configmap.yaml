@@ -37,16 +37,16 @@ data:
         Policies:
           Readers:
             Type: Signature
-            Rule: "OR('{{ .mspID }}.admin', '{{ .mspID }}.peer', '{{ .mspID }}.client')"
+            Rule: "OR('{{ .mspID }}.admin', '{{ .mspID }}.peer', '{{ .mspID }}.client', '{{ .mspID }}.member')"
           Writers:
             Type: Signature
-            Rule: "OR('{{ .mspID }}.admin', '{{ .mspID }}.client')"
+            Rule: "OR('{{ .mspID }}.admin', '{{ .mspID }}.client', '{{ .mspID }}.member')"
           Admins:
             Type: Signature
-            Rule: "OR('{{ .mspID }}.admin')"
+            Rule: "OR('{{ .mspID }}.admin', '{{ .mspID }}.member')"
           Endorsement:
             Type: Signature
-            Rule: "OR('{{ .mspID }}.peer')"
+            Rule: "OR('{{ .mspID }}.peer', '{{ .mspID }}.member')"
     {{ end }}
 
     {{- with .Values.config.orderer }}
