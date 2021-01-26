@@ -54,6 +54,11 @@ spec:
                     - key: crypto-config.yaml
                       path: crypto-config.yaml
               - configMap:
+                  name: {{ .Release.Name }}.core
+                  items:
+                    - key: core.yaml
+                      path: core.yaml
+              - configMap:
                   name: {{ .Release.Name }}.script
                   items:
                     - key: script.sh
