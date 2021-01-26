@@ -32,7 +32,13 @@ function deployPeers(){
 }
 
 function deployChannels() {
-  peer channel create -o orderer:7050 -c supply-channel -f ./scripts/channel-artifacts/supply-channel.tx --tls true --cafile $ORDERER_CA
+  cli=$(kubectl get pods | awk '{print $1}' | grep peer0-supplier-cli)
+  kubectl exec -it "$cli" -- peer channel create -c supply-channel -f ./channel-artifacts/supply-channel.tx \
+    -o orderer:7050 --tls true --cafile "$ORDERER_CA"
+  kubectl exec -it "$cli" -- peer channel join -b supply-channel.block
+  cli=$(kubectl get pods | awk '{print $1}' | grep peer0-deliverer-cli)
+  kubectl exec -it "$cli" -- peer channel fetch newest supply-channel.block -c supply-channel -o=orderer:7050 --tls=true --cafile=$ORDERER_CA
+  kubectl exec -it "$cli" -- peer channel join -b supply-channel.block
 }
 
 function enrollCA() {
@@ -40,16 +46,23 @@ function enrollCA() {
   fabric-ca-client register -u https://admin:adminpw@localhost:7054 --caname=peer0-supplier-ca --id.name=supplieradmin --id.secret=supplieradminpw --id.type=admin --tls.certfiles=/etc/hyperledger/fabric-ca-server-config/ca-cert.pem
 }
 
+function deployChaincode() {
+  cli=$(kubectl get pods | awk '{print $1}' | grep peer0-supplier-cli)
+  kubectl cp ../contracts/assets "$cli":chaincodes/assets
+  kubectl exec -it "$cli" -- peer lifecycle chaincode package chaincodes/assets_cc.tar.gz --path chaincodes/assets --lang golang --label assets_cc
+}
+
 function cleanNetwork() {
-    helm uninstall artifacts orderer peer0-supplier peer0-deliverer
-    kubectl get pods -w
+  rm -rf ./crypto-config/* ./channel-artifacts/*
+  helm uninstall artifacts orderer peer0-supplier peer0-deliverer
+  kubectl get pods -w
 }
 
 function networkStatus() {
-    docker ps --format "{{.Names}}: {{.Status}}" | grep '[peer0* | orderer* | cli ]'
+    kubectl get pods
 }
 
-function dockerCli(){
+function cli(){
     docker exec -it cli /bin/bash
 }
 
@@ -64,6 +77,9 @@ case $COMMAND in
         ;;
     "deployPeers")
         deployPeers
+        ;;
+    "deployCC")
+        deployChaincode
         ;;
     "status")
         networkStatus
