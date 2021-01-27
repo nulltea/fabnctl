@@ -7,14 +7,6 @@ PROJECT_DIR=$PWD
 ARGS_NUMBER="$#"
 COMMAND="$1"
 
-function verifyArg() {
-
-    if [ $ARGS_NUMBER -ne 1 ]; then
-        echo "Usage: network.sh init | status | clean | cli | peer"
-        exit 1;
-    fi
-}
-
 OS_ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')" | awk '{print tolower($0)}')
 FABRIC_ROOT=$GOPATH/src/github.com/hyperledger/fabric
 
@@ -34,7 +26,7 @@ function deployPeers(){
 function deployChannels() {
   cli=$(kubectl get pods | awk '{print $1}' | grep peer0-supplier-cli)
   kubectl exec -it "$cli" -- peer channel create -c supply-channel -f ./channel-artifacts/supply-channel.tx \
-    -o orderer:7050 --tls true --cafile "$ORDERER_CA"
+    -o orderer:7050 --tls true --cafile $ORDERER_CA
   kubectl exec -it "$cli" -- peer channel join -b supply-channel.block
   cli=$(kubectl get pods | awk '{print $1}' | grep peer0-deliverer-cli)
   kubectl exec -it "$cli" -- peer channel fetch newest supply-channel.block -c supply-channel -o=orderer:7050 --tls=true --cafile=$ORDERER_CA
@@ -48,8 +40,23 @@ function enrollCA() {
 
 function deployChaincode() {
   cli=$(kubectl get pods | awk '{print $1}' | grep peer0-supplier-cli)
-  kubectl cp ../contracts/assets "$cli":chaincodes/assets
-  kubectl exec -it "$cli" -- peer lifecycle chaincode package chaincodes/assets_cc.tar.gz --path chaincodes/assets --lang golang --label assets_cc
+  package="$1.tar.gz"
+  mkdir .tmp && cd .tmp
+  echo "{\"path\":\"\",\"type\":\"external\",\"label\":\"$1\"}" > metadata.json
+  echo "{
+    \"address\": \"peer0-supplier-chaincode-$1:7052\",
+    \"dial_timeout\": \"10s\",
+    \"tls_required\": false,
+    \"client_auth_required\": false,
+    \"client_key\": \"-----BEGIN EC PRIVATE KEY----- ... -----END EC PRIVATE KEY-----\",
+    \"client_cert\": \"-----BEGIN CERTIFICATE----- ... -----END CERTIFICATE-----\",
+    \"root_cert\": \"-----BEGIN CERTIFICATE---- ... -----END CERTIFICATE-----\"
+}" > connection.json
+  tar cfz code.tar.gz connection.json
+  tar cfz "$package" code.tar.gz metadata.json
+  kubectl cp "$package" "$cli:$package"
+  cd .. && rm -rf .tmp
+  # kubectl exec -it "$cli" -- peer lifecycle chaincode install chaincodes/assets.tar.gz
 }
 
 function cleanNetwork() {
@@ -59,27 +66,35 @@ function cleanNetwork() {
 }
 
 function networkStatus() {
-    kubectl get pods
+    kubectl get pods -w
 }
 
 function cli(){
-    docker exec -it cli /bin/bash
+  cli=$(kubectl get pods | awk '{print $1}' | grep peer0-"$1"-cli)
+  kubectl exec -it "$cli" -- bash
 }
 
 # Network operations
-verifyArg
+
 case $COMMAND in
     "init")
         generateArtifacts
         ;;
-    "deployOrderer")
-        deployOrderer
-        ;;
-    "deployPeers")
-        deployPeers
-        ;;
-    "deployCC")
-        deployChaincode
+    "deploy")
+        case "$2" in
+          "orderer")
+            deployOrderer
+            ;;
+          "peers")
+            deployPeers
+            ;;
+          "channel")
+            deployChannels
+            ;;
+          "cc")
+            deployChaincode "$3"
+            ;;
+        esac
         ;;
     "status")
         networkStatus
@@ -88,7 +103,7 @@ case $COMMAND in
         cleanNetwork
         ;;
     "cli")
-        dockerCli
+        cli "$2"
         ;;
     *)
         echo "Usage: network.sh init | status | clean | cli "
