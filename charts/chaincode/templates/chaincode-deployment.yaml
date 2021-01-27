@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Values.peer }}-chaincode-{{ .Values.chaincode }}"
+  labels:
+  {{- include "chart.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+  {{- include "chart.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+    {{- include "chart.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: chaincode
+          image: "{{.Values.image.repository }}:{{.Values.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CHAINCODE_CCID
+              value: {{ .Values.ccid }}
+            - name: CHAINCODE_ADDRESS
+              value: "0.0.0.0:{{ .Values.service.port }}"
+            - name: CHAINCODE_NAME
+              value: "{{ .Values.peer }}-chaincode-{{ .Values.chaincode }}"
+      restartPolicy: Always

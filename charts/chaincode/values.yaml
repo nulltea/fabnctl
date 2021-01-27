@@ -1,0 +1,17 @@
+project: iot-blockchain
+component: chaincode
+
+replicaCount: 1
+
+image:
+  repository: chaincode/assets
+  pullPolicy: IfNotPresent
+  tag: latest
+
+service:
+  type: ClusterIP
+  port: 7052
+
+peer: peer0-supplier
+chaincode: assets
+ccid: assets:b2807ab191b193ddc851c8480e2e95d302dd4889de012dd3f4db3e4018b4a776
