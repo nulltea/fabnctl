@@ -95,6 +95,13 @@ Orderer: &OrdererDefaults
       Type: ImplicitMeta
       Rule: "ANY Writers"
 
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_0: true
 
 Application: &ApplicationDefaults
   Organizations:
@@ -116,6 +123,9 @@ Application: &ApplicationDefaults
       Type: ImplicitMeta
       Rule: "MAJORITY Endorsement"
 
+  Capabilities:
+    <<: *ApplicationCapabilities
+
 Channel: &ChannelDefaults
   Policies:
     # Who may invoke the 'Deliver' API
@@ -131,6 +141,9 @@ Channel: &ChannelDefaults
       Type: ImplicitMeta
       Rule: "MAJORITY Admins"
 
+  Capabilities:
+    <<: *ChannelCapabilities
+
 
 Profiles:
   OrdererGenesis:
@@ -139,6 +152,8 @@ Profiles:
       <<: *OrdererDefaults
       Organizations:
         - *Orderer
+      Capabilities:
+        <<: *OrdererCapabilities
     Consortiums:
       SupplyConsortium:
         Organizations:
@@ -152,3 +167,5 @@ Profiles:
       Organizations:
         - *Supplier
         - *Deliverer
+      Capabilities:
+        <<: *ApplicationCapabilities

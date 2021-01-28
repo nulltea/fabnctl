@@ -87,6 +87,14 @@ data:
           Rule: "ANY Writers"
     {{- end }}
 
+    Capabilities:
+      Channel: &ChannelCapabilities
+          V2_0: true
+      Orderer: &OrdererCapabilities
+          V2_0: true
+      Application: &ApplicationCapabilities
+          V2_0: true
+
     Application: &ApplicationDefaults
       Organizations:
 
@@ -106,6 +114,8 @@ data:
         Endorsement:
           Type: ImplicitMeta
           Rule: "MAJORITY Endorsement"
+      Capabilities:
+        <<: *ApplicationCapabilities
 
     Channel: &ChannelDefaults
       Policies:
@@ -121,6 +131,8 @@ data:
         Admins:
           Type: ImplicitMeta
           Rule: "MAJORITY Admins"
+      Capabilities:
+        <<: *ChannelCapabilities
 
     Profiles:
       {{ .Values.config.orderer.profile }}:
@@ -129,6 +141,8 @@ data:
           <<: *OrdererDefaults
           Organizations:
             - *{{ .Values.config.orderer.name }}
+          Capabilities:
+              <<: *OrdererCapabilities
         Consortiums:
           SupplyConsortium:
             Organizations:
@@ -145,4 +159,6 @@ data:
           {{- range .organizations }}
             - *{{ .name }}
           {{- end }}
+          Capabilities:
+              <<: *ApplicationCapabilities
     {{ end }}
