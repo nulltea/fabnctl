@@ -25,11 +25,12 @@ function deployPeers(){
 
 function deployChannels() {
   cli=$(kubectl get pods | awk '{print $1}' | grep peer0-supplier-cli)
-  kubectl exec -it "$cli" -- peer channel create -c supply-channel -f ./channel-artifacts/supply-channel.tx \
-    -o orderer:7050 --tls true --cafile $ORDERER_CA
+  kubectl exec -it "$cli" -- sh -c /
+     'peer channel create -c supply-channel -f ./channel-artifacts/supply-channel.tx -o orderer:7050 --tls true --cafile "$ORDERER_CA"'
   kubectl exec -it "$cli" -- peer channel join -b supply-channel.block
   cli=$(kubectl get pods | awk '{print $1}' | grep peer0-deliverer-cli)
-  kubectl exec -it "$cli" -- peer channel fetch newest supply-channel.block -c supply-channel -o=orderer:7050 --tls=true --cafile=$ORDERER_CA
+  kubectl exec -it "$cli" -- sh -c /
+    'peer channel fetch newest supply-channel.block -c supply-channel -o=orderer:7050 --tls=true --cafile "$ORDERER_CA"'
   kubectl exec -it "$cli" -- peer channel join -b supply-channel.block
 }
 
@@ -39,12 +40,15 @@ function enrollCA() {
 }
 
 function deployChaincode() {
-  cli=$(kubectl get pods | awk '{print $1}' | grep peer0-supplier-cli)
-  package="$1.tar.gz"
+  cc=$1
+  org=$2
+  peer=$3
+  package="$cc.tar.gz"
+  cli=$(kubectl get pods | awk '{print $1}' | grep "$peer-$org-cli")
   mkdir .tmp && cd .tmp
-  echo "{\"path\":\"\",\"type\":\"external\",\"label\":\"$1\"}" > metadata.json
+  echo "{\"path\":\"\",\"type\":\"external\",\"label\":\"$cc\"}" > metadata.json
   echo "{
-    \"address\": \"peer0-supplier-chaincode-$1:7052\",
+    \"address\": \"$peer-$org-chaincode-$cc:7052\",
     \"dial_timeout\": \"10s\",
     \"tls_required\": false,
     \"client_auth_required\": false,
@@ -56,13 +60,21 @@ function deployChaincode() {
   tar cfz "$package" code.tar.gz metadata.json
   kubectl cp "$package" "$cli:$package"
   cd .. && rm -rf .tmp
-  # kubectl exec -it "$cli" -- peer lifecycle chaincode install chaincodes/assets.tar.gz
+  kubectl exec -it "$cli" -- peer lifecycle chaincode install "$package"
+
+  #peer lifecycle chaincode approveformyorg --channelID supply-channel --name assets --version 1.0 --init-required --package-id assets:e6652bf9b015206151c9627829c90db9e7b6fac2bdd9415ac0a114c5796bd510 --sequence 1 -o orderer:7050 --tls --cafile $ORDERER_CA
+  #peer lifecycle chaincode commit -o orderer:7050 --channelID supply-channel --name assets --version 1.0 --sequence 1 --init-required --tls true --cafile $ORDERER_CA --peerAddresses peer0-supplier:7051 --tlsRootCertFiles crypto-config/peerOrganizations/supplier/peers/peer0-supplier/tls/ca.crt --peerAddresses peer0-deliverer:7051 --tlsRootCertFiles crypto-config/peerOrganizations/deliverer/peers/peer0-deliverer/tls/ca.crt
 }
 
 function cleanNetwork() {
   rm -rf ./crypto-config/* ./channel-artifacts/*
   helm uninstall artifacts orderer peer0-supplier peer0-deliverer
   kubectl get pods -w
+}
+
+function fetchCryptoConfig() {
+    cli=$(kubectl get pods | awk '{print $1}' | grep peer0-supplier-cli)
+    kubectl cp "$cli:crypto-config" crypto-config
 }
 
 function networkStatus() {
@@ -74,28 +86,55 @@ function cli(){
   kubectl exec -it "$cli" -- bash
 }
 
+function help() {
+  echo "Usage: network.sh init | status | clean | cli "
+}
+
 # Network operations
 
 case $COMMAND in
     "init")
-        generateArtifacts
-        ;;
+      generateArtifacts
+      ;;
     "deploy")
-        case "$2" in
-          "orderer")
-            deployOrderer
+      # deploy entity
+      shift
+      ENTITY="$1"
+      # parse flag args
+      shift
+      while [[ $# -ge 1 ]]
+      do
+        case "$1" in
+          --org | -o)
+            ORG="$2"
+            shift
             ;;
-          "peers")
-            deployPeers
+          --peer | -p)
+            PEER="$2"
+            shift
             ;;
-          "channel")
-            deployChannels
-            ;;
-          "cc")
-            deployChaincode "$3"
+          --cc_name | -ccn)
+            CC_NAME="$2"
+            shift
             ;;
         esac
-        ;;
+        shift
+      done
+      case "$ENTITY" in
+        "orderer")
+          deployOrderer
+          ;;
+        "peers")
+          deployPeers
+          ;;
+        "channel")
+          deployChannels "$ORG" "$PEER"
+          ;;
+        "cc")
+          deployChaincode "$CC_NAME" "$ORG" "$PEER"
+          ;;
+      esac
+      ;;
     "status")
         networkStatus
         ;;
@@ -105,7 +144,10 @@ case $COMMAND in
     "cli")
         cli "$2"
         ;;
+    "fetchCrypto")
+        fetchCryptoConfig
+        ;;
     *)
-        echo "Usage: network.sh init | status | clean | cli "
+        help
         exit 1;
 esac
