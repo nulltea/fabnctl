@@ -14,15 +14,15 @@ service:
   port: 7050
 
 ingress:
-  enabled: false
+  enabled: true
   entrypoints:
     - web
     - websecure
   tls:
-    enabled: true
+    enabled: false
     certResolver: le
   routes:
-    - host: orderer
+    - host: orderer.iotchain.network
       paths:
         - /
       middlewares: []
