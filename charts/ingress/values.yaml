@@ -9,7 +9,7 @@ image:
 
 service:
   type: LoadBalancer
-  port: 88
+  port: 80
   securePort: 443
   adminPort: 8080
 
@@ -67,8 +67,8 @@ pilot:
   token:
 
 acme:
-  enabled: false
-  email:
+  enabled: true
+  email: timothy@iotchain.network
   storage: /source/certs/acme.json
   dnsChallenge:
     enabled: true
@@ -77,6 +77,7 @@ acme:
     tokenSecret: do-auth-token
 
 secrets:
+  mounts:
 
 serverTransport:
   insecureSkipVerify: false

@@ -48,16 +48,29 @@ spec:
             - --certificatesResolvers.le.acme.dnschallenge={{ .Values.acme.dnsChallenge.enabled}}
             - --certificatesResolvers.le.acme.dnschallenge.provider={{ .Values.acme.dnsChallenge.provider}}
             {{- end }}
-            {{- with .Values.serverTransport }}
-              {{- with .insecureSkipVerify }}
-            - --serversTransport.insecureSkipVerify={{.}}
-              {{- end }}
+          {{- with .Values.serverTransport }}
+            {{- with .rootCAs }}
+            - --serversTransport.rootCAs={{.}}
             {{- end }}
+            {{- with .insecureSkipVerify }}
+            - --serversTransport.insecureSkipVerify={{.}}
+            {{- end }}
+          {{- end }}
           volumeMounts:
           {{- range .Values.volumes }}
             - name: {{ .name }}
               mountPath: {{ .mountPath }}
           {{- end }}
+          {{- range .Values.secrets.mounts }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath }}
+          {{- end }}
+          env:
+            - name:  {{ .Values.acme.dnsChallenge.envName}}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.acme.dnsChallenge.tokenSecret }}
+                  key: token
           livenessProbe:
             httpGet:
               path: /ping
@@ -80,4 +93,9 @@ spec:
           persistentVolumeClaim:
             claimName: {{ .claim }}
         {{- end }}
+      {{- end }}
+      {{- range .Values.secrets.mounts }}
+        - name: {{ .name }}
+          secret:
+            secretName: {{ .name }}
       {{- end }}
