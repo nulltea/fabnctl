@@ -70,7 +70,6 @@ Orderer: &OrdererDefaults
       - Host: orderer
         Port: 7050
         ClientTLSCert: crypto-config/ordererOrganizations/orderer/orderers/orderer/tls/server.crt
-        ServerTLSCert: crypto-config/ordererOrganizations/orderer/orderers/orderer/tls/server.crt
   BatchTimeout: 2s
   BatchSize:
     MaxMessageCount: 10

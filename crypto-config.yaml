@@ -1,23 +1,29 @@
 OrdererOrgs:
   - Name: Orderer
-    Domain: orderer
+    Domain: iotchain.network
     Specs:
       - Hostname: orderer
-        CommonName: orderer
+        SANS:
+          - orderer
+          - localhost
 PeerOrgs:
   - Name: Supplier
-    Domain: supplier
+    Domain: supplier.iotchain.network
     EnableNodeOUs: true
     Specs:
       - Hostname: peer0
-        CommonName: peer0-supplier
+        SANS:
+          - peer0-supplier
+          - localhost
     Users:
       Count: 1
   - Name: Deliverer
-    Domain: deliverer
+    Domain: deliverer.iotchain.network
     EnableNodeOUs: true
     Specs:
       - Hostname: peer0
-        CommonName: peer0-deliverer
+        SANS:
+          - peer0-deliverer
+          - localhost
     Users:
       Count: 1
