@@ -2,36 +2,55 @@
 
 set -e
 
-PROJECT_DIR=$PWD
-
-ARGS_NUMBER="$#"
 COMMAND="$1"
-
-OS_ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')" | awk '{print tolower($0)}')
-FABRIC_ROOT=$GOPATH/src/github.com/hyperledger/fabric
+DOMAIN=iotchain.network
+ORDERER=orderer.iotchain.network
 
 function generateArtifacts(){
   helm upgrade --install artifacts charts/artifacts
+  kubectl wait -n network --for=condition=complete job/artifacts.generate
+  kubectl apply -n network -f charts/artifacts/artifacts-wait-job.yaml
+  pod=$(kubectl get pods -n network | awk '{print $1}' | grep artifacts.wait)
+  kubectl wait -n network --for=condition=ready "pod/$pod"
+  kubectl cp -n network "$pod:crypto-config" crypto-config
+  echo "crypto-config copied successfully!"
+  kubectl delete -n network job artifacts.wait
 }
 
 function deployOrderer(){
-  helm upgrade --install orderer charts/orderer
+  kubectl create -n network secret tls orderer.$DOMAIN-tls --key=crypto-config/ordererOrganizations/$DOMAIN/orderers/$ORDERER/tls/server.key \
+    --cert=crypto-config/ordererOrganizations/$DOMAIN/orderers/$ORDERER/tls/server.crt \
+    --dry-run=client -o yaml | kubectl apply -f -
+  kubectl create secret generic orderer.$DOMAIN-ca --from-file=crypto-config/ordererOrganizations/$DOMAIN/orderers/$ORDERER/tls/ca.crt \
+    --dry-run=client -o yaml | kubectl apply -f -
+  echo "tls secrets created successfully!"
+  helm upgrade --install -n network orderer charts/orderer
+  echo "orderer deployed successfully!"
 }
 
-function deployPeers(){
-  helm upgrade --install --set=config.mspID=supplierMSP,config.domain=supplier,config.peerSubdomain=peer0 peer0-supplier charts/peer-org
-  helm upgrade --install --set=config.mspID=delivererMSP,config.domain=deliverer,config.peerSubdomain=peer0 peer0-deliverer charts/peer-org
+function deployPeers() {
+  org=$1
+  kubectl create -n network secret tls "peer0.$org.$DOMAIN-tls" --key="crypto-config/peerOrganizations/$org.$DOMAIN/peers/peer0.$org.$DOMAIN/tls/server.key" \
+    --cert="crypto-config/peerOrganizations/$org.$DOMAIN/peers/peer0.$org.$DOMAIN/tls/server.crt" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  kubectl create secret generic "peer0.$org.$DOMAIN-ca" --from-file="crypto-config/peerOrganizations/$org.$DOMAIN/peers/peer0.$org.$DOMAIN/tls/ca.crt" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  echo "tls secrets created successfully!"
+  echo
+  helm upgrade --install -n network --set=config.mspID="$org"MSP,config.domain="$org".iotchain.network "$org" charts/peer-org
+  echo
+  echo "$org peers deployed successfully!"
 }
 
 function deployChannels() {
-  cli=$(kubectl get pods | awk '{print $1}' | grep peer0-supplier-cli)
-  kubectl exec -it "$cli" -- sh -c /
-     'peer channel create -c supply-channel -f ./channel-artifacts/supply-channel.tx -o orderer:7050 --tls true --cafile "$ORDERER_CA"'
-  kubectl exec -it "$cli" -- peer channel join -b supply-channel.block
-  cli=$(kubectl get pods | awk '{print $1}' | grep peer0-deliverer-cli)
-  kubectl exec -it "$cli" -- sh -c /
-    'peer channel fetch newest supply-channel.block -c supply-channel -o=orderer:7050 --tls=true --cafile "$ORDERER_CA"'
-  kubectl exec -it "$cli" -- peer channel join -b supply-channel.block
+  cli=$(kubectl get pods -n network | awk '{print $1}' | grep peer0.supplier-cli)
+  kubectl exec -n network -it "$cli" -- sh -c /
+     'peer channel create -c supply-channel -f ./channel-artifacts/supply-channel.tx -o orderer.iotchain.network:443 --tls true --cafile "$ORDERER_CA"'
+  kubectl exec -n network -it "$cli" -- peer channel join -b supply-channel.block
+  cli=$(kubectl get pods -n network | awk '{print $1}' | grep peer0.deliverer-cli)
+  kubectl exec -n network -it "$cli" -- sh -c /
+    'peer channel fetch newest supply-channel.block -c supply-channel -o orderer.iotchain.network:443 --tls=true --cafile "$ORDERER_CA"'
+  kubectl exec -n network -it "$cli" -- peer channel join -b supply-channel.block
 }
 
 function enrollCA() {
@@ -43,8 +62,8 @@ function deployChaincode() {
   cc=$1
   org=$2
   peer=$3
-  package="$cc.tar.gz"
-  cli=$(kubectl get pods | awk '{print $1}' | grep "$peer-$org-cli")
+  package="$peer.$org.$cc.tar.gz"
+  cli=$(kubectl get pods -n network | awk '{print $1}' | grep "$peer.$org-cli")
   mkdir .tmp && cd .tmp
   echo "{\"path\":\"\",\"type\":\"external\",\"label\":\"$cc\"}" > metadata.json
   echo "{
@@ -58,32 +77,32 @@ function deployChaincode() {
 }" > connection.json
   tar cfz code.tar.gz connection.json
   tar cfz "$package" code.tar.gz metadata.json
-  kubectl cp "$package" "$cli:$package"
+  kubectl cp -n network "$package" "$cli:$package"
   cd .. && rm -rf .tmp
-  kubectl exec -it "$cli" -- peer lifecycle chaincode install "$package"
-
-  #peer lifecycle chaincode approveformyorg --channelID supply-channel --name assets --version 1.0 --init-required --package-id assets:e6652bf9b015206151c9627829c90db9e7b6fac2bdd9415ac0a114c5796bd510 --sequence 1 -o orderer:7050 --tls --cafile $ORDERER_CA
-  #peer lifecycle chaincode commit -o orderer:7050 --channelID supply-channel --name assets --version 1.0 --sequence 1 --init-required --tls true --cafile $ORDERER_CA --peerAddresses peer0-supplier:7051 --tlsRootCertFiles crypto-config/peerOrganizations/supplier/peers/peer0-supplier/tls/ca.crt --peerAddresses peer0-deliverer:7051 --tlsRootCertFiles crypto-config/peerOrganizations/deliverer/peers/peer0-deliverer/tls/ca.crt
+  # kubectl exec -n network -it "$cli" -- peer lifecycle chaincode install "$package"
+  # peer lifecycle chaincode checkcommitreadiness --channelID supply-channel --name assets --version 1.0 --init-required --sequence 1 -o orderer.iotchain.network:443 --tls --cafile $ORDERER_CA
+  # peer lifecycle chaincode approveformyorg --channelID supply-channel --name assets --version 1.0 --init-required --sequence 1 -o orderer.iotchain.network:443 --tls --cafile $ORDERER_CA --package-id assets:036f91ebd4933e8f5d82d44725dd567a3213138d198b488625e6308c8908bb8a
+  # peer lifecycle chaincode commit --channelID supply-channel --name assets --version 1.0 --sequence 1 --init-required --tls true -o orderer.iotchain.network:443 --tls --cafile $ORDERER_CA --peerAddresses peer0.supplier.iotchain.network:443 --tlsRootCertFiles crypto-config/peerOrganizations/supplier.iotchain.network/peers/peer0.supplier.iotchain.network/tls/ca.crt --peerAddresses peer0.deliverer.iotchain.network:443 --tlsRootCertFiles crypto-config/peerOrganizations/deliverer.iotchain.network/peers/peer0.deliverer.iotchain.network/tls/ca.crt
 }
 
 function cleanNetwork() {
   rm -rf ./crypto-config/* ./channel-artifacts/*
-  helm uninstall artifacts orderer peer0-supplier peer0-deliverer
-  kubectl get pods -w
+  helm uninstall -n network artifacts orderer supplier deliverer
+  kubectl get pods -n network -w
 }
 
 function fetchCryptoConfig() {
-    cli=$(kubectl get pods | awk '{print $1}' | grep peer0-supplier-cli)
-    kubectl cp "$cli:crypto-config" crypto-config
+    cli=$(kubectl get pods -n network | awk '{print $1}' | grep peer0.supplier-cli)
+    kubectl cp -n network "$cli:crypto-config" crypto-config
 }
 
 function networkStatus() {
-    kubectl get pods -w
+    kubectl get pods -n network -w
 }
 
 function cli(){
-  cli=$(kubectl get pods | awk '{print $1}' | grep peer0-"$1"-cli)
-  kubectl exec -it "$cli" -- bash
+  cli=$(kubectl get pods -n network | awk '{print $1}' | grep peer0."$1"-cli)
+  kubectl exec -n network -it "$cli" -- bash
 }
 
 function help() {
@@ -125,7 +144,7 @@ case $COMMAND in
           deployOrderer
           ;;
         "peers")
-          deployPeers
+          deployPeers "$ORG"
           ;;
         "channel")
           deployChannels "$ORG" "$PEER"
