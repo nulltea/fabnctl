@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-cli
+  name: {{ .Values.config.peer }}.{{ .Release.Name }}-cli
   labels:
   {{- include "chart.labels" . | nindent 4 }}
 spec:
@@ -29,7 +29,7 @@ spec:
             - name: CORE_PEER_LOCALMSPID
               value: {{ .Values.config.mspID }}
             - name: CORE_PEER_ADDRESS
-              value: "{{ .Values.config.peer }}-{{ .Values.config.domain }}:{{ .Values.peer.service.port }}"
+              value: "{{ .Values.config.peer }}.{{ .Values.config.domain }}:443"
             - name: CORE_PEER_LISTENADDRESS
               value: "0.0.0.0:{{ .Values.peer.service.port }}"
             - name: CORE_PEER_MSPCONFIGPATH
@@ -37,15 +37,15 @@ spec:
             - name: CORE_PEER_TLS_ENABLED
               value: "{{ .Values.config.tls }}"
             - name: CORE_PEER_TLS_CERT_FILE
-              value: /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto-config/peerOrganizations/{{ .Values.config.domain }}/peers/{{ .Values.config.peer }}-{{ .Values.config.domain }}/tls/server.crt
+              value: /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto-config/peerOrganizations/{{ .Values.config.domain }}/peers/{{ .Values.config.peer }}.{{ .Values.config.domain }}/tls/server.crt
             - name: CORE_PEER_TLS_KEY_FILE
-              value: /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto-config/peerOrganizations/{{ .Values.config.domain }}/peers/{{ .Values.config.peer }}-{{ .Values.config.domain }}/tls/server.key
+              value: /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto-config/peerOrganizations/{{ .Values.config.domain }}/peers/{{ .Values.config.peer }}.{{ .Values.config.domain }}/tls/server.key
             - name: CORE_PEER_TLS_ROOTCERT_FILE
-              value: /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto-config/peerOrganizations/{{ .Values.config.domain }}/peers/{{ .Values.config.peer }}-{{ .Values.config.domain }}/tls/ca.crt
+              value: /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto-config/peerOrganizations/{{ .Values.config.domain }}/peers/{{ .Values.config.peer }}.{{ .Values.config.domain }}/tls/ca.crt
             - name: GOPATH
               value: /opt/gopath
             - name: ORDERER_CA
-              value: /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto-config/ordererOrganizations/{{ .Values.config.orderer}}/orderers/{{.Values.config.orderer}}/msp/tlscacerts/tlsca.{{.Values.config.orderer}}-cert.pem
+              value: /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto-config/ordererOrganizations/{{ .Values.orderer.domain}}/orderers/{{.Values.orderer.hostname}}.{{ .Values.orderer.domain}}/msp/tlscacerts/tlsca.{{.Values.orderer.domain}}-cert.pem
           tty: true
           volumeMounts:
             - name: artifacts

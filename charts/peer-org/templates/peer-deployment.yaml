@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-peer
+  name: {{ .Values.config.peer }}.{{ .Release.Name }}
   labels:
     {{- include "chart.labels" . | nindent 4 }}
 spec:
@@ -36,7 +36,7 @@ spec:
             - name: CORE_PEER_LOCALMSPID
               value: {{ .Values.config.mspID }}
             - name: CORE_PEER_ADDRESS
-              value: "{{ .Values.config.peer }}-{{ .Values.config.domain }}:{{ .Values.peer.service.port }}"
+              value: "{{ .Values.config.peer }}.{{ .Values.config.domain }}:443"
             - name: CORE_PEER_LISTENADDRESS
               value: "0.0.0.0:{{ .Values.peer.service.port }}"
             - name: CORE_PEER_ADDRESSAUTODETECT
@@ -44,9 +44,9 @@ spec:
             - name: CORE_PEER_GOSSIP_USELEADERELECTION
               value: "true"
             - name: CORE_PEER_GOSSIP_BOOTSTRAP
-              value: "{{ .Values.config.peer }}-{{ .Values.config.domain }}:{{ .Values.peer.service.port }}"
+              value: "{{ .Values.config.peer }}.{{ .Values.config.domain }}:{{ .Values.peer.service.port }}"
             - name: CORE_PEER_GOSSIP_EXTERNALENDPOINT
-              value: "{{ .Values.config.peer }}-{{ .Values.config.domain }}:{{ .Values.peer.service.port }}"
+              value: "{{ .Values.config.peer }}.{{ .Values.config.domain }}:{{ .Values.peer.service.port }}"
             - name: CORE_PEER_PROFILE_ENABLED
               value: "true"
             - name: CORE_PEER_TLS_CERT_FILE
@@ -67,10 +67,10 @@ spec:
               subPath: core.yaml
             - name: artifacts
               mountPath: /etc/hyperledger/fabric/msp
-              subPath: crypto-config/peerOrganizations/{{ .Values.config.domain }}/peers/{{ .Values.config.peer }}-{{ .Values.config.domain }}/msp
+              subPath: crypto-config/peerOrganizations/{{ .Values.config.domain }}/peers/{{ .Values.config.peer }}.{{ .Values.config.domain }}/msp
             - name: artifacts
               mountPath: /etc/hyperledger/fabric/tls
-              subPath: crypto-config/peerOrganizations/{{ .Values.config.domain }}/peers/{{ .Values.config.peer }}-{{ .Values.config.domain }}/tls
+              subPath: crypto-config/peerOrganizations/{{ .Values.config.domain }}/peers/{{ .Values.config.peer }}.{{ .Values.config.domain }}/tls
             - name: builders-detect
               mountPath: /builders/external/bin/detect
               subPath: detect

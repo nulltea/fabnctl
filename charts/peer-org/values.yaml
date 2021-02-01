@@ -24,22 +24,10 @@ ca:
     port: 7054
 
 ingress:
-  enabled: false
+  enabled: true
   entrypoints:
     - web
     - websecure
-  tls:
-    enabled: true
-    certResolver: le
-  routes:
-    - host: orderer.com
-      paths:
-        - /
-      middlewares: []
-      services:
-        - name: orderer
-          port: 7050
-          scheme: http
 
 resources: {}
 
@@ -55,7 +43,10 @@ artifacts:
 
 config:
   mspID: supplierMSP
-  domain: supplier
+  domain: supplier.iotchain.network
   peer: peer0
   tls: true
-  orderer: orderer
+
+orderer:
+  domain: iotchain.network
+  hostname: orderer
