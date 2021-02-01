@@ -62,10 +62,10 @@ spec:
               subPath: channel-artifacts/genesis.block
             - name: artifacts
               mountPath: /var/hyperledger/orderer/msp
-              subPath: crypto-config/ordererOrganizations/{{ .Values.config.domain }}/orderers/{{ .Values.config.domain }}/msp
+              subPath: crypto-config/ordererOrganizations/{{ .Values.config.domain }}/orderers/{{ .Values.config.hostname }}/msp
             - name: artifacts
               mountPath: /var/hyperledger/orderer/tls
-              subPath: crypto-config/ordererOrganizations/{{ .Values.config.domain }}/orderers/{{ .Values.config.domain }}/tls
+              subPath: crypto-config/ordererOrganizations/{{ .Values.config.domain }}/orderers/{{ .Values.config.hostname }}/tls
           workingDir: /opt/gopath/src/github.com/hyperledger/fabric
       restartPolicy: Always
       volumes:

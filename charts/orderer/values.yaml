@@ -18,18 +18,6 @@ ingress:
   entrypoints:
     - web
     - websecure
-  tls:
-    enabled: false
-    certResolver: le
-  routes:
-    - host: orderer.iotchain.network
-      paths:
-        - /
-      middlewares: []
-      services:
-        - name: orderer
-          port: 7050
-          scheme: http
 
 resources: {}
 
@@ -45,6 +33,7 @@ artifacts:
 
 config:
   mspID: ordererMSP
-  domain: orderer
+  domain: iotchain.network
+  hostname: orderer.iotchain.network
   profile: OrdererGenesis
   tls: true

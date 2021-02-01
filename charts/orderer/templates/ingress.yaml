@@ -3,60 +3,39 @@
 apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
-  name: {{ .Release.Name }}{{- if .Values.ingress.tls.enabled }}.secure{{- end }}
+  name: {{ .Release.Name }}
   labels:
   {{- include "chart.labels" . | nindent 4 }}
 spec:
   entryPoints:
   {{- toYaml .Values.ingress.entrypoints | nindent 4 }}
   routes:
-    {{- range .Values.ingress.routes }}
-    - match: Host(`{{ .host }}`) && PathPrefix(`{{ .paths | join "`) || PathPrefix(`" }}`)
+    - match: Host(`{{ .Release.Name }}.{{ .Values.config.domain }}`)
       kind: Rule
       services:
-        {{- range .services }}
-        - name: {{ .name }}
-          port: {{ .port }}
-          scheme: {{ .scheme }}
-      {{- end }}
-      {{- with .middlewares }}
+        - name: {{ .Release.Name }}
+          port: {{ .Values.service.port }}
+          scheme: https
+          {{- if .Values.config.tls }}
+          serversTransport: {{ .Release.Name }}-transport
+          {{- end }}
       middlewares:
-      {{- toYaml . | nindent 8 }}
-  {{- end }}
-  {{- end }}
-  {{- if .Values.ingress.tls.enabled }}
+  {{- if .Values.config.tls }}
   tls:
-    certResolver: {{ .Values.ingress.tls.certResolver }}
-    secretName: {{ .Values.ingress.tls.secretName }}
+    secretName: {{ .Values.config.hostname }}-tls
   {{- end }}
 ---
-  {{- if .Values.ingress.tls.enabled }}
+  {{- if .Values.config.tls }}
 apiVersion: traefik.containo.us/v1alpha1
-kind: IngressRoute
+kind: ServersTransport
 metadata:
-  name: {{ .Release.Name }}
-  labels:
-  {{- include "chart.labels" . | nindent 4 }}
+  name: {{ .Release.Name }}-transport
 spec:
-  entryPoints:
-    - web
-  routes:
-    {{- range .Values.ingress.routes }}
-    - match: Host(`{{ .host }}`) && PathPrefix(`{{ .paths | join "`) || PathPrefix(`" }}`)
-      kind: Rule
-      services:
-        {{- range .services }}
-        - name: {{ .name }}
-          port: {{ .port }}
-          scheme: {{ .scheme }}
-        {{- end }}
-      middlewares:
-        - name: https-redirect
-          namespace: gateway
-        {{- with .middlewares }}
-      {{- toYaml . | nindent 8 }}
-  {{- end }}
+  serverName: {{ .Release.Name }}
+  rootCAsSecrets:
+    - {{ .Values.config.hostname }}-ca
+  certificatesSecrets:
+    - {{ .Values.config.hostname }}-tls
   {{- end }}
 ---
-  {{- end }}
-  {{- end }}
+{{- end }}
