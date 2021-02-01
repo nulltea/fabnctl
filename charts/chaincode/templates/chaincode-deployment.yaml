@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: "{{ .Values.peer }}-chaincode-{{ .Values.chaincode }}"
+  name: "{{ .Values.chaincode }}.chaincodes.{{ .Values.peer }}"
   labels:
   {{- include "chart.labels" . | nindent 4 }}
 spec:
