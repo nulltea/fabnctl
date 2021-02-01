@@ -11,18 +11,22 @@ data:
       - Name: {{ .name }}
         Domain: {{ .domain }}
         Specs:
-          - Hostname: {{ .domain }}
-            CommonName: {{ .domain }}
+          - Hostname: {{ .hostname }}
+            SANS:
+              - {{ .hostname }}
+              - localhost
     {{ end }}
     PeerOrgs:
-    {{- range .Values.config.peerOrgs }} {{ $domain := .domain }}
+    {{- range .Values.config.peerOrgs }}
       - Name: {{ .name }}
         Domain: {{ .domain }}
         EnableNodeOUs: true
         Specs:
         {{- range .peers }}
           - Hostname: {{ .subdomain }}
-            CommonName: {{ .subdomain }}-{{ $domain }}
+            SANS:
+              - {{ .service }}
+              - localhost
         {{- end }}
         Users:
           Count: 1

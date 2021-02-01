@@ -14,24 +14,27 @@ config:
     name: Orderer
     type: etcdraft # Available types are "solo", "etcdraft", "kafka"
     mspID: ordererMSP
-    domain: orderer
+    domain: iotchain.network
+    hostname: orderer
     port: 7050
     profile: OrdererGenesis
     channelID: system-channel
   peerOrgs:
     - name: Supplier
       mspID: supplierMSP
-      domain: supplier
+      domain: supplier.iotchain.network
       peers:
         - subdomain: peer0
+          service: peer0-supplier
           port: 7051
       channelProfile: SupplyChannel
       channelID: supply-channel
     - name: Deliverer
       mspID: delivererMSP
-      domain: deliverer
+      domain: deliverer.iotchain.network
       peers:
         - subdomain: peer0
+          service: peer0-deliverer
           port: 7051
       channelProfile: SupplyChannel
       channelID: supply-channel

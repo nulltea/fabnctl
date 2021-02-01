@@ -24,14 +24,14 @@ data:
             Rule: "OR('{{ .mspID }}.admin')"
     {{ end }}
 
-    {{- range .Values.config.peerOrgs }} {{ $domain := .domain }}
+    {{- range .Values.config.peerOrgs }}
       - &{{ .name }}
         Name: {{ .name }}
         ID: {{ .mspID }}
         MSPDir: crypto-config/peerOrganizations/{{ .domain }}/msp
         {{- range .peers }}
         AnchorPeers:
-          - Host: {{ .subdomain }}-{{ $domain }}
+          - Host: {{ .service }}
             Port: {{ .port }}
         {{- end }}
         Policies:
@@ -52,15 +52,15 @@ data:
     {{- with .Values.config.orderer }}
     Orderer: &OrdererDefaults
       Addresses:
-        - {{ .domain }}:{{ .port }}
+        - {{ .hostname }}:{{ .port }}
       OrdererType: {{ .type }}
       {{- if eq .type "etcdraft" }}
       EtcdRaft:
         Consenters:
-          - Host: {{ .domain }}
+          - Host: {{ .hostname }}.{{ .domain }}
             Port: {{ .port }}
-            ClientTLSCert: crypto-config/ordererOrganizations/{{ .domain }}/orderers/{{ .domain }}/tls/server.crt
-            ServerTLSCert: crypto-config/ordererOrganizations/{{ .domain }}/orderers/{{ .domain }}/tls/server.crt
+            ClientTLSCert: crypto-config/ordererOrganizations/{{ .domain }}/orderers/{{ .hostname }}.{{ .domain }}/tls/server.crt
+            ServerTLSCert: crypto-config/ordererOrganizations/{{ .domain }}/orderers/{{ .hostname }}.{{ .domain }}/tls/server.crt
       {{- end }}
       BatchTimeout: 2s
       BatchSize:
