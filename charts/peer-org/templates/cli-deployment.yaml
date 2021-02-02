@@ -3,18 +3,18 @@ kind: Deployment
 metadata:
   name: {{ .Values.config.peer }}.{{ .Release.Name }}-cli
   labels:
-  {{- include "chart.labels" . | nindent 4 }}
+    app: {{ .Values.config.peer }}.{{ .Release.Name }}-cli
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-  {{- include "chart.selectorLabels" . | nindent 6 }}
+      app: {{ .Values.config.peer }}.{{ .Release.Name }}-cli
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
-    {{- include "chart.selectorLabels" . | nindent 8 }}
+        app: {{ .Values.config.peer }}.{{ .Release.Name }}-cli
     spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
       containers:
@@ -53,8 +53,6 @@ spec:
           workingDir: /opt/gopath/src/github.com/hyperledger/fabric/peer
       restartPolicy: Always
       volumes:
-        - name: storage
-          emptyDir: {} # TODO make persistent
         - name: artifacts
           persistentVolumeClaim:
             claimName: {{ .Values.artifacts.claim }}

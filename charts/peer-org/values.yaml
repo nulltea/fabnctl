@@ -15,6 +15,7 @@ peer:
     chaincodePort: 7052
 
 ca:
+  enabled: false
   image:
     repository: hyperledger/fabric-ca
     pullPolicy: IfNotPresent

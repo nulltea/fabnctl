@@ -20,6 +20,7 @@ spec:
           serversTransport: {{ .Release.Name }}-transport
           {{- end }}
       middlewares:
+    {{- if .Values.ca.enabled }}
     - match: Host(`ca.{{ .Values.config.domain }}`)
       kind: Rule
       services:
@@ -27,6 +28,7 @@ spec:
           port: {{ .Values.ca.service.port }}
           scheme: https
       middlewares:
+    {{- end -}}
   {{- if .Values.config.tls }}
   tls:
     secretName: {{ .Values.config.peer }}.{{ .Values.config.domain }}-tls

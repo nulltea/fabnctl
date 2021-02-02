@@ -1,20 +1,21 @@
+{{- if .Values.ca.enabled -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ca.{{ .Release.Name }}
   labels:
-  {{- include "chart.labels" . | nindent 4 }}
+    app: ca.{{ .Release.Name }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-  {{- include "chart.selectorLabels" . | nindent 6 }}
+      app: ca.{{ .Release.Name }}
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
-    {{- include "chart.selectorLabels" . | nindent 8 }}
+        app: ca.{{ .Release.Name }}
     spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
       containers:
@@ -48,3 +49,4 @@ spec:
         - name: artifacts
           persistentVolumeClaim:
             claimName: {{ .Values.artifacts.claim }}
+{{- end -}}

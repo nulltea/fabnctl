@@ -70,7 +70,9 @@ spec:
       restartPolicy: Always
       volumes:
         - name: storage
-          emptyDir: {} # TODO make persistent
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}.storage.pvc
         - name: artifacts
           persistentVolumeClaim:
             claimName: {{ .Values.artifacts.claim }}
+

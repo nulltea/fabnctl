@@ -10,8 +10,5 @@ spec:
     - name: peer
       port: {{ .Values.peer.service.port }}
       targetPort: {{ .Values.peer.service.port }}
-    - name: chaincode
-      port: {{ .Values.peer.service.chaincodePort }}
-      targetPort: {{ .Values.peer.service.chaincodePort }}
   selector:
-    {{- include "chart.selectorLabels" . | nindent 4 }}
+    app: {{ .Values.config.peer }}.{{ .Release.Name }}

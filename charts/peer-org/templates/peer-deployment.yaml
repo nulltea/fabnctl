@@ -3,18 +3,18 @@ kind: Deployment
 metadata:
   name: {{ .Values.config.peer }}.{{ .Release.Name }}
   labels:
-    {{- include "chart.labels" . | nindent 4 }}
+    app: {{ .Values.config.peer }}.{{ .Release.Name }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "chart.selectorLabels" . | nindent 6 }}
+      app: {{ .Values.config.peer }}.{{ .Release.Name }}
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
-        {{- include "chart.selectorLabels" . | nindent 8 }}
+        app: {{ .Values.config.peer }}.{{ .Release.Name }}
     spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
       containers:
@@ -44,9 +44,9 @@ spec:
             - name: CORE_PEER_GOSSIP_USELEADERELECTION
               value: "true"
             - name: CORE_PEER_GOSSIP_BOOTSTRAP
-              value: "{{ .Values.config.peer }}.{{ .Values.config.domain }}:{{ .Values.peer.service.port }}"
+              value: "{{ .Values.config.peer }}.{{ .Values.config.domain }}:443"
             - name: CORE_PEER_GOSSIP_EXTERNALENDPOINT
-              value: "{{ .Values.config.peer }}.{{ .Values.config.domain }}:{{ .Values.peer.service.port }}"
+              value: "{{ .Values.config.peer }}.{{ .Values.config.domain }}:443"
             - name: CORE_PEER_PROFILE_ENABLED
               value: "true"
             - name: CORE_PEER_TLS_CERT_FILE
@@ -84,7 +84,8 @@ spec:
       restartPolicy: Always
       volumes:
         - name: storage
-          emptyDir: {} # TODO make persistent
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}.storage.pvc
         - name: artifacts
           persistentVolumeClaim:
             claimName: {{ .Values.artifacts.claim }}
