@@ -4,8 +4,8 @@ component: chaincode
 replicaCount: 1
 
 image:
-  repository: chaincode/assets
-  pullPolicy: IfNotPresent
+  repository: iotchainnetwork/cc.assets
+  pullPolicy: Always
   tag: latest
 
 service:
@@ -14,4 +14,5 @@ service:
 
 peer: peer0-supplier
 chaincode: assets
-ccid: assets:b2807ab191b193ddc851c8480e2e95d302dd4889de012dd3f4db3e4018b4a776
+ccid: assets:9e135ec8a731f4a4252bb3aad57146db8df62f9e7de0deac8cd0ad7bc3989f2f
+#

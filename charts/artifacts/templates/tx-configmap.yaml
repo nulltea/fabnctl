@@ -52,13 +52,13 @@ data:
     {{- with .Values.config.orderer }}
     Orderer: &OrdererDefaults
       Addresses:
-        - {{ .hostname }}:{{ .port }}
+        - {{ .hostname }}.{{ .domain }}:443
       OrdererType: {{ .type }}
       {{- if eq .type "etcdraft" }}
       EtcdRaft:
         Consenters:
           - Host: {{ .hostname }}.{{ .domain }}
-            Port: {{ .port }}
+            Port: 443
             ClientTLSCert: crypto-config/ordererOrganizations/{{ .domain }}/orderers/{{ .hostname }}.{{ .domain }}/tls/server.crt
             ServerTLSCert: crypto-config/ordererOrganizations/{{ .domain }}/orderers/{{ .hostname }}.{{ .domain }}/tls/server.crt
       {{- end }}
