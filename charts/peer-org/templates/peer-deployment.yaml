@@ -28,6 +28,9 @@ spec:
             - peer
             - node
             - start
+            {{- if .Values.devmode }}
+            - --peer-chaincodedev=true
+            {{- end }}
           env:
             - name: FABRIC_LOGGING_SPEC
               value: {{ .Values.logging }}

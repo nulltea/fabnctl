@@ -4,6 +4,8 @@ component: peer
 replicaCount: 1
 logging: DEBUG
 
+devmode: true
+
 peer:
   image:
     repository: hyperledger/fabric-peer
