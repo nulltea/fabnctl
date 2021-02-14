@@ -5,6 +5,8 @@ set -e
 COMMAND="$1"
 DOMAIN=iotchain.network
 ORDERER=orderer.iotchain.network
+CHAINCODES_DIR=../contracts
+IMAGE_REGISTRY=iotchainnetwork
 
 function generateArtifacts(){
   helm upgrade --install artifacts charts/artifacts
@@ -79,10 +81,17 @@ function deployChaincode() {
   tar cfz "$package" code.tar.gz metadata.json
   kubectl cp -n network "$package" "$cli:$package"
   cd .. && rm -rf .tmp
-  # kubectl exec -n network -it "$cli" -- peer lifecycle chaincode install "$package"
-  # peer lifecycle chaincode checkcommitreadiness --channelID supply-channel --name assets --version 1.0 --init-required --sequence 1 -o orderer.iotchain.network:443 --tls --cafile $ORDERER_CA
-  # peer lifecycle chaincode approveformyorg --channelID supply-channel --name assets --version 1.0 --init-required --sequence 1 -o orderer.iotchain.network:443 --tls --cafile $ORDERER_CA --package-id assets:036f91ebd4933e8f5d82d44725dd567a3213138d198b488625e6308c8908bb8a
-  # peer lifecycle chaincode commit --channelID supply-channel --name assets --version 1.0 --sequence 1 --init-required --tls true -o orderer.iotchain.network:443 --tls --cafile $ORDERER_CA --peerAddresses peer0.supplier.iotchain.network:443 --tlsRootCertFiles crypto-config/peerOrganizations/supplier.iotchain.network/peers/peer0.supplier.iotchain.network/tls/ca.crt --peerAddresses peer0.deliverer.iotchain.network:443 --tlsRootCertFiles crypto-config/peerOrganizations/deliverer.iotchain.network/peers/peer0.deliverer.iotchain.network/tls/ca.crt
+  kubectl exec -n network -it "$cli" -- peer lifecycle chaincode install "$package"
+  id=$(kubectl exec -n network -it "$cli" -- peer lifecycle chaincode queryinstalled | sed -e "s/Package ID: //" -e "s/, Label: $cc//" | tail -n1)
+  orderer_ca=$(kubectl exec -n network -it "$cli" -- sh -c 'echo $ORDERER_CA')
+  peer_cert=$(kubectl exec -n network -it "$cli" -- sh -c 'echo $CORE_PEER_TLS_CERT_FILE')
+  echo "$peer_cert"
+  kubectl exec -n network -it "$cli" -- peer lifecycle chaincode approveformyorg -C supply-channel -n "$cc" --version 1.0 --init-required false --sequence 1 -o orderer.iotchain.network:443 --tls --cafile "$orderer_ca" --package-id "$id" && \
+    peer lifecycle chaincode commit -C supply-channel --name "$cc" --version 1.0 --sequence 1 --init-required false --tls true -o orderer.iotchain.network:443 --tls --cafile "$orderer_ca" --peerAddresses "peer0.$org.iotchain.network:443" --tlsRootCertFiles "$peer_cert"
+  image="$IMAGE_REGISTRY/cc.$cc"
+  docker build -t "$image" "$CHAINCODES_DIR/$cc" && docker push "$image"
+  helm upgrade --install --set=image.repository="$image,peer=$peer-$org,chaincode=$cc,ccid=$id" "$peer-$org-cc-$cc" charts/chaincode/
+  kubectl exec -n network -it "$cli" -- peer chaincode invoke --isInit -C supply-channel -n "$cc" -o orderer.iotchain.network:443 --tls --cafile "$orderer_ca" --peerAddresses peer0.supplier.iotchain.network:443 --tlsRootCertFiles "$peer_cert" -c '{"Args":["List"]}' --waitForEvent
 }
 
 function cleanNetwork() {
