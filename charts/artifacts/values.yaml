@@ -7,7 +7,7 @@ logging: DEBUG
 image:
   repository: hyperledger/fabric-tools
   pullPolicy: IfNotPresent
-  tag: amd64-2.2.0
+  tag: 2.0.0
 
 config:
   orderer:
@@ -29,15 +29,6 @@ config:
           port: 7051
       channelProfile: SupplyChannel
       channelID: supply-channel
-    - name: Deliverer
-      mspID: delivererMSP
-      domain: deliverer.iotchain.network
-      peers:
-        - subdomain: peer0
-          service: peer0-deliverer
-          port: 7051
-      channelProfile: SupplyChannel
-      channelID: supply-channel
   channels:
     - name: SupplyChannel
       profile: SupplyChannel
@@ -45,6 +36,5 @@ config:
       consortium: SupplyConsortium
       organizations:
         - name: Supplier
-        - name: Deliverer
   crypto: |
   configtx: |

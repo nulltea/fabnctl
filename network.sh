@@ -45,14 +45,13 @@ function deployPeers() {
 }
 
 function deployChannels() {
-  cli=$(kubectl get pods -n network | awk '{print $1}' | grep peer0.supplier-cli)
-  kubectl exec -n network -it "$cli" -- sh -c /
-     'peer channel create -c supply-channel -f ./channel-artifacts/supply-channel.tx -o orderer.iotchain.network:443 --tls true --cafile "$ORDERER_CA"'
-  kubectl exec -n network -it "$cli" -- peer channel join -b supply-channel.block
-  cli=$(kubectl get pods -n network | awk '{print $1}' | grep peer0.deliverer-cli)
-  kubectl exec -n network -it "$cli" -- sh -c /
-    'peer channel fetch newest supply-channel.block -c supply-channel -o orderer.iotchain.network:443 --tls=true --cafile "$ORDERER_CA"'
-  kubectl exec -n network -it "$cli" -- peer channel join -b supply-channel.block
+  channel=$1
+  org=$2
+  peer=$3
+  cli=$(kubectl get pods -n network | awk '{print $1}' | grep "$peer.$org-cli")
+  kubectl exec -n network -it "$cli" -- sh -c \ "
+      peer channel create -c $channel -f ./channel-artifacts/$channel.tx -o $ORDERER:443 --tls=true --cafile=\$ORDERER_CA && \
+      peer channel join -b $channel.block"
 }
 
 function enrollCA() {
@@ -64,6 +63,7 @@ function deployChaincode() {
   cc=$1
   org=$2
   peer=$3
+  channel=$4
   package="$peer.$org.$cc.tar.gz"
   cli=$(kubectl get pods -n network | awk '{print $1}' | grep "$peer.$org-cli")
   mkdir .tmp && cd .tmp
@@ -82,21 +82,33 @@ function deployChaincode() {
   kubectl cp -n network "$package" "$cli:$package"
   cd .. && rm -rf .tmp
   kubectl exec -n network -it "$cli" -- peer lifecycle chaincode install "$package"
-  id=$(kubectl exec -n network -it "$cli" -- peer lifecycle chaincode queryinstalled | sed -e "s/Package ID: //" -e "s/, Label: $cc//" | tail -n1)
-  orderer_ca=$(kubectl exec -n network -it "$cli" -- sh -c 'echo $ORDERER_CA')
-  peer_cert=$(kubectl exec -n network -it "$cli" -- sh -c 'echo $CORE_PEER_TLS_CERT_FILE')
-  echo "$peer_cert"
-  kubectl exec -n network -it "$cli" -- peer lifecycle chaincode approveformyorg -C supply-channel -n "$cc" --version 1.0 --init-required false --sequence 1 -o orderer.iotchain.network:443 --tls --cafile "$orderer_ca" --package-id "$id" && \
-    peer lifecycle chaincode commit -C supply-channel --name "$cc" --version 1.0 --sequence 1 --init-required false --tls true -o orderer.iotchain.network:443 --tls --cafile "$orderer_ca" --peerAddresses "peer0.$org.iotchain.network:443" --tlsRootCertFiles "$peer_cert"
+  id=$(kubectl exec -n network -it "$cli" -- peer lifecycle chaincode queryinstalled | sed -e "s/Package ID: //" -e "s/, Label: $cc//" -e "s/\r//" | tail -n1)
   image="$IMAGE_REGISTRY/cc.$cc"
   docker build -t "$image" "$CHAINCODES_DIR/$cc" && docker push "$image"
   helm upgrade --install --set=image.repository="$image,peer=$peer-$org,chaincode=$cc,ccid=$id" "$peer-$org-cc-$cc" charts/chaincode/
-  kubectl exec -n network -it "$cli" -- peer chaincode invoke --isInit -C supply-channel -n "$cc" -o orderer.iotchain.network:443 --tls --cafile "$orderer_ca" --peerAddresses peer0.supplier.iotchain.network:443 --tlsRootCertFiles "$peer_cert" -c '{"Args":["List"]}' --waitForEvent
+  pod=$(kubectl get pods -n network | awk '{print $1}' | grep "$cc.chaincodes.$peer.$org")
+  kubectl wait -n network --for=condition=ready "pod/$pod"
+  kubectl exec -n network "$cli" -- sh -c "
+      peer lifecycle chaincode approveformyorg -C=$channel --name=$cc --version=1.0 --init-required=false --sequence=1 -o=$ORDERER:443 --tls=true --cafile=\$ORDERER_CA --package-id=$id; \
+      peer lifecycle chaincode commit -C=$channel --name=$cc --version=1.0 --sequence=1 --init-required=false --tls=true -o=$ORDERER:443 --tls --cafile=\$ORDERER_CA --peerAddresses $peer.$org.$DOMAIN:443 --tlsRootCertFiles=\$CORE_PEER_TLS_ROOTCERT_FILE"
+}
+
+function upgradeChaincode() {
+  cc=$1
+  org=$2
+  peer=$3
+  channel=$4
+  cli=$(kubectl get pods -n network | awk '{print $1}' | grep "$peer.$org-cli")
+  id=$(kubectl exec -n network -it "$cli" -- peer lifecycle chaincode queryinstalled | sed -e "s/Package ID: //" -e "s/, Label: $cc//" -e "s/\r//" | tail -n1)
+  image="$IMAGE_REGISTRY/cc.$cc"
+  docker build -t "$image" "$CHAINCODES_DIR/$cc" && docker push "$image"
+  helm upgrade --install --set=image.repository="$image,peer=$peer-$org,chaincode=$cc,ccid=$id" "$peer-$org-cc-$cc" charts/chaincode/
 }
 
 function cleanNetwork() {
-  rm -rf ./crypto-config/* ./channel-artifacts/*
-  helm uninstall -n network artifacts orderer supplier deliverer
+  # rm -rf ./crypto-config/* ./channel-artifacts/*
+  # helm uninstall -n network artifacts
+  helm uninstall -n network orderer supplier deliverer peer0-supplier-cc-assets
   kubectl get pods -n network -w
 }
 
@@ -141,9 +153,16 @@ case $COMMAND in
             PEER="$2"
             shift
             ;;
-          --cc_name | -ccn)
+          --channel | -C)
+            CHANNEL="$2"
+            shift
+            ;;
+          --cc_name | -cc)
             CC_NAME="$2"
             shift
+            ;;
+          --upgrade | -u)
+            UPGRADE=true
             ;;
         esac
         shift
@@ -156,10 +175,15 @@ case $COMMAND in
           deployPeers "$ORG"
           ;;
         "channel")
-          deployChannels "$ORG" "$PEER"
+          deployChannels "$CHANNEL" "$ORG" "$PEER"
           ;;
         "cc")
-          deployChaincode "$CC_NAME" "$ORG" "$PEER"
+          if [ "$UPGRADE" ];
+          then
+            upgradeChaincode "$CC_NAME" "$ORG" "$PEER" "$CHANNEL"
+          else
+            deployChaincode "$CC_NAME" "$ORG" "$PEER" "$CHANNEL"
+          fi
           ;;
       esac
       ;;

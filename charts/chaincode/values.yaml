@@ -4,7 +4,7 @@ component: chaincode
 replicaCount: 1
 
 image:
-  repository: iotchainnetwork/cc.assets
+  repository: iotchainnetwork/cc.requirements
   pullPolicy: Always
   tag: latest
 
@@ -12,7 +12,6 @@ service:
   type: ClusterIP
   port: 7052
 
-peer: peer0-supplier
-chaincode: assets
-ccid: assets:9e135ec8a731f4a4252bb3aad57146db8df62f9e7de0deac8cd0ad7bc3989f2f
-#
+peer:
+chaincode:
+ccid:
