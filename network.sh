@@ -82,9 +82,9 @@ function deployChaincode() {
   kubectl cp -n network "$package" "$cli:$package"
   cd .. && rm -rf .tmp
   kubectl exec -n network -it "$cli" -- peer lifecycle chaincode install "$package"
-  id=$(kubectl exec -n network -it "$cli" -- peer lifecycle chaincode queryinstalled | sed -e "s/Package ID: //" -e "s/, Label: $cc//" -e "s/\r//" | tail -n1)
+  id=$(kubectl exec -n network -it "$cli" -- peer lifecycle chaincode queryinstalled | grep "Package ID: $cc" | sed -e "s/Package ID: //" -e "s/, Label: $cc//" -e "s/\r//" | tail -n1)
   image="$IMAGE_REGISTRY/cc.$cc"
-  docker build -t "$image" "$CHAINCODES_DIR/$cc" && docker push "$image"
+  docker build -t "$image" "$CHAINCODES_DIR" -f "$CHAINCODES_DIR/docker/$cc.Dockerfile" && docker push "$image"
   helm upgrade --install --set=image.repository="$image,peer=$peer-$org,chaincode=$cc,ccid=$id" "$peer-$org-cc-$cc" charts/chaincode/
   pod=$(kubectl get pods -n network | awk '{print $1}' | grep "$cc.chaincodes.$peer.$org")
   kubectl wait -n network --for=condition=ready "pod/$pod"
@@ -99,10 +99,11 @@ function upgradeChaincode() {
   peer=$3
   channel=$4
   cli=$(kubectl get pods -n network | awk '{print $1}' | grep "$peer.$org-cli")
-  id=$(kubectl exec -n network -it "$cli" -- peer lifecycle chaincode queryinstalled | sed -e "s/Package ID: //" -e "s/, Label: $cc//" -e "s/\r//" | tail -n1)
+  id=$(kubectl exec -n network -it "$cli" -- peer lifecycle chaincode queryinstalled | grep "Package ID: $cc" | sed -e "s/Package ID: //" -e "s/, Label: $cc//" -e "s/\r//" | tail -n1)
   image="$IMAGE_REGISTRY/cc.$cc"
-  docker build -t "$image" "$CHAINCODES_DIR/$cc" && docker push "$image"
-  helm upgrade --install --set=image.repository="$image,peer=$peer-$org,chaincode=$cc,ccid=$id" "$peer-$org-cc-$cc" charts/chaincode/
+  docker build -t "$image" "$CHAINCODES_DIR" -f "$CHAINCODES_DIR/docker/$cc.Dockerfile" && docker push "$image"
+
+  helm upgrade --install --set="image.repository=$image,peer=$peer-$org,chaincode=$cc,ccid=$id" "$peer-$org-cc-$cc" charts/chaincode/
 }
 
 function cleanNetwork() {

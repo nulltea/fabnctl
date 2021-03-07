@@ -29,5 +29,5 @@ spec:
             - name: CHAINCODE_ADDRESS
               value: "0.0.0.0:{{ .Values.service.port }}"
             - name: CHAINCODE_NAME
-              value: "{{ .Values.peer }}-chaincode-{{ .Values.chaincode }}"
+              value: "{{ .Values.chaincode }}"
       restartPolicy: Always
