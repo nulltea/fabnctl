@@ -1,6 +1,8 @@
 project: iot-blockchain
 component: chaincode
 
+logging: DEBUG
+
 replicaCount: 1
 
 image:
