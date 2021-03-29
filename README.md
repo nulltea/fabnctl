@@ -19,11 +19,11 @@ This solution provides a convenient way of deploying such a blockchain network o
 
 ## Deployment
 
-Hyperledger Fabric is a powerful enterprise-grade permissioned distributed ledger framework. Its modular architecture and unique orderer-based approach to consensus enable versatility in use cases and production-ready performance and scalability.
+[Hyperledger Fabric][hyperledger fabric url] is a powerful enterprise-grade permissioned distributed ledger framework. Its modular architecture and unique orderer-based approach to consensus enable versatility in use cases and production-ready performance and scalability.
 
 However, its deployment procedure especially in the Kubernetes environment may require quite a lot of time and effort. Hyperledger Fabric's documentation is indeed helpful though it still covers the very basics. 
 
-Current solution provides a straightforward way of deploying permissioned blockchain network in the Kubernetes environment using a combination of Bash script and Helm charts with following commands:
+The current solution provides a straightforward way of deploying permissioned blockchain network in the Kubernetes environment using a combination of a Bash script and Helm charts with the following commands:
 
 Use `init` command to generate [crypto materials][crypto material] and [network channels][network channel] artifacts:
 
@@ -68,6 +68,7 @@ $ export IMAGE_REGISTRY 'chainmetric'
 
 ## Wrap up
 
+Chainmetric network designed to be an enterprise-grade, confidential and scalable distributed ledger, which in combination with dedicated Smart Contracts, embedded sensor-equipped IoT devices, and cross-platform mobile application provides ambitious metric requirements control solutions for general assets supply chains.
 
 ## License
 
