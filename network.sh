@@ -30,7 +30,7 @@ function deployOrderer(){
   echo "orderer deployed successfully!"
 }
 
-function deployPeers() {
+function deployPeer() {
   org=$1
   kubectl create -n network secret tls "peer0.$org.$DOMAIN-tls" --key="crypto-config/peerOrganizations/$org.$DOMAIN/peers/peer0.$org.$DOMAIN/tls/server.key" \
     --cert="crypto-config/peerOrganizations/$org.$DOMAIN/peers/peer0.$org.$DOMAIN/tls/server.crt" \
@@ -172,8 +172,8 @@ case $COMMAND in
         "orderer")
           deployOrderer
           ;;
-        "peers")
-          deployPeers "$ORG"
+        "peer")
+          deployPeer "$ORG"
           ;;
         "channel")
           deployChannels "$CHANNEL" "$ORG" "$PEER"
