@@ -68,7 +68,7 @@ $ export IMAGE_REGISTRY 'chainmetric'
 
 ## Wrap up
 
-Chainmetric network designed to be an enterprise-grade, confidential and scalable distributed ledger, which in combination with dedicated Smart Contracts, embedded sensor-equipped IoT devices, and cross-platform mobile application provides ambitious metric requirements control solutions for general assets supply chains.
+Chainmetric network designed to be an enterprise-grade, confidential and scalable distributed ledger, which in combination with dedicated [Smart Contracts][chainmetric contracts repo], embedded [sensor-equipped IoT][chainmetric sensorsys repo] devices, and cross-platform [mobile application][chainmetric app repo] provides ambitious metric requirements control solutions for general assets supply chains.
 
 ## License
 
@@ -101,5 +101,9 @@ Licensed under the [Apache 2.0][license file].
 [golang]: https://github.com/golang/go
 [gitlab ci]: https://about.gitlab.com/stages-devops-lifecycle/
 [github actions]: https://github.com/features/actions
+
+[chainmetric contracts repo]: https://github.com/timoth-y/chainmetric-contracts
+[chainmetric sensorsys repo]: https://github.com/timoth-y/chainmetric-network
+[chainmetric app repo]: https://github.com/timoth-y/chainmetric-app
 
 [license file]: https://github.com/timoth-y/chainmetric-network/blob/main/LICENSE
