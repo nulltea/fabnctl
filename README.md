@@ -64,6 +64,7 @@ $ export IMAGE_REGISTRY 'chainmetric'
 - CI/CD integration (probably [GitLab CE][gitlab ci] or simply [GitHub Actions][github actions])
 - [CouchDB][couchdb] as the [World State][world state] database
 - [Kafka][kafka] as the [Ordering Service][orderer service]
+- Deploy [Hyperledger Explorer][hyperledger explorer] for managing and monitoring network from the web
 - [Go][golang] written command utility or Kubernetes operator
 
 ## Wrap up
@@ -101,6 +102,7 @@ Licensed under the [Apache 2.0][license file].
 [golang]: https://github.com/golang/go
 [gitlab ci]: https://about.gitlab.com/stages-devops-lifecycle/
 [github actions]: https://github.com/features/actions
+[hyperledger explorer]: https://www.hyperledger.org/use/explorer
 
 [chainmetric contracts repo]: https://github.com/timoth-y/chainmetric-contracts
 [chainmetric sensorsys repo]: https://github.com/timoth-y/chainmetric-network
