@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: "{{ .Values.peer }}-chaincode-{{ .Values.chaincode }}"
+  name: "{{ .Values.chaincode }}-chaincode-{{ .Values.peer }}-{{ .Values.org }}"
   labels:
   {{- include "chart.labels" . | nindent 4 }}
 spec:
@@ -11,4 +11,4 @@ spec:
       port: {{ .Values.service.port }}
       targetPort: {{ .Values.service.port }}
   selector:
-    app: "{{ .Values.chaincode }}.chaincodes.{{ .Values.peer }}"
+    app: "{{ .Values.chaincode }}-chaincode.{{ .Values.peer }}.{{ .Values.org }}"

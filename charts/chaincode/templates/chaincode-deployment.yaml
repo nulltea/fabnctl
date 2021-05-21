@@ -1,14 +1,14 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: "{{ .Values.chaincode }}.chaincodes.{{ .Values.peer }}"
+  name: "{{ .Values.chaincode }}-chaincode.{{ .Values.peer }}.{{ .Values.org }}"
   labels:
-    app: "{{ .Values.chaincode }}.chaincodes.{{ .Values.peer }}"
+    app: "{{ .Values.chaincode }}-chaincode.{{ .Values.peer }}.{{ .Values.org }}"
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: "{{ .Values.chaincode }}.chaincodes.{{ .Values.peer }}"
+      app: "{{ .Values.chaincode }}-chaincode.{{ .Values.peer }}.{{ .Values.org }}"
   strategy:
     type: Recreate
   template:
@@ -16,7 +16,7 @@ spec:
       annotations:
         rollme: {{ randAlphaNum 5 | quote }}
       labels:
-        app: "{{ .Values.chaincode }}.chaincodes.{{ .Values.peer }}"
+        app: "{{ .Values.chaincode }}-chaincode.{{ .Values.peer }}.{{ .Values.org }}"
     {{- include "chart.selectorLabels" . | nindent 8 }}
     spec:
       containers:
