@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Release.Name }}-ca
+  name: ca-{{ .Release.Name }}
   labels:
   {{- include "chart.labels" . | nindent 4 }}
 spec:

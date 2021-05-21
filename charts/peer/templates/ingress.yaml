@@ -24,8 +24,17 @@ spec:
     - match: Host(`ca.{{ .Values.config.domain }}`)
       kind: Rule
       services:
-        - name: {{ .Release.Name }}-ca
+        - name: ca-{{ .Release.Name }}
           port: {{ .Values.ca.service.port }}
+          scheme: https
+      middlewares:
+    {{- end -}}
+    {{- if .Values.couchdb.enabled }}
+    - match: Host(`couchdb.{{ .Values.config.peer }}.{{ .Values.config.domain }}`)
+      kind: Rule
+      services:
+        - name: couchdb-{{ .Values.config.peer}}-{{ .Release.Name }}
+          port: {{ .Values.couchdb.service.port }}
           scheme: https
       middlewares:
     {{- end -}}

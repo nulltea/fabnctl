@@ -62,6 +62,22 @@ spec:
               value: /etc/hyperledger/fabric/tls/ca.crt
             - name: CORE_VM_ENDPOINT
               value: http://localhost:2375
+            {{- if .Values.couchdb.enabled }}
+            - name: CORE_LEDGER_STATE_STATEDATABASE
+              value: "CouchDB"
+            - name: CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS
+              value: "couchdb-{{ .Values.config.peer}}-{{ .Release.Name }}:{{ .Values.couchdb.service.port }}"
+            - name: CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: couchdb-auth
+                  key: user
+            - name: CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: couchdb-auth
+                  key: password
+            {{- end }}
           volumeMounts:
             - name: storage
               mountPath: /var/hyperledger/production

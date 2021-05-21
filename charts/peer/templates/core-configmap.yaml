@@ -599,7 +599,7 @@ data:
             # stateDatabase - options are "goleveldb", "CouchDB"
             # goleveldb - default state database stored in goleveldb.
             # CouchDB - store state database in CouchDB
-            stateDatabase: goleveldb
+            stateDatabase: {{ if .Values.couchdb.enabled -}} CouchDB {{- else -}} goleveldb {{- end }}
             # Limit on the number of records to return per query
             totalQueryLimit: 100000
             couchDBConfig:
@@ -607,7 +607,7 @@ data:
               # not map the CouchDB container port to a server port in docker-compose.
               # Otherwise proper security must be provided on the connection between
               # CouchDB client (on the peer) and server.
-              couchDBAddress: 127.0.0.1:5984
+              couchDBAddress: couchdb-{{ .Values.config.peer}}-{{ .Release.Name }}:{{ .Values.couchdb.service.port }}
               # This username must have read and write authority on CouchDB
               username:
               # The password is recommended to pass as an environment variable
