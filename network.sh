@@ -39,16 +39,16 @@ function deployPeer() {
     --dry-run=client -o yaml | kubectl apply -f -
   echo "tls secrets created successfully!"
   echo
-  helm upgrade --install -n network --set=config.mspID="$org"MSP,config.domain="$org".iotchain.network "$org" charts/peer-org
+  helm upgrade --install -n network --set=config.mspID="$org"MSP,config.domain="$org".iotchain.network "$org" charts/peer
   echo
-  echo "$org peers deployed successfully!"
+  echo "$org peer0 deployed successfully!"
 }
 
 function deployChannels() {
   channel=$1
   org=$2
   peer=$3
-  cli=$(kubectl get pods -n network | awk '{print $1}' | grep "$peer.$org-cli")
+  cli=$(kubectl get pods -n network | awk '{print $1}' | grep "cli.$peer.$org")
   kubectl exec -n network -it "$cli" -- sh -c \ "
       peer channel create -c $channel -f ./channel-artifacts/$channel.tx -o $ORDERER:443 --tls=true --cafile=\$ORDERER_CA && \
       peer channel join -b $channel.block"
@@ -65,11 +65,11 @@ function deployChaincode() {
   peer=$3
   channel=$4
   package="$peer.$org.$cc.tar.gz"
-  cli=$(kubectl get pods -n network | awk '{print $1}' | grep "$peer.$org-cli")
+  cli=$(kubectl get pods -n network | awk '{print $1}' | grep "cli.$peer.$org")
   mkdir .tmp && cd .tmp
   echo "{\"path\":\"\",\"type\":\"external\",\"label\":\"$cc\"}" > metadata.json
   echo "{
-    \"address\": \"$peer-$org-chaincode-$cc:7052\",
+    \"address\": \"$cc-chaincode-$peer-$org:7052\",
     \"dial_timeout\": \"10s\",
     \"tls_required\": false,
     \"client_auth_required\": false,
@@ -85,8 +85,8 @@ function deployChaincode() {
   id=$(kubectl exec -n network -it "$cli" -- peer lifecycle chaincode queryinstalled | grep "Package ID: $cc" | sed -e "s/Package ID: //" -e "s/, Label: $cc//" -e "s/\r//" | tail -n1)
   image="$IMAGE_REGISTRY/cc.$cc"
   docker build -t "$image" "$CHAINCODES_DIR" -f "$CHAINCODES_DIR/docker/$cc.Dockerfile" && docker push "$image"
-  helm upgrade --install --set=image.repository="$image,peer=$peer-$org,chaincode=$cc,ccid=$id" "$peer-$org-cc-$cc" charts/chaincode/
-  pod=$(kubectl get pods -n network | awk '{print $1}' | grep "$cc.chaincodes.$peer.$org")
+  helm upgrade --install --set="image.repository=$image,peer=$peer,org=$org,chaincode=$cc,ccid=$id" "$cc-cc-$peer-$org" charts/chaincode/
+  pod=$(kubectl get pods -n network | awk '{print $1}' | grep "$cc-chaincode.$peer.$org")
   kubectl wait -n network --for=condition=ready "pod/$pod"
   kubectl exec -n network "$cli" -- sh -c "
       peer lifecycle chaincode approveformyorg -C=$channel --name=$cc --version=1.0 --init-required=false --sequence=1 -o=$ORDERER:443 --tls=true --cafile=\$ORDERER_CA --package-id=$id; \
@@ -98,12 +98,12 @@ function upgradeChaincode() {
   org=$2
   peer=$3
   channel=$4
-  cli=$(kubectl get pods -n network | awk '{print $1}' | grep "$peer.$org-cli")
+  cli=$(kubectl get pods -n network | awk '{print $1}' | grep "cli.$peer.$org")
   id=$(kubectl exec -n network -it "$cli" -- peer lifecycle chaincode queryinstalled | grep "Package ID: $cc" | sed -e "s/Package ID: //" -e "s/, Label: $cc//" -e "s/\r//" | tail -n1)
   image="$IMAGE_REGISTRY/cc.$cc"
   docker build -t "$image" "$CHAINCODES_DIR" -f "$CHAINCODES_DIR/docker/$cc.Dockerfile" && docker push "$image"
 
-  helm upgrade --install --set="image.repository=$image,peer=$peer-$org,chaincode=$cc,ccid=$id" "$peer-$org-cc-$cc" charts/chaincode/
+  helm upgrade --install --set="image.repository=$image,peer=$peer,org=$org,chaincode=$cc,ccid=$id" "$cc-cc-$peer-$org" charts/chaincode/
 }
 
 function cleanNetwork() {
@@ -114,7 +114,7 @@ function cleanNetwork() {
 }
 
 function fetchCryptoConfig() {
-    cli=$(kubectl get pods -n network | awk '{print $1}' | grep peer0.supplier-cli)
+    cli=$(kubectl get pods -n network | awk '{print $1}' | grep cli.peer0.supplier)
     kubectl cp -n network "$cli:crypto-config" crypto-config
 }
 
@@ -123,7 +123,7 @@ function networkStatus() {
 }
 
 function cli(){
-  cli=$(kubectl get pods -n network | awk '{print $1}' | grep peer0."$1"-cli)
+  cli=$(kubectl get pods -n network | awk '{print $1}' | grep cli.peer0."$1")
   kubectl exec -n network -it "$cli" -- bash
 }
 

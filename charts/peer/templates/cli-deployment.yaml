@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.config.peer }}.{{ .Release.Name }}-cli
+  name: cli.{{ .Values.config.peer }}.{{ .Release.Name }}
   labels:
-    app: {{ .Values.config.peer }}.{{ .Release.Name }}-cli
+    app: cli.{{ .Values.config.peer }}.{{ .Release.Name }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ .Values.config.peer }}.{{ .Release.Name }}-cli
+      app: cli.{{ .Values.config.peer }}.{{ .Release.Name }}
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
-        app: {{ .Values.config.peer }}.{{ .Release.Name }}-cli
+        app: cli.{{ .Values.config.peer }}.{{ .Release.Name }}
     spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
       containers:
