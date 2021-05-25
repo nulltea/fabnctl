@@ -61,11 +61,11 @@ $ export IMAGE_REGISTRY 'chainmetric'
 
 ## Roadmap
 
-- CI/CD integration (probably [GitLab CE][gitlab ci] or simply [GitHub Actions][github actions])
-- [CouchDB][couchdb] as the [World State][world state] database
-- [Kafka][kafka] as the [Ordering Service][orderer service]
-- Deploy [Hyperledger Explorer][hyperledger explorer] for managing and monitoring network from the web
-- [Go][golang] written command utility or Kubernetes operator
+- [ ] CI/CD integration (probably [GitLab CE][gitlab ci] or simply [GitHub Actions][github actions])
+- [X] [CouchDB][couchdb] as the [World State][world state] database [(#2)](https://github.com/timoth-y/chainmetric-network/pull/2)
+- [ ] ~~[Kafka][kafka]~~ [Raft][raft] for [Ordering Service][orderer service]
+- [ ] Deploy [Hyperledger Explorer][hyperledger explorer] for managing and monitoring network from the web
+- [ ] [Go][golang] written command utility or Kubernetes operator
 
 ## Wrap up
 
@@ -99,6 +99,7 @@ Licensed under the [Apache 2.0][license file].
 [world state]: https://hyperledger-fabric.readthedocs.io/en/release-2.2/glossary.html#world-state
 [couchdb]: https://hyperledger-fabric.readthedocs.io/en/release-2.2/couchdb_as_state_database.html
 [kafka]: https://hyperledger-fabric.readthedocs.io/en/release-2.2/kafka.html
+[raft]: https://hyperledger-fabric.readthedocs.io/en/release-2.2/orderer/ordering_service.html#raft
 [golang]: https://github.com/golang/go
 [gitlab ci]: https://about.gitlab.com/stages-devops-lifecycle/
 [github actions]: https://github.com/features/actions
