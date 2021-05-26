@@ -10,7 +10,7 @@ spec:
     matchLabels:
       app: "{{ .Values.chaincode }}-chaincode.{{ .Values.peer }}.{{ .Values.org }}"
   strategy:
-    type: Recreate
+    type: RollingUpdate
   template:
     metadata:
       annotations:
@@ -24,7 +24,7 @@ spec:
           image: "{{.Values.image.repository }}:{{.Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
-            - name: LOGGING
+            - name: CHAINCODE_LOGGING
               value: {{ .Values.logging }}
             - name: CHAINCODE_CCID
               value: {{ .Values.ccid }}
@@ -32,4 +32,15 @@ spec:
               value: "0.0.0.0:{{ .Values.service.port }}"
             - name: CHAINCODE_NAME
               value: "{{ .Values.chaincode }}"
+          volumeMounts:
+          {{- if .Values.storage.enabled }}
+            - name: storage
+              mountPath: {{ .Values.storage.path }}
+          {{- end }}
       restartPolicy: Always
+      volumes:
+      {{- if .Values.storage.enabled }}
+        - name: storage
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}.pvc
+      {{- end }}
