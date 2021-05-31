@@ -16,7 +16,7 @@ service:
 
 storage:
   enabled: true
-  path: ./storage
+  path: /app/storage
 
 org:
 peer:

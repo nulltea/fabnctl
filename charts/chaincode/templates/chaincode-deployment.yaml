@@ -10,7 +10,7 @@ spec:
     matchLabels:
       app: "{{ .Values.chaincode }}-chaincode.{{ .Values.peer }}.{{ .Values.org }}"
   strategy:
-    type: RollingUpdate
+    type: Recreate
   template:
     metadata:
       annotations:
@@ -31,7 +31,9 @@ spec:
             - name: CHAINCODE_ADDRESS
               value: "0.0.0.0:{{ .Values.service.port }}"
             - name: CHAINCODE_NAME
-              value: "{{ .Values.chaincode }}"
+              value: {{ .Values.chaincode }}
+            - name: CHAINCODE_PERSISTENCE_PATH
+              value: {{ .Values.storage.path }}
           volumeMounts:
           {{- if .Values.storage.enabled }}
             - name: storage
