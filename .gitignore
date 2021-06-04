@@ -9,3 +9,5 @@ crypto-config
 channel-artifacts
 
 bin
+
+.env
