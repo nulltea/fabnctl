@@ -47,7 +47,7 @@ volumes:
   - name: certs
     persistent:
       claim: traefik-certsclaim
-      storageClass: nfs
+      storageClass: local-path
       size: 1Gi
       accessModes:
         - ReadWriteOnce
@@ -67,7 +67,7 @@ pilot:
   token:
 
 acme:
-  enabled: true
+  enabled: false
   email: timothy@iotchain.network
   storage: /source/certs/acme.json
   dnsChallenge:

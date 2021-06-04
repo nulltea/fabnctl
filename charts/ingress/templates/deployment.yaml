@@ -66,11 +66,13 @@ spec:
               mountPath: {{ .mountPath }}
           {{- end }}
           env:
+          {{- if .Values.acme.enabled }}
             - name:  {{ .Values.acme.dnsChallenge.envName}}
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.acme.dnsChallenge.tokenSecret }}
                   key: token
+          {{- end }}
           livenessProbe:
             httpGet:
               path: /ping
