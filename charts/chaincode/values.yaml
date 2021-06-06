@@ -16,6 +16,7 @@ service:
 
 storage:
   enabled: true
+  storageClass: local-path
   path: /app/storage
 
 org:

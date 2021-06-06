@@ -37,3 +37,5 @@ config:
   hostname: orderer.iotchain.network
   profile: OrdererGenesis
   tls: true
+
+storageClass: local-path

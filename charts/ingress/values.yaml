@@ -19,7 +19,7 @@ ingress:
     - web
     - websecure
   routes:
-    - host: proxy.iotchain.network
+    - host: proxy.chainmetric.network
       paths:
         - /
       middlewares:
@@ -67,7 +67,7 @@ pilot:
   token:
 
 acme:
-  enabled: false
+  enabled: true
   email: timothy@iotchain.network
   storage: /source/certs/acme.json
   dnsChallenge:

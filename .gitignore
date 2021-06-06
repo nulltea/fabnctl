@@ -5,7 +5,7 @@
 *.tx
 *.block
 
-crypto-config
+crypto-config.*.network
 channel-artifacts
 
 bin

@@ -63,3 +63,5 @@ config:
 orderer:
   domain: iotchain.network
   hostname: orderer
+
+storageClass: local-path

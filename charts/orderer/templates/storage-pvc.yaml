@@ -3,7 +3,7 @@ apiVersion: v1
 metadata:
   name: {{ .Release.Name }}.storage.pvc
 spec:
-  storageClassName: nfs
+  storageClassName: {{ .Values.storageClass }}
   accessModes:
     - ReadWriteMany
   resources:
