@@ -1,4 +1,19 @@
-image:
-  repository: mirioeggmann/fabric-peer
-  tag: 2.3.1
+peer:
+  image:
+    repository:  busan15/fabric-peer
+    tag: latest
 
+cli:
+  image:
+    repository: busan15/fabric-tools
+    tag: latest
+
+ca:
+  image:
+    repository: busan15/fabric-ca
+    tag: latest
+
+couchdb:
+  image:
+    repository: mohitkukreja/fabric-couchdb
+    tag: aarch64-0.4.15

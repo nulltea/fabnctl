@@ -6,8 +6,9 @@
 *.block
 
 crypto-config.*.network
-channel-artifacts
+channel-artifacts.*.network
 
 bin
 
 .env
+.lego

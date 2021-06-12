@@ -5,13 +5,14 @@ metadata:
   labels:
   {{- include "chart.labels" . | nindent 4 }}
 data:
+  {{- $domain := .Values.domain }}
   configtx.yaml: |
     Organizations:
     {{- with .Values.config.orderer }}
       - &{{ .name }}
         Name: {{ .name }}
         ID: {{ .mspID }}
-        MSPDir: crypto-config/ordererOrganizations/{{ .domain }}/msp
+        MSPDir: crypto-config/ordererOrganizations/{{ $domain }}/msp
         Policies:
           Readers:
             Type: Signature
@@ -28,7 +29,7 @@ data:
       - &{{ .name }}
         Name: {{ .name }}
         ID: {{ .mspID }}
-        MSPDir: crypto-config/peerOrganizations/{{ .domain }}/msp
+        MSPDir: crypto-config/peerOrganizations/{{ .hostname }}.{{ $domain }}/msp
         {{- range .peers }}
         AnchorPeers:
           - Host: {{ .service }}
@@ -52,15 +53,15 @@ data:
     {{- with .Values.config.orderer }}
     Orderer: &OrdererDefaults
       Addresses:
-        - {{ .hostname }}.{{ .domain }}:443
+        - {{ .hostname }}.{{ $domain }}:443
       OrdererType: {{ .type }}
       {{- if eq .type "etcdraft" }}
       EtcdRaft:
         Consenters:
-          - Host: {{ .hostname }}.{{ .domain }}
+          - Host: {{ .hostname }}.{{ $domain }}
             Port: 443
-            ClientTLSCert: crypto-config/ordererOrganizations/{{ .domain }}/orderers/{{ .hostname }}.{{ .domain }}/tls/server.crt
-            ServerTLSCert: crypto-config/ordererOrganizations/{{ .domain }}/orderers/{{ .hostname }}.{{ .domain }}/tls/server.crt
+            ClientTLSCert: crypto-config/ordererOrganizations/{{ $domain }}/orderers/{{ .hostname }}.{{ $domain }}/tls/server.crt
+            ServerTLSCert: crypto-config/ordererOrganizations/{{ $domain }}/orderers/{{ .hostname }}.{{ $domain }}/tls/server.crt
       {{- end }}
       BatchTimeout: 2s
       BatchSize:

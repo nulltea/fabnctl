@@ -10,7 +10,7 @@ spec:
   entryPoints:
   {{- toYaml .Values.ingress.entrypoints | nindent 4 }}
   routes:
-    - match: Host(`{{ .Release.Name }}.{{ .Values.config.domain }}`)
+    - match: Host(`{{ .Values.config.hostname }}.{{ .Values.config.domain }}`)
       kind: Rule
       services:
         - name: {{ .Release.Name }}
@@ -22,7 +22,7 @@ spec:
       middlewares:
   {{- if .Values.config.tls }}
   tls:
-    secretName: {{ .Values.config.hostname }}-tls
+    secretName: {{ .Values.config.hostname }}.{{ .Values.config.domain }}-tls
   {{- end }}
 ---
   {{- if .Values.config.tls }}
@@ -33,9 +33,9 @@ metadata:
 spec:
   serverName: {{ .Release.Name }}
   rootCAsSecrets:
-    - {{ .Values.config.hostname }}-ca
+    - {{ .Values.config.hostname }}.{{ .Values.config.domain }}-ca
   certificatesSecrets:
-    - {{ .Values.config.hostname }}-tls
+    - {{ .Values.config.hostname }}.{{ .Values.config.domain }}-tls
   {{- end }}
 ---
 {{- end }}

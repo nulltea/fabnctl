@@ -32,9 +32,9 @@ artifacts:
   claim: artifacts.pvc
 
 config:
-  mspID: ordererMSP
-  domain: iotchain.network
-  hostname: orderer.iotchain.network
+  mspID: orderer
+  domain: chainmetric.network
+  hostname: orderer
   profile: OrdererGenesis
   tls: true
 

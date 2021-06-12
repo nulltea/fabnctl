@@ -1,17 +1,4 @@
 project: iot-blockchain
-component: proxy
-
-replicaCount: 1
-image:
-  repository: traefik
-  pullPolicy: IfNotPresent
-  tag: v2.4
-
-service:
-  type: LoadBalancer
-  port: 80
-  securePort: 443
-  adminPort: 8080
 
 ingress:
   enabled: true
@@ -26,64 +13,9 @@ ingress:
         # - name: traefik-auth
       services:
         - name: api@internal
-          namespace: default
           kind: TraefikService
           port: 8080
           scheme: http
   tls:
-    enabled: false
+    enabled: true
     certResolver: le
-    domains:
-
-api:
-  insecure: true
-  dashboard: true
-
-log:
-  level: DEBUG
-  accesslog: true
-
-volumes:
-  - name: certs
-    persistent:
-      claim: traefik-certsclaim
-      storageClass: local-path
-      size: 1Gi
-      accessModes:
-        - ReadWriteOnce
-    mountPath: /source/certs
-
-providers:
-  file:
-    enabled: false
-    directory: /source/dynamic-config
-    watch: true
-  kubernetescrd:
-    enabled: true
-  kubernetesingress:
-    enabled: true
-
-pilot:
-  token:
-
-acme:
-  enabled: true
-  email: timothy@iotchain.network
-  storage: /source/certs/acme.json
-  dnsChallenge:
-    enabled: true
-    provider: digitalocean
-    envName: DO_AUTH_TOKEN
-    tokenSecret: do-auth-token
-
-secrets:
-  mounts:
-
-serverTransport:
-  insecureSkipVerify: false
-
-resources: {}
-
-serviceAccount:
-  create: true
-  name: ""
