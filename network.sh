@@ -117,10 +117,15 @@ function deployChaincode() {
   kubectl exec -n network -it "$cli" -- peer lifecycle chaincode install "$package"
   id=$(kubectl exec -n network -it "$cli" -- peer lifecycle chaincode queryinstalled | grep "Package ID: $cc" | sed -e "s/Package ID: //" -e "s/, Label: $cc//" -e "s/\r//" | tail -n1)
   image="$IMAGE_REGISTRY/cc.$cc"
-  docker build -t "$image" "$CHAINCODES_DIR" -f "$CHAINCODES_DIR/docker/$cc.Dockerfile" && docker push "$image"
+  if [ $TARGET_ARCH = "ARM64" ]; then
+    docker buildx build --platform linux/arm64 -t "$image" -f "$CHAINCODES_DIR/docker/$cc.Dockerfile" --push \
+     $CHAINCODES_DIR
+  else
+    docker build -t "$image" -f "$CHAINCODES_DIR/docker/$cc.Dockerfile" --push $CHAINCODES_DIR
+  fi
   helm upgrade --install --set="image.repository=$image,peer=$peer,org=$org,chaincode=$cc,ccid=$id" "$cc-cc-$peer-$org" charts/chaincode/
   pod=$(kubectl get pods -n network | awk '{print $1}' | grep "$cc-chaincode.$peer.$org")
-  kubectl wait -n network --for=condition=ready "pod/$pod"
+  kubectl wait -n contracts --for=condition=ready "pod/$pod"
   kubectl exec -n network "$cli" -- sh -c "
       peer lifecycle chaincode approveformyorg -C=$channel --name=$cc --version=1.0 --init-required=false --sequence=1 -o=$ORDERER.$DOMAIN:443 --tls=true --cafile=\$ORDERER_CA --package-id=$id; \
       peer lifecycle chaincode commit -C=$channel --name=$cc --version=1.0 --sequence=1 --init-required=false --tls=true -o=$ORDERER.$DOMAIN:443 --tls --cafile=\$ORDERER_CA --peerAddresses $peer.$org.$DOMAIN:443 --tlsRootCertFiles=\$CORE_PEER_TLS_ROOTCERT_FILE"
@@ -134,8 +139,12 @@ function upgradeChaincode() {
   cli=$(kubectl get pods -n network | awk '{print $1}' | grep "cli.$peer.$org")
   id=$(kubectl exec -n network -it "$cli" -- peer lifecycle chaincode queryinstalled | grep "Package ID: $cc" | sed -e "s/Package ID: //" -e "s/, Label: $cc//" -e "s/\r//" | tail -n1)
   image="$IMAGE_REGISTRY/cc.$cc"
-  docker build -t "$image" "$CHAINCODES_DIR" -f "$CHAINCODES_DIR/docker/$cc.Dockerfile" && docker push "$image"
-
+  if [ $TARGET_ARCH = "ARM64" ]; then
+    docker buildx build --platform linux/arm64 -t "$image" -f "$CHAINCODES_DIR/docker/$cc.Dockerfile" --push \
+     $CHAINCODES_DIR
+  else
+    docker build -t "$image" -f "$CHAINCODES_DIR/docker/$cc.Dockerfile" --push $CHAINCODES_DIR
+  fi
   helm upgrade --install --set="image.repository=$image,peer=$peer,org=$org,chaincode=$cc,ccid=$id" "$cc-cc-$peer-$org" charts/chaincode/
 }
 

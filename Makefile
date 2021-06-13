@@ -16,7 +16,7 @@ traefik:
 		traefik-dashboard charts/ingress
 
 hyperledger-init:
-	#kubectl create namespace network
+	kubectl create namespace network || echo "Namespace 'network' already exists"
 	kubectl config set-context --current --namespace=network
 	TARGET_ARCH=ARM64 ./network.sh init
 
@@ -29,10 +29,10 @@ hyperledger-deploy:
 	./network.sh deploy channel -C supply-channel -p peer0 -o blueberry-go
 	./network.sh deploy channel -C supply-channel -p peer0 -o moon-lan
 
-contracts-deploy:
-	kubectl create namespace contracts
+chaincode-deploy:
+	kubectl create namespace contracts || echo "Namespace 'contracts' already exists"
 	kubectl config set-context --current --namespace=contracts
-	./network.sh deploy cc -o chipa-inu -p peer0 -C supply-channel --cc_name assets
-	./network.sh deploy cc -o chipa-inu -p peer0 -C supply-channel --cc_name devices
-	./network.sh deploy cc -o chipa-inu -p peer0 -C supply-channel --cc_name requirements
-	./network.sh deploy cc -o chipa-inu -p peer0 -C supply-channel --cc_name readings
+	TARGET_ARCH=ARM64 ./network.sh deploy cc -o chipa-inu -p peer0 -C supply-channel --cc_name assets
+	TARGET_ARCH=ARM64 ./network.sh deploy cc -o chipa-inu -p peer0 -C supply-channel --cc_name devices
+	TARGET_ARCH=ARM64 ./network.sh deploy cc -o chipa-inu -p peer0 -C supply-channel --cc_name requirements
+	TARGET_ARCH=ARM64 ./network.sh deploy cc -o chipa-inu -p peer0 -C supply-channel --cc_name readings
