@@ -81,8 +81,10 @@ function deployChannels() {
   peer=$(kubectl get pods -n network | awk '{print $1}' | grep "^$peer.$org")
   kubectl wait -n network --for=condition=ready "pod/$peer"
   kubectl exec -n network -it "$cli" -- sh -c \ "
-peer channel create -c $channel -f ./channel-artifacts/$channel.tx -o $ORDERER:7050 --tls=true --cafile=\$ORDERER_CA && \
-peer channel join -b $channel.block"
+peer channel create -c $channel -f ./channel-artifacts/$channel.tx -o $ORDERER.$DOMAIN:443 \
+  --tls=true --cafile=\$ORDERER_CA || echo Channel '$channel' already created && \
+  peer channel join -b $channel.block
+"
 }
 
 function enrollCA() {

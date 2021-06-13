@@ -9,8 +9,11 @@ storage:
 	kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
 
 traefik:
-	helm upgrade --install traefik traefik/traefik -n=kube-system -f=charts/values-traefik.yaml
-	helm upgrade --install -n=kube-system traefik-dashboard charts/ingress
+	helm upgrade --install traefik -n=kube-system -f=charts/values-traefik.yaml \
+		--set=ports.websecure.tls.domains.main=$DOMAIN,ports.websecure.tls.domains.sans=*.$DOMAIN \
+		traefik/traefik
+	helm upgrade --install -n=kube-system --set=ingress.routes.host=proxy.$DOMAIN \
+		traefik-dashboard charts/ingress
 
 hyperledger-init:
 	#kubectl create namespace network
@@ -20,4 +23,16 @@ hyperledger-init:
 hyperledger-deploy:
 	TARGET_ARCH=ARM64 ./network.sh deploy orderer
 	TARGET_ARCH=ARM64 ./network.sh deploy peer -o chipa-inu
+	TARGET_ARCH=ARM64 ./network.sh deploy peer -o blueberry-go
+	TARGET_ARCH=ARM64 ./network.sh deploy peer -o moon-lan
 	./network.sh deploy channel -C supply-channel -p peer0 -o chipa-inu
+	./network.sh deploy channel -C supply-channel -p peer0 -o blueberry-go
+	./network.sh deploy channel -C supply-channel -p peer0 -o moon-lan
+
+contracts-deploy:
+	kubectl create namespace contracts
+	kubectl config set-context --current --namespace=contracts
+	./network.sh deploy cc -o chipa-inu -p peer0 -C supply-channel --cc_name assets
+	./network.sh deploy cc -o chipa-inu -p peer0 -C supply-channel --cc_name devices
+	./network.sh deploy cc -o chipa-inu -p peer0 -C supply-channel --cc_name requirements
+	./network.sh deploy cc -o chipa-inu -p peer0 -C supply-channel --cc_name readings

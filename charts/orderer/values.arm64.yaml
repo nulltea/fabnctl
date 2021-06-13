@@ -1,4 +1,4 @@
 image:
-  repository: busan15/fabric-orderer
-  tag: latest
+  repository: xuchenhao001/fabric-orderer
+  tag: 2.3.0
 
