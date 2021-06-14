@@ -42,7 +42,7 @@ spec:
           volumeMounts:
             - name: artifacts
               mountPath: /etc/hyperledger/fabric-ca-server-config
-              subPath: crypto-config/peerOrganizations/{{ .Values.config.domain }}
+              subPath: crypto-config/peerOrganizations/{{.Values.config.hostname}}}.{{ .Values.config.domain }}
           workingDir: /opt/gopath/src/github.com/hyperledger/fabric
       restartPolicy: Always
       volumes:

@@ -10,7 +10,7 @@ spec:
   entryPoints:
   {{- toYaml .Values.ingress.entrypoints | nindent 4 }}
   routes:
-    - match: Host(`{{ .Values.config.peer }}.{{ .Values.config.domain }}`)
+    - match: Host(`{{ .Values.config.peer }}.{{ .Values.config.hostname }}.{{ .Values.config.domain }}`)
       kind: Rule
       services:
         - name:  {{ .Values.config.peer}}-{{ .Release.Name }}
@@ -21,7 +21,7 @@ spec:
           {{- end }}
       middlewares:
     {{- if .Values.ca.enabled }}
-    - match: Host(`ca.{{ .Values.config.domain }}`)
+    - match: Host(`ca.{{ .Values.config.hostname }}.{{ .Values.config.domain }}`)
       kind: Rule
       services:
         - name: ca-{{ .Release.Name }}
@@ -30,7 +30,7 @@ spec:
       middlewares:
     {{- end -}}
     {{- if .Values.couchdb.enabled }}
-    - match: Host(`couchdb.{{ .Values.config.peer }}.{{ .Values.config.domain }}`)
+    - match: Host(`couchdb.{{ .Values.config.peer }}.{{ .Values.config.hostname }}.{{ .Values.config.domain }}`)
       kind: Rule
       services:
         - name: couchdb-{{ .Values.config.peer}}-{{ .Release.Name }}
@@ -40,7 +40,7 @@ spec:
     {{- end -}}
   {{- if .Values.config.tls }}
   tls:
-    secretName: {{ .Values.config.peer }}.{{ .Values.config.domain }}-tls
+    secretName: {{ .Values.config.peer }}.{{ .Values.config.hostname }}.{{ .Values.config.domain }}-tls
   {{- end }}
 ---
 {{- if .Values.config.tls }}
@@ -51,9 +51,9 @@ metadata:
 spec:
   serverName:  {{ .Values.config.peer}}-{{ .Release.Name }}
   rootCAsSecrets:
-    - {{ .Values.config.peer }}.{{ .Values.config.domain }}-ca
+    - {{ .Values.config.peer }}.{{ .Values.config.hostname }}.{{ .Values.config.domain }}-ca
   certificatesSecrets:
-    - {{ .Values.config.peer }}.{{ .Values.config.domain }}-tls
+    - {{ .Values.config.peer }}.{{ .Values.config.hostname }}.{{ .Values.config.domain }}-tls
 ---
 {{- end }}
 {{- end }}

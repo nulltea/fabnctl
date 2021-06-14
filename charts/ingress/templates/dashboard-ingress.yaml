@@ -1,11 +1,11 @@
-{{- if .Values.ingress.enabled -}}
----
 apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
   name: {{ .Release.Name }}{{- if .Values.ingress.tls.enabled }}.secure{{- end }}
   labels:
-    {{- include "chart.labels" . | nindent 4 }}
+    project: {{ .Values.project }}
+    component: traefik-dashboard
+    release: {{ .Release.Name }}
 spec:
   entryPoints:
     {{- toYaml .Values.ingress.entrypoints | nindent 4 }}
@@ -36,7 +36,9 @@ kind: IngressRoute
 metadata:
   name: {{ .Release.Name }}
   labels:
-  {{- include "chart.labels" . | nindent 4 }}
+    project: {{ .Values.project }}
+    component: traefik-dashboard
+    release: {{ .Release.Name }}
 spec:
   entryPoints:
     - web
@@ -52,11 +54,9 @@ spec:
           scheme: {{ .scheme }}
       {{- end }}
       middlewares:
-        - name: https-redirect
         {{- with .middlewares }}
           {{- toYaml . | nindent 8 }}
         {{- end }}
     {{- end }}
 ---
   {{- end }}
-{{- end }}

@@ -16,6 +16,12 @@ peer:
     port: 7051
     chaincodePort: 7052
 
+cli:
+  image:
+    repository: hyperledger/fabric-tools
+    pullPolicy: IfNotPresent
+    tag: amd64-2.2.0
+
 ca:
   enabled: true
   image:
@@ -30,7 +36,7 @@ couchdb:
   enabled: true
   image:
     repository: hyperledger/fabric-couchdb
-    pullPolicy: = IfNotPresent
+    pullPolicy: IfNotPresent
     tag: amd64-0.4.22
   service:
     type: ClusterIP
@@ -55,11 +61,14 @@ artifacts:
   claim: artifacts.pvc
 
 config:
-  mspID: supplierMSP
-  domain: supplier.iotchain.network
+  mspID: supplier
+  domain: chainmetric.network
+  hostname: supplier
   peer: peer0
   tls: true
 
 orderer:
-  domain: iotchain.network
+  domain: chainmetric.network
   hostname: orderer
+
+storageClass: local-path

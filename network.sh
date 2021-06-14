@@ -3,43 +3,71 @@
 set -e
 
 COMMAND="$1"
-DOMAIN=iotchain.network
-ORDERER=orderer.iotchain.network
+ORDERER=orderer
 CHAINCODES_DIR=../contracts
 IMAGE_REGISTRY=iotchainnetwork
 
 function generateArtifacts(){
-  helm upgrade --install artifacts charts/artifacts
+  if [ $TARGET_ARCH = "ARM64" ]; then
+    helm upgrade --install -n=network -f=charts/artifacts/values.arm64.yaml \
+     --set=domain=$DOMAIN artifacts charts/artifacts
+  else
+    helm upgrade --install -n=network artifacts charts/artifacts --set=domain=$DOMAIN
+  fi
   kubectl wait -n network --for=condition=complete job/artifacts.generate
   kubectl apply -n network -f charts/artifacts/artifacts-wait-job.yaml
   pod=$(kubectl get pods -n network | awk '{print $1}' | grep artifacts.wait)
   kubectl wait -n network --for=condition=ready "pod/$pod"
-  kubectl cp -n network "$pod:crypto-config" crypto-config
+  rm -rf crypto-config.$DOMAIN
+  kubectl cp -n network "$pod:crypto-config" crypto-config.$DOMAIN
   echo "crypto-config copied successfully!"
+  rm -rf channel-artifacts.$DOMAIN
+  kubectl cp -n network "$pod:channel-artifacts" channel-artifacts.$DOMAIN
+  echo "channel-artifacts copied successfully!"
   kubectl delete -n network job artifacts.wait
 }
 
 function deployOrderer(){
-  kubectl create -n network secret tls orderer.$DOMAIN-tls --key=crypto-config/ordererOrganizations/$DOMAIN/orderers/$ORDERER/tls/server.key \
-    --cert=crypto-config/ordererOrganizations/$DOMAIN/orderers/$ORDERER/tls/server.crt \
+  kubectl create -n network secret tls orderer.$DOMAIN-tls \
+    --key=crypto-config.$DOMAIN/ordererOrganizations/$DOMAIN/orderers/$ORDERER.$DOMAIN/tls/server.key \
+    --cert=crypto-config.$DOMAIN/ordererOrganizations/$DOMAIN/orderers/$ORDERER.$DOMAIN/tls/server.crt \
     --dry-run=client -o yaml | kubectl apply -f -
-  kubectl create secret generic orderer.$DOMAIN-ca --from-file=crypto-config/ordererOrganizations/$DOMAIN/orderers/$ORDERER/tls/ca.crt \
+  kubectl create secret generic orderer.$DOMAIN-ca \
+    --from-file=crypto-config.$DOMAIN/ordererOrganizations/$DOMAIN/orderers/$ORDERER.$DOMAIN/tls/ca.crt \
     --dry-run=client -o yaml | kubectl apply -f -
   echo "tls secrets created successfully!"
-  helm upgrade --install -n network orderer charts/orderer
+  if [ $TARGET_ARCH = "ARM64" ]; then
+   helm upgrade --install -n=network -f=charts/orderer/values.arm64.yaml \
+    --set=config.domain=$DOMAIN \
+    orderer charts/orderer
+  else
+    helm upgrade --install -n=network --set=config.domain=$DOMAIN \
+    orderer charts/orderer
+  fi
   echo "orderer deployed successfully!"
 }
 
 function deployPeer() {
   org=$1
-  kubectl create -n network secret tls "peer0.$org.$DOMAIN-tls" --key="crypto-config/peerOrganizations/$org.$DOMAIN/peers/peer0.$org.$DOMAIN/tls/server.key" \
-    --cert="crypto-config/peerOrganizations/$org.$DOMAIN/peers/peer0.$org.$DOMAIN/tls/server.crt" \
+  kubectl create -n network secret tls "peer0.$org.org.$DOMAIN-tls" \
+    --key="crypto-config.$DOMAIN/peerOrganizations/$org.org.$DOMAIN/peers/peer0.$org.org.$DOMAIN/tls/server.key" \
+    --cert="crypto-config.$DOMAIN/peerOrganizations/$org.org.$DOMAIN/peers/peer0.$org.org.$DOMAIN/tls/server.crt" \
     --dry-run=client -o yaml | kubectl apply -f -
-  kubectl create secret generic "peer0.$org.$DOMAIN-ca" --from-file="crypto-config/peerOrganizations/$org.$DOMAIN/peers/peer0.$org.$DOMAIN/tls/ca.crt" \
+  kubectl create secret generic "peer0.$org.org.$DOMAIN-ca" \
+    --from-file="crypto-config.$DOMAIN/peerOrganizations/$org.org.$DOMAIN/peers/peer0.$org.org.$DOMAIN/tls/ca.crt" \
     --dry-run=client -o yaml | kubectl apply -f -
   echo "tls secrets created successfully!"
   echo
-  helm upgrade --install -n network --set=config.mspID="$org"MSP,config.domain="$org".iotchain.network "$org" charts/peer
+  if [ $TARGET_ARCH = "ARM64" ]; then
+     helm upgrade --install -n=network -f=charts/peer/values.arm64.yaml \
+      --set=config.mspID="$org",config.domain=$DOMAIN,config.hostname="$org.org",orderer.domain=$DOMAIN \
+      "$org" charts/peer
+  else
+    helm upgrade --install -n=network \
+      --set=config.mspID="$org",config.domain=$DOMAIN,config.hostname="$org.org",orderer.domain=$DOMAIN \
+      "$org" charts/peer
+  fi
+
   echo
   echo "$org peer0 deployed successfully!"
 }
@@ -49,9 +77,14 @@ function deployChannels() {
   org=$2
   peer=$3
   cli=$(kubectl get pods -n network | awk '{print $1}' | grep "cli.$peer.$org")
+  kubectl wait -n network --for=condition=ready "pod/$cli"
+  peer=$(kubectl get pods -n network | awk '{print $1}' | grep "^$peer.$org")
+  kubectl wait -n network --for=condition=ready "pod/$peer"
   kubectl exec -n network -it "$cli" -- sh -c \ "
-      peer channel create -c $channel -f ./channel-artifacts/$channel.tx -o $ORDERER:443 --tls=true --cafile=\$ORDERER_CA && \
-      peer channel join -b $channel.block"
+peer channel create -c $channel -f ./channel-artifacts/$channel.tx -o $ORDERER.$DOMAIN:443 \
+  --tls=true --cafile=\$ORDERER_CA || echo Channel '$channel' already created && \
+  peer channel join -b $channel.block
+"
 }
 
 function enrollCA() {
@@ -84,13 +117,18 @@ function deployChaincode() {
   kubectl exec -n network -it "$cli" -- peer lifecycle chaincode install "$package"
   id=$(kubectl exec -n network -it "$cli" -- peer lifecycle chaincode queryinstalled | grep "Package ID: $cc" | sed -e "s/Package ID: //" -e "s/, Label: $cc//" -e "s/\r//" | tail -n1)
   image="$IMAGE_REGISTRY/cc.$cc"
-  docker build -t "$image" "$CHAINCODES_DIR" -f "$CHAINCODES_DIR/docker/$cc.Dockerfile" && docker push "$image"
+  if [ $TARGET_ARCH = "ARM64" ]; then
+    docker buildx build --platform linux/arm64 -t "$image" -f "$CHAINCODES_DIR/docker/$cc.Dockerfile" --push \
+     $CHAINCODES_DIR
+  else
+    docker build -t "$image" -f "$CHAINCODES_DIR/docker/$cc.Dockerfile" --push $CHAINCODES_DIR
+  fi
   helm upgrade --install --set="image.repository=$image,peer=$peer,org=$org,chaincode=$cc,ccid=$id" "$cc-cc-$peer-$org" charts/chaincode/
   pod=$(kubectl get pods -n network | awk '{print $1}' | grep "$cc-chaincode.$peer.$org")
-  kubectl wait -n network --for=condition=ready "pod/$pod"
+  kubectl wait -n contracts --for=condition=ready "pod/$pod"
   kubectl exec -n network "$cli" -- sh -c "
-      peer lifecycle chaincode approveformyorg -C=$channel --name=$cc --version=1.0 --init-required=false --sequence=1 -o=$ORDERER:443 --tls=true --cafile=\$ORDERER_CA --package-id=$id; \
-      peer lifecycle chaincode commit -C=$channel --name=$cc --version=1.0 --sequence=1 --init-required=false --tls=true -o=$ORDERER:443 --tls --cafile=\$ORDERER_CA --peerAddresses $peer.$org.$DOMAIN:443 --tlsRootCertFiles=\$CORE_PEER_TLS_ROOTCERT_FILE"
+      peer lifecycle chaincode approveformyorg -C=$channel --name=$cc --version=1.0 --init-required=false --sequence=1 -o=$ORDERER.$DOMAIN:443 --tls=true --cafile=\$ORDERER_CA --package-id=$id; \
+      peer lifecycle chaincode commit -C=$channel --name=$cc --version=1.0 --sequence=1 --init-required=false --tls=true -o=$ORDERER.$DOMAIN:443 --tls --cafile=\$ORDERER_CA --peerAddresses $peer.$org.$DOMAIN:443 --tlsRootCertFiles=\$CORE_PEER_TLS_ROOTCERT_FILE"
 }
 
 function upgradeChaincode() {
@@ -101,13 +139,17 @@ function upgradeChaincode() {
   cli=$(kubectl get pods -n network | awk '{print $1}' | grep "cli.$peer.$org")
   id=$(kubectl exec -n network -it "$cli" -- peer lifecycle chaincode queryinstalled | grep "Package ID: $cc" | sed -e "s/Package ID: //" -e "s/, Label: $cc//" -e "s/\r//" | tail -n1)
   image="$IMAGE_REGISTRY/cc.$cc"
-  docker build -t "$image" "$CHAINCODES_DIR" -f "$CHAINCODES_DIR/docker/$cc.Dockerfile" && docker push "$image"
-
+  if [ $TARGET_ARCH = "ARM64" ]; then
+    docker buildx build --platform linux/arm64 -t "$image" -f "$CHAINCODES_DIR/docker/$cc.Dockerfile" --push \
+     $CHAINCODES_DIR
+  else
+    docker build -t "$image" -f "$CHAINCODES_DIR/docker/$cc.Dockerfile" --push $CHAINCODES_DIR
+  fi
   helm upgrade --install --set="image.repository=$image,peer=$peer,org=$org,chaincode=$cc,ccid=$id" "$cc-cc-$peer-$org" charts/chaincode/
 }
 
 function cleanNetwork() {
-  # rm -rf ./crypto-config/* ./channel-artifacts/*
+  # rm -rf ./crypto-config.$DOMAIN/* ./channel-artifacts/*
   # helm uninstall -n network artifacts
   helm uninstall -n network orderer supplier deliverer peer0-supplier-cc-assets
   kubectl get pods -n network -w
@@ -126,6 +168,7 @@ function cli(){
   cli=$(kubectl get pods -n network | awk '{print $1}' | grep cli.peer0."$1")
   kubectl exec -n network -it "$cli" -- bash
 }
+
 
 function help() {
   echo "Usage: network.sh init | status | clean | cli "

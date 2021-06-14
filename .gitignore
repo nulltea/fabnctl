@@ -5,7 +5,10 @@
 *.tx
 *.block
 
-crypto-config
-channel-artifacts
+crypto-config.*.network
+channel-artifacts.*.network
 
 bin
+
+.env
+.lego
