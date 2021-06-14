@@ -61,11 +61,12 @@ $ export IMAGE_REGISTRY 'chainmetric'
 
 ## Roadmap
 
-- [ ] CI/CD integration (probably [GitLab CE][gitlab ci] or simply [GitHub Actions][github actions])
 - [X] [CouchDB][couchdb] as the [World State][world state] database [(#2)](https://github.com/timoth-y/chainmetric-network/pull/2)
-- [ ] ~~[Kafka][kafka]~~ [Raft][raft] for [Ordering Service][orderer service]
-- [ ] Deploy [Hyperledger Explorer][hyperledger explorer] for managing and monitoring network from the web
+- [x] ~~[Kafka][kafka]~~ [Raft][raft] for [Ordering Service][orderer service]
+- [x] Raspberry Pi (ARM64) deployement strategy [(#4)](https://github.com/timoth-y/chainmetric-network/pull/4)
 - [ ] [Go][golang] written command utility or Kubernetes operator
+- [ ] CI/CD integration (probably [GitLab CE][gitlab ci] or simply [GitHub Actions][github actions])
+- [ ] Deploy [Hyperledger Explorer][hyperledger explorer] for managing and monitoring network from the web
 
 ## Wrap up
 
