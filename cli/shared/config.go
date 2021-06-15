@@ -13,6 +13,8 @@ func initConfig() {
 
 	viper.SetDefault("k8s.wait_timeout", "60s")
 
+	viper.SetDefault("fabric.orderer_hostname_name", "orderer")
+
 	viper.SetConfigType("yaml")
 	viper.SetConfigName(".cli-config")
 	viper.AddConfigPath(".")

@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/timoth-y/chainmetric-network/cli/shared"
+	"github.com/timoth-y/chainmetric-network/cli/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,32 +39,24 @@ func gen(cmd *cobra.Command, _ []string) error {
 		values = make(map[string]interface{})
 		chartSpec = &helmclient.ChartSpec{
 			ReleaseName: "artifacts",
-			ChartName: fmt.Sprintf("%s/artifacts", *chartsPath),
-			Namespace: "network",
+			ChartName: fmt.Sprintf("%s/artifacts", chartsPath),
+			Namespace: namespace,
 			Wait: true,
 		}
 		waitPodName string
-		cryptoConfigDir = fmt.Sprintf(".crypto-config.%s", *domain)
-		channelArtifactsDir = fmt.Sprintf(".channel-artifacts.%s", *domain)
+		cryptoConfigDir = fmt.Sprintf(".crypto-config.%s", domain)
+		channelArtifactsDir = fmt.Sprintf(".channel-artifacts.%s", domain)
 	)
 
-	if *targetArch == "arm64" {
-		armValYaml, err := ioutil.ReadFile(fmt.Sprintf("%s/artifacts/values.arm64.yaml", *chartsPath))
+	if targetArch == "arm64" {
+		armValues, err := util.ValuesFromFile(fmt.Sprintf("%s/artifacts/values.arm64.yaml", chartsPath))
 		if err != nil {
-			return errors.Wrapf(err,
-				"missing ARM64 configuration values on path %s/artifacts/values.arm64.yaml", *chartsPath,
-			)
+			return err
 		}
-
-		if err = yaml.Unmarshal(armValYaml, &values); err != nil {
-			return errors.Wrapf(err,
-				"failed to decode ARM64 configuration YAMl file on path %s/artifacts/values.arm64.yaml",
-				*chartsPath,
-			)
-		}
+		values = armValues
 	}
 
-	values["domain"] = *domain
+	values["domain"] = domain
 
 	valuesYaml, err := yaml.Marshal(values)
 	if err != nil {
@@ -72,11 +64,10 @@ func gen(cmd *cobra.Command, _ []string) error {
 	}
 	chartSpec.ValuesYaml = string(valuesYaml)
 
-	shared.Helm.InstallOrUpgradeChart(context.Background(), chartSpec)
+	shared.Helm.InstallOrUpgradeChart(cmd.Context(), chartSpec)
 
-	cmd.Println(viper.GetDuration("k8s.wait_timeout"))
-	ctx, cancel := context.WithTimeout(context.Background(), viper.GetDuration("k8s.wait_timeout"))
-	watcher, err := shared.K8s.BatchV1().Jobs("network").Watch(ctx, metav1.ListOptions{
+	ctx, cancel := context.WithTimeout(cmd.Context(), viper.GetDuration("k8s.wait_timeout"))
+	watcher, err := shared.K8s.BatchV1().Jobs(namespace).Watch(ctx, metav1.ListOptions{
 		LabelSelector: "fabnetd/cid=artifacts.generate",
 	})
 	if err != nil {
@@ -105,14 +96,14 @@ LOOP: for {
 	}
 
 	if err = exec.Command("kubectl", "apply",
-		"-n", "network",
-		"-f", fmt.Sprintf("%s/artifacts/artifacts-wait-job.yaml", *chartsPath),
+		"-n", namespace,
+		"-f", fmt.Sprintf("%s/artifacts/artifacts-wait-job.yaml", chartsPath),
 	).Run(); err != nil {
 		return errors.Wrap(err, "failed to deploy 'artifacts.wait' pod")
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), viper.GetDuration("k8s.wait_timeout"))
-	watcher, err = shared.K8s.CoreV1().Pods("network").Watch(ctx, metav1.ListOptions{
+	ctx, cancel = context.WithTimeout(cmd.Context(), viper.GetDuration("k8s.wait_timeout"))
+	watcher, err = shared.K8s.CoreV1().Pods(namespace).Watch(ctx, metav1.ListOptions{
 		LabelSelector: "job-name=artifacts.wait",
 	})
 	if err != nil {
@@ -152,7 +143,7 @@ LOOP2: for {
 		return errors.Wrap(err, "failed to copy crypto-config")
 	}
 
-	cmd.Println("crypto-config copied successfully!")
+	cmd.Println("crypto-config has been downloaded to", cryptoConfigDir)
 
 	if _, err = os.Stat(channelArtifactsDir); !os.IsNotExist(err) {
 		exec.Command("rm", "-rf", channelArtifactsDir)
@@ -165,22 +156,23 @@ LOOP2: for {
 		return errors.Wrap(err, "failed to copy channel-artifacts")
 	}
 
-	cmd.Println("channel-artifacts copied successfully!")
+	cmd.Println("channel-artifacts has been downloaded to", channelArtifactsDir)
 
-	if err = shared.K8s.BatchV1().Jobs("network").DeleteCollection(context.Background(),
+	if err = shared.K8s.BatchV1().Jobs(namespace).DeleteCollection(cmd.Context(),
 		metav1.DeleteOptions{}, metav1.ListOptions{
 		LabelSelector: "fabnetd/cid=artifacts.wait",
 	}); err != nil {
 		return errors.Wrap(err, "failed to delete artifacts.wait job")
 	}
 
-	if err = shared.K8s.CoreV1().Pods("network").DeleteCollection(context.Background(),
+	if err = shared.K8s.CoreV1().Pods(namespace).DeleteCollection(cmd.Context(),
 		metav1.DeleteOptions{}, metav1.ListOptions{
 			LabelSelector: "job-name=artifacts.wait",
 		}); err != nil {
 		return errors.Wrap(err, "failed to delete artifacts.wait pod")
 	}
 
-	cmd.Println("Done!")
+	cmd.Println("Network artifacts generation done done!")
+
 	return nil
 }

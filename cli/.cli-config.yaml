@@ -1,0 +1,5 @@
+fabric:
+  orderer_hostname_name: orderer
+
+k8s:
+  wait_timeout: 60s
