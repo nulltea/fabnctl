@@ -12,3 +12,5 @@ bin
 
 .env
 .lego
+
+fabnetd
