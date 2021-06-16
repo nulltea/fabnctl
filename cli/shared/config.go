@@ -13,6 +13,8 @@ func initConfig() {
 
 	viper.SetDefault("k8s.wait_timeout", "60s")
 
+	viper.SetDefault("helm.install_timeout", "120s")
+
 	viper.SetDefault("fabric.orderer_hostname_name", "orderer")
 
 	viper.SetConfigType("yaml")

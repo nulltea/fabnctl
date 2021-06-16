@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 
+	"github.com/gernest/wow/spin"
 	"github.com/mittwald/go-helm-client"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/timoth-y/chainmetric-core/utils"
 	"github.com/timoth-y/chainmetric-network/cli/shared"
 	"github.com/timoth-y/chainmetric-network/cli/util"
-	batchv1 "k8s.io/api/batch/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/kubectl/pkg/util/podutils"
 	"sigs.k8s.io/yaml"
 )
 
@@ -39,17 +39,19 @@ func gen(cmd *cobra.Command, _ []string) error {
 		values = make(map[string]interface{})
 		chartSpec = &helmclient.ChartSpec{
 			ReleaseName: "artifacts",
-			ChartName: fmt.Sprintf("%s/artifacts", chartsPath),
+			ChartName: path.Join(chartsPath, "artifacts"),
 			Namespace: namespace,
 			Wait: true,
+			CleanupOnFail: true,
 		}
-		waitPodName string
+		waitPodName = "artifacts.wait"
 		cryptoConfigDir = fmt.Sprintf(".crypto-config.%s", domain)
 		channelArtifactsDir = fmt.Sprintf(".channel-artifacts.%s", domain)
 	)
 
+	// Preparing additional values for chart installation:
 	if targetArch == "arm64" {
-		armValues, err := util.ValuesFromFile(fmt.Sprintf("%s/artifacts/values.arm64.yaml", chartsPath))
+		armValues, err := util.ValuesFromFile(path.Join(chartsPath, "artifacts", "values.arm64.yaml"))
 		if err != nil {
 			return err
 		}
@@ -64,74 +66,71 @@ func gen(cmd *cobra.Command, _ []string) error {
 	}
 	chartSpec.ValuesYaml = string(valuesYaml)
 
-	shared.Helm.InstallOrUpgradeChart(cmd.Context(), chartSpec)
+	// Installing artifacts helm chart:
+	ctx, cancel := context.WithTimeout(cmd.Context(), viper.GetDuration("helm.install_timeout"))
+	defer cancel()
 
-	ctx, cancel := context.WithTimeout(cmd.Context(), viper.GetDuration("k8s.wait_timeout"))
-	watcher, err := shared.K8s.BatchV1().Jobs(namespace).Watch(ctx, metav1.ListOptions{
-		LabelSelector: "fabnetd/cid=artifacts.generate",
-	})
-	if err != nil {
-		return errors.Wrap(err, "failed to wait for 'artifacts.generate' job completion")
+	shared.InteractiveLogger.Start()
+	if err = shared.Helm.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
+		return errors.Wrap(err, "failed to install artifacts helm chart")
+	}
+	shared.InteractiveLogger.PersistWith(spin.Spinner{Frames: []string{"✅"}},
+		" Chart 'artifacts/artifacts' installed successfully",
+	)
+	shared.InteractiveLogger.Stop()
+	cancel()
+
+	// Waiting for 'artifacts.generate' job completion:
+	if ok, err := util.WaitForJobComplete(
+		cmd.Context(),
+		utils.StringPointer("artifacts.generate"),
+		"fabnetd/cid=artifacts.generate",
+		namespace,
+	); err != nil {
+		return err
+	} else if !ok {
+		return nil
 	}
 
-LOOP: for {
-		select {
-		case event := <- watcher.ResultChan():
-			job, ok := event.Object.(*batchv1.Job)
-			if !ok {
-				continue
-			}
-
-			if job.Status.Succeeded == 1 {
-				cmd.Println("Job succeeded", job.Name)
-				cancel()
-				break LOOP
-			}
-		case <- ctx.Done():
-			if ctx.Err() == context.DeadlineExceeded {
-				cmd.PrintErr(errors.Wrap(ctx.Err(), "timeout waiting for 'artifacts.generate' job completion"))
-			}
-			break LOOP
-		}
-	}
-
+	// Deploying 'artifacts.wait' job,
+	// that will span pod for hooking to PV with generated earlier artifacts:
 	if err = exec.Command("kubectl", "apply",
 		"-n", namespace,
-		"-f", fmt.Sprintf("%s/artifacts/artifacts-wait-job.yaml", chartsPath),
+		"-f", path.Join(chartsPath, "artifacts", "artifacts-wait-job.yaml"),
 	).Run(); err != nil {
 		return errors.Wrap(err, "failed to deploy 'artifacts.wait' pod")
 	}
 
-	ctx, cancel = context.WithTimeout(cmd.Context(), viper.GetDuration("k8s.wait_timeout"))
-	watcher, err = shared.K8s.CoreV1().Pods(namespace).Watch(ctx, metav1.ListOptions{
-		LabelSelector: "job-name=artifacts.wait",
-	})
-	if err != nil {
-		return errors.Wrap(err, "failed to wait for 'artifacts.wait' pod readiness")
+	// Cleaning 'artifacts.wait' job and pod:
+	defer func(cmd *cobra.Command) {
+		if err = shared.K8s.BatchV1().Jobs(namespace).DeleteCollection(cmd.Context(),
+			metav1.DeleteOptions{}, metav1.ListOptions{
+				LabelSelector: "fabnetd/cid=artifacts.wait",
+			}); err != nil {
+			cmd.PrintErrln(errors.Wrap(err, "failed to delete artifacts.wait job"))
+		}
+
+		if err = shared.K8s.CoreV1().Pods(namespace).DeleteCollection(cmd.Context(),
+			metav1.DeleteOptions{GracePeriodSeconds: utils.Int64Pointer(0)}, metav1.ListOptions{
+				LabelSelector: "job-name=artifacts.wait",
+			}); err != nil {
+			cmd.PrintErrln(errors.Wrap(err, "failed to delete artifacts.wait pod"))
+		}
+	}(cmd)
+
+	// Waiting for 'artifacts.wait' pod readiness:
+	if ok, err := util.WaitForPodReady(
+		cmd.Context(),
+		&waitPodName,
+		"job-name=artifacts.wait",
+		namespace,
+	); err != nil {
+		return err
+	} else if !ok {
+		return nil
 	}
 
-LOOP2: for {
-	select {
-	case event := <- watcher.ResultChan():
-		pod, ok := event.Object.(*corev1.Pod)
-		if !ok {
-			continue
-		}
-
-		if podutils.IsPodReady(pod) {
-			cmd.Println("Pod is ready", pod.Name)
-			cancel()
-			waitPodName = pod.Name
-			break LOOP2
-		}
-	case <- ctx.Done():
-		if ctx.Err() == context.DeadlineExceeded {
-			return errors.Wrap(ctx.Err(), "timeout waiting for 'artifacts.wait' pod readiness")
-		}
-		break LOOP2
-	}
-}
-
+	// Downloading generated 'crypto-config' artifacts on local file system:
 	if _, err = os.Stat(cryptoConfigDir); !os.IsNotExist(err) {
 		exec.Command("rm", "-rf", cryptoConfigDir)
 	}
@@ -143,8 +142,9 @@ LOOP2: for {
 		return errors.Wrap(err, "failed to copy crypto-config")
 	}
 
-	cmd.Println("crypto-config has been downloaded to", cryptoConfigDir)
+	cmd.Println("✅ Files 'crypto-config' has been downloaded to", cryptoConfigDir)
 
+	// Downloading generated 'channel-artifacts' artifacts on local file system:
 	if _, err = os.Stat(channelArtifactsDir); !os.IsNotExist(err) {
 		exec.Command("rm", "-rf", channelArtifactsDir)
 	}
@@ -156,23 +156,9 @@ LOOP2: for {
 		return errors.Wrap(err, "failed to copy channel-artifacts")
 	}
 
-	cmd.Println("channel-artifacts has been downloaded to", channelArtifactsDir)
+	cmd.Println("✅ Files 'channel-artifacts' has been downloaded to", channelArtifactsDir)
 
-	if err = shared.K8s.BatchV1().Jobs(namespace).DeleteCollection(cmd.Context(),
-		metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: "fabnetd/cid=artifacts.wait",
-	}); err != nil {
-		return errors.Wrap(err, "failed to delete artifacts.wait job")
-	}
-
-	if err = shared.K8s.CoreV1().Pods(namespace).DeleteCollection(cmd.Context(),
-		metav1.DeleteOptions{}, metav1.ListOptions{
-			LabelSelector: "job-name=artifacts.wait",
-		}); err != nil {
-		return errors.Wrap(err, "failed to delete artifacts.wait pod")
-	}
-
-	cmd.Println("Network artifacts generation done done!")
+	cmd.Println("✅ Network artifacts generation done done!")
 
 	return nil
 }
