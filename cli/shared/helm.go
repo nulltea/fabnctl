@@ -1,6 +1,8 @@
 package shared
 
 import (
+	"fmt"
+
 	"github.com/mittwald/go-helm-client"
 )
 
@@ -13,6 +15,9 @@ func initHelm() {
 		opt = &helmclient.Options{
 			Debug:            true,
 			Linting:          true,
+			DebugLog: func(format string, v ...interface{}) {
+				InteractiveLogger.Text(" Helm: " + fmt.Sprintf(format, v...))
+			},
 		}
 	)
 

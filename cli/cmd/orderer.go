@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
+	"path"
 
+	"github.com/gernest/wow/spin"
 	"github.com/mittwald/go-helm-client"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -18,13 +21,7 @@ import (
 // ordererCmd represents the orderer command.
 var ordererCmd = &cobra.Command{
 	Use:   "orderer",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Performs deployment sequence of the Fabric orderer service",
 	RunE: deployOrderer,
 }
 
@@ -35,32 +32,38 @@ func init() {
 func deployOrderer(cmd *cobra.Command, _ []string) error {
 	var (
 		hostname = viper.GetString("fabric.orderer_hostname_name")
-		tlsDir = fmt.Sprintf(".crypto-config.%s/ordererOrganizations/%s/orderers/%s.%s/tls",
-			domain, domain, hostname, domain,
+		tlsDir   = path.Join(
+			fmt.Sprintf(".crypto-config.%s", domain),
+			"ordererOrganizations", domain,
+			"orderers", fmt.Sprintf("%s.%s", hostname, domain),
+			"tls",
 		)
+		pkPath        = path.Join(tlsDir, "server.key")
+		certPath      = path.Join(tlsDir, "server.crt")
+		caPath        = path.Join(tlsDir, "ca.crt")
 		tlsSecretName = fmt.Sprintf("%s.%s-tls", hostname, domain)
-		caSecretName = fmt.Sprintf("%s.%s-ca", hostname, domain)
+		caSecretName  = fmt.Sprintf("%s.%s-ca", hostname, domain)
 	)
 
 	// Retrieve orderer transport TLS private key:
-	pkPayload, err := ioutil.ReadFile(fmt.Sprintf("%s/server.key", tlsDir))
+	pkPayload, err := ioutil.ReadFile(pkPath)
 	if err != nil {
-		return errors.Wrapf(err, "failed to read private key from path: %s/server.key", tlsDir)
+		return errors.Wrapf(err, "failed to read private key from path: %s", pkPath)
 	}
 
 	// Retrieve orderer transport TLS cert:
-	certPayload, err := ioutil.ReadFile(fmt.Sprintf("%s/server.crt", tlsDir))
+	certPayload, err := ioutil.ReadFile(certPath)
 	if err != nil {
-		return errors.Wrapf(err, "failed to read certificate identity from path: %s/server.crt", tlsDir)
+		return errors.Wrapf(err, "failed to read certificate identity from path: %s", certPath)
 	}
 
 	// Retrieve orderer transport CA cert:
-	caPayload, err := ioutil.ReadFile(fmt.Sprintf("%s/ca.crt", tlsDir))
+	caPayload, err := ioutil.ReadFile(caPath)
 	if err != nil {
-		return errors.Wrapf(err, "failed to read certificate CA from path: %s/ca.crt", tlsDir)
+		return errors.Wrapf(err, "failed to read certificate CA from path: %s", caPath)
 	}
 
-	// Create orderer transport TLS secret:
+	// Create or update orderer transport TLS secret:
 	if _, err = util.SecretAdapter(shared.K8s.CoreV1().Secrets(namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
 		Type: corev1.SecretTypeTLS,
 		Data: map[string][]byte{
@@ -72,13 +75,17 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 			Namespace: namespace,
 			Labels: map[string]string{
 				"fabnetd/cid": "orderer.tls.secret",
+				"fabnetd/domain": domain,
+				"fabnetd/host": hostname,
 			},
 		},
 	}); err != nil {
 		return errors.Wrapf(err, "failed to create %s secret", tlsSecretName)
 	}
 
-	// Create orderer transport CA secret:
+	cmd.Printf("✅ Secret '%s' successfully created\n", tlsSecretName)
+
+	// Create or update orderer transport CA secret:
 	if _, err = util.SecretAdapter(shared.K8s.CoreV1().Secrets(namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
@@ -89,24 +96,28 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 			Namespace: namespace,
 			Labels: map[string]string{
 				"fabnetd/cid": "orderer.ca.secret",
+				"fabnetd/domain": domain,
+				"fabnetd/host": hostname,
 			},
 		},
 	}); err != nil {
 		return errors.Wrapf(err, "failed to create %s secret", caSecretName)
 	}
 
+	cmd.Printf("✅ Secret '%s' successfully created\n", caSecretName)
+
 	var (
 		values = make(map[string]interface{})
 		chartSpec = &helmclient.ChartSpec{
 			ReleaseName: "orderer",
-			ChartName: fmt.Sprintf("%s/orderer", chartsPath),
+			ChartName: path.Join(chartsPath, "orderer"),
 			Namespace: namespace,
 			Wait: true,
 		}
 	)
 
 	if targetArch == "arm64" {
-		armValues, err := util.ValuesFromFile(fmt.Sprintf("%s/orderer/values.arm64.yaml", chartsPath))
+		armValues, err := util.ValuesFromFile(path.Join(chartsPath, "orderer", "values.arm64.yaml"))
 		if err != nil {
 			return err
 		}
@@ -119,11 +130,21 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to encode additional values")
 	}
+
 	chartSpec.ValuesYaml = string(valuesYaml)
 
-	shared.Helm.InstallOrUpgradeChart(cmd.Context(), chartSpec)
+	ctx, cancel := context.WithTimeout(cmd.Context(), viper.GetDuration("helm.install_timeout"))
+	defer cancel()
 
-	cmd.Println("Orderer service deployed successfully!")
+	shared.InteractiveLogger.Start()
+	if err = shared.Helm.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
+		return errors.Wrap(err, "failed to install orderer helm chart")
+	}
+	shared.InteractiveLogger.PersistWith(spin.Spinner{Frames: []string{"✅"}},
+		" Chart 'orderer/orderer' installed successfully",
+	)
+	shared.InteractiveLogger.Stop()
 
+	cmd.Printf("✅ Orderer service successfully deployed on %s.%s!\n", hostname, domain)
 	return nil
 }
