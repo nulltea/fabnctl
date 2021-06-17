@@ -1,8 +1,8 @@
 package shared
 
 func InitCore() {
-	initLogger()
 	initConfig()
+	initLogger()
 	initK8s()
 	initHelm()
 }
