@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"path"
 
-	"github.com/gernest/wow/spin"
 	"github.com/mittwald/go-helm-client"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -21,7 +20,7 @@ import (
 // peerCmd represents the peer command
 var peerCmd = &cobra.Command{
 	Use:   "peer",
-	Short: "Performs deployment sequence of the Fabric peer service",
+	Short: "Performs deployment sequence of the Fabric peer",
 	RunE: deployPeer,
 }
 
@@ -29,9 +28,7 @@ func init() {
 	deployCmd.AddCommand(peerCmd)
 
 	peerCmd.Flags().StringP("org", "o", "", "Organization owning peer (required)")
-
 	peerCmd.Flags().StringP("peer", "p", "peer0", "Peer hostname. Default is: peer0")
-
 	peerCmd.Flags().Bool("withCA", true,
 		"Deploy CA service along with peer. Default is true",
 	)
@@ -45,6 +42,7 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 		withCA bool
 	)
 
+	// Parse flags
 	if org, err = cmd.Flags().GetString("org"); err != nil {
 		return errors.Wrap(err, "failed to parse required parameter 'org' (organization)")
 	} else if len(org) == 0 {
@@ -192,14 +190,14 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 	ctx, cancel := context.WithTimeout(cmd.Context(), viper.GetDuration("helm.install_timeout"))
 	defer cancel()
 
-	shared.InteractiveLogger.Start()
+	shared.ILogger.Start()
 	if err = shared.Helm.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
 		return errors.Wrap(err, "failed to install peer helm chart")
 	}
-	shared.InteractiveLogger.PersistWith(spin.Spinner{Frames: []string{"✅"}},
+	shared.ILogger.PersistWith(shared.ILogPrefixes[shared.ILogSuccess],
 		fmt.Sprintf(" Chart 'peer/%s' installed successfully", fmt.Sprintf("%s-%s", peer, org)),
 	)
-	shared.InteractiveLogger.Stop()
+	shared.ILogger.Stop()
 
 	cmd.Printf("✅ Peer successfully deployed on %s.%s.org.%s!\n", peer, org, domain)
 	return nil
