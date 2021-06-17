@@ -1,7 +1,7 @@
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: {{ .Release.Name }}.storage.pvc
+  name: {{ .Values.config.peer}}.{{ .Values.config.hostname }}.storage.pvc
 spec:
   storageClassName: {{ .Values.storageClass }}
   accessModes:

@@ -1,20 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cli.{{ .Values.config.peer }}.{{ .Release.Name }}
+  name: cli.{{ .Values.config.peer}}.{{ .Values.config.hostname }}
   labels:
-    app: cli.{{ .Values.config.peer }}.{{ .Release.Name }}
+    app: cli.{{ .Values.config.peer}}.{{ .Values.config.hostname }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: cli.{{ .Values.config.peer }}.{{ .Release.Name }}
+      app: cli.{{ .Values.config.peer}}.{{ .Values.config.hostname }}
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
-        app: cli.{{ .Values.config.peer }}.{{ .Release.Name }}
+        app: cli.{{ .Values.config.peer}}.{{ .Values.config.hostname }}
+        fabnetd/cid: org-peer-cli
+        fabnetd/app: cli.{{ .Values.config.peer}}.{{ .Values.config.hostname }}
+        fabnetd/domain: {{ .Values.config.domain }}
+        fabnetd/hostname: {{ .Values.config.peer }}.{{ .Values.config.hostname }}
     spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
       containers:

@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: couchdb-{{ .Values.config.peer}}-{{ .Release.Name }}
+  name: couchdb-{{ .Values.config.peer}}-{{ .Values.config.hostname | replace "." "-" }}
   labels:
   {{- include "chart.labels" . | nindent 4 }}
 spec:
@@ -11,4 +11,4 @@ spec:
       port: {{ .Values.couchdb.service.port }}
       targetPort: {{ .Values.couchdb.service.port }}
   selector:
-    app: couchdb.{{ .Values.config.peer }}.{{ .Release.Name }}
+    app: couchdb.{{ .Values.config.peer}}.{{ .Values.config.hostname }}

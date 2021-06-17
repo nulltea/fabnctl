@@ -2,20 +2,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: couchdb.{{ .Values.config.peer }}.{{ .Release.Name }}
+  name: couchdb.{{ .Values.config.peer}}.{{ .Values.config.hostname }}
   labels:
-    app: couchdb.{{ .Values.config.peer }}.{{ .Release.Name }}
+    app: couchdb.{{ .Values.config.peer}}.{{ .Values.config.hostname }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: couchdb.{{ .Values.config.peer }}.{{ .Release.Name }}
+      app: couchdb.{{ .Values.config.peer}}.{{ .Values.config.hostname }}
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
-        app: couchdb.{{ .Values.config.peer }}.{{ .Release.Name }}
+        app: couchdb.{{ .Values.config.peer}}.{{ .Values.config.hostname }}
+        fabnetd/cid: org-peer-couchdb
+        fabnetd/app: couchdb.{{ .Values.config.peer}}.{{ .Values.config.hostname }}
+        fabnetd/domain: {{ .Values.config.domain }}
+        fabnetd/hostname: couchdb.{{ .Values.config.peer }}.{{ .Values.config.hostname }}
     spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
       containers:
