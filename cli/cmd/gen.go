@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path"
 
-	"github.com/gernest/wow/spin"
 	"github.com/mittwald/go-helm-client"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -70,14 +69,14 @@ func gen(cmd *cobra.Command, _ []string) error {
 	ctx, cancel := context.WithTimeout(cmd.Context(), viper.GetDuration("helm.install_timeout"))
 	defer cancel()
 
-	shared.InteractiveLogger.Start()
+	shared.ILogger.Start()
 	if err = shared.Helm.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
 		return errors.Wrap(err, "failed to install artifacts helm chart")
 	}
-	shared.InteractiveLogger.PersistWith(spin.Spinner{Frames: []string{"✅"}},
+	shared.ILogger.PersistWith(shared.ILogPrefixes[shared.ILogSuccess],
 		" Chart 'artifacts/artifacts' installed successfully",
 	)
-	shared.InteractiveLogger.Stop()
+	shared.ILogger.Stop()
 	cancel()
 
 	// Waiting for 'artifacts.generate' job completion:

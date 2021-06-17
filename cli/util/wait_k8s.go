@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gernest/wow/spin"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"github.com/timoth-y/chainmetric-network/cli/shared"
@@ -111,24 +110,25 @@ func WaitForEvent(
 	var (
 		timer = time.NewTimer(15 * time.Second)
 	)
-	shared.InteractiveLogger.Text(" " + msgStart())
-	shared.InteractiveLogger.Start()
+	shared.ILogger.Text(" " + msgStart())
+	shared.ILogger.Start()
 
 	LOOP: for {
 		select {
 		case event := <- watcher.ResultChan():
 			if onEvent(event) {
-				shared.InteractiveLogger.PersistWith(spin.Spinner{Frames: []string{"✅"}}, " " + msgSuccess())
-				shared.InteractiveLogger.Stop()
+				shared.ILogger.PersistWith(shared.ILogPrefixes[shared.ILogSuccess], " " + msgSuccess())
+				shared.ILogger.Stop()
 				cancel()
 				break LOOP
 			}
 		case <- timer.C:
-			shared.InteractiveLogger.Text(" " + msgWarning())
+			shared.ILogger.Spinner(shared.ILogPrefixes[shared.ILogError])
+			shared.ILogger.Text(" " + msgWarning())
 		case <- ctx.Done():
 			if ctx.Err() == context.DeadlineExceeded {
-				shared.InteractiveLogger.PersistWith(spin.Spinner{Frames: []string{"❗"}}, msgTimeout())
-				shared.InteractiveLogger.Stop()
+				shared.ILogger.PersistWith(shared.ILogPrefixes[shared.ILogError], msgTimeout())
+				shared.ILogger.Stop()
 				return false, nil
 			}
 			break LOOP

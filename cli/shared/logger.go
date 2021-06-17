@@ -11,10 +11,24 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Logger is an instance of the shared logger tool.
 var (
+	// Logger is an instance of the shared logger tool.
 	Logger            *logging.Logger
-	InteractiveLogger *wow.Wow
+	// ILogger is an instance of the interactive logger.
+	ILogger *wow.Wow
+)
+
+type ILogLevel int
+
+const (
+	ILogSuccess ILogLevel = iota
+	ILogError
+	ILogWarning
+	ILogInfo
+)
+
+var (
+	ILogPrefixes map[ILogLevel]spin.Spinner
 )
 
 const (
@@ -44,5 +58,40 @@ func initLogger() {
 	logging.SetLevel(level, chaincodeName)
 
 	log.SetOutput(ioutil.Discard)
-	InteractiveLogger = wow.New(os.Stderr, spin.Get(spin.Dots), "")
+	ILogger = wow.New(os.Stderr, spin.Get(spin.Dots), "")
+	ILogPrefixes = map[ILogLevel]spin.Spinner{
+		ILogSuccess: {Frames: []string{viper.GetString("cli.success_emoji")}},
+		ILogError:   {Frames: []string{viper.GetString("cli.error_emoji")}},
+		ILogWarning: {Frames: []string{viper.GetString("cli.warning_emoji")}},
+		ILogInfo:    {Frames: []string{viper.GetString("cli.info_emoji")}},
+	}
+}
+
+// DecorateWithInteractiveLog wraps `fn` call into interactive logging with loading,
+// displaying `start` message on loading, `complete` on successful end,
+// and err return value on failure.
+func DecorateWithInteractiveLog(fn func() error, start, complete string) error {
+	ILogger.Start()
+	defer ILogger.Stop()
+
+	ILogger.Text(" " + start)
+	if err := fn(); err != nil {
+		ILogger.PersistWith(ILogPrefixes[ILogError], " " + err.Error())
+		return err
+	}
+
+	ILogger.PersistWith(ILogPrefixes[ILogSuccess], " " + complete)
+
+	return nil
+}
+
+// DecorateWithInteractiveLogWithPersist wraps `fn` call into interactive logging with loading,
+// displaying `start` message on loading and custom persist on end.
+func DecorateWithInteractiveLogWithPersist(fn func() (level ILogLevel, msg string), start string) {
+	ILogger.Start()
+	defer ILogger.Stop()
+
+	ILogger.Text(" " + start)
+	level, msg := fn()
+	ILogger.PersistWith(ILogPrefixes[level], " " + msg)
 }
