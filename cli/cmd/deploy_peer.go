@@ -28,9 +28,9 @@ func init() {
 	deployCmd.AddCommand(peerCmd)
 
 	peerCmd.Flags().StringP("org", "o", "", "Organization owning peer (required)")
-	peerCmd.Flags().StringP("peer", "p", "peer0", "Peer hostname. Default is: peer0")
+	peerCmd.Flags().StringP("peer", "p", "peer0", "Peer hostname")
 	peerCmd.Flags().Bool("withCA", true,
-		"Deploy CA service along with peer. Default is true",
+		"Deploy CA service along with peer",
 	)
 }
 

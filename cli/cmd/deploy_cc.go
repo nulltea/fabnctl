@@ -15,7 +15,7 @@ func init() {
 	deployCmd.AddCommand(ccCmd)
 
 	ccCmd.Flags().StringP("org", "o", "", "Organization owning peer (required)")
-	ccCmd.Flags().StringP("peer", "p", "peer0", "Peer hostname. Default is: peer0")
+	ccCmd.Flags().StringP("peer", "p", "peer0", "Peer hostname")
 	ccCmd.Flags().StringP("channel", "C", "", "Channel name (required)")
 }
 

@@ -22,8 +22,8 @@ func init() {
 	deployCmd.AddCommand(channelCmd)
 
 	channelCmd.Flags().StringP("org", "o", "", "Organization owning peer (required)")
-	channelCmd.Flags().StringP("peer", "p", "peer0", "Peer hostname. Default is: peer0")
-	channelCmd.Flags().StringP("channel", "C", "", "Channel name (required)")
+	channelCmd.Flags().StringP("peer", "p", "peer0", "Peer hostname")
+	channelCmd.Flags().StringP("channel", "c", "", "Channel name (required)")
 }
 
 func deployChannel(cmd *cobra.Command, args []string) error {

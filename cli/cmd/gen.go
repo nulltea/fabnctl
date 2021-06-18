@@ -29,7 +29,7 @@ func init() {
 	rootCmd.AddCommand(genCmd)
 
 	rootCmd.Flags().StringP("config", "f", "./network-config.yaml",
-		`Network structure config file path required for deployment. Default is './network-.cli-config.yaml'`,
+		"Network structure config file path required for deployment",
 	)
 }
 

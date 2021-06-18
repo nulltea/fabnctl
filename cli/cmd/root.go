@@ -27,18 +27,15 @@ func init() {
 		"arch", "a", "arm64", `Deployment target architecture.
 Supported are:
  - ARM64: -a=arm64
- - AMD64 (x86) -a=amd64
-Default is ARM64.`)
+ - AMD64 (x86) -a=amd64`)
 
 	domain = *rootCmd.PersistentFlags().StringP(
-		"domain", "d", "chainmetric.network", `Deployment target domain.
-Default is 'chainmetric.network'.`)
+		"domain", "d", "chainmetric.network", "Deployment target domain")
 
 	chartsPath = *rootCmd.PersistentFlags().String(
-		"charts", "./charts", `Helm deployment charts path.
-Default is './charts'.`)
+		"charts", "./charts", "Helm deployment charts path")
 
 	namespace = *deployCmd.PersistentFlags().StringP("namespace", "n", "network",
-		"namespace scope for the deployment request. Default is: network.",
+		"namespace scope for the deployment request",
 	)
 }
