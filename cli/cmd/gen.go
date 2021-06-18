@@ -141,7 +141,11 @@ func gen(cmd *cobra.Command, _ []string) error {
 		return errors.Wrap(err, "failed to copy crypto-config")
 	}
 
-	cmd.Println("✅ Files 'crypto-config' has been downloaded to", cryptoConfigDir)
+	cmd.Println(
+		viper.GetString("cli.success_emoji"),
+		"Files 'crypto-config' has been downloaded to",
+		cryptoConfigDir,
+	)
 
 	// Downloading generated 'channel-artifacts' artifacts on local file system:
 	if _, err = os.Stat(channelArtifactsDir); !os.IsNotExist(err) {
@@ -155,9 +159,13 @@ func gen(cmd *cobra.Command, _ []string) error {
 		return errors.Wrap(err, "failed to copy channel-artifacts")
 	}
 
-	cmd.Println("✅ Files 'channel-artifacts' has been downloaded to", channelArtifactsDir)
+	cmd.Println(
+		viper.GetString("cli.success_emoji"),
+		"Files 'channel-artifacts' has been downloaded to",
+		channelArtifactsDir,
+	)
 
-	cmd.Println("✅ Network artifacts generation done done!")
+	cmd.Println("🎉 Network artifacts generation done done!")
 
 	return nil
 }

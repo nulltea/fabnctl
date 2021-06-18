@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"io"
@@ -41,6 +42,11 @@ func ExecCommandInContainer(
 	}, scheme.ParameterCodec)
 
 	err := execute(ctx, "POST", req.URL(), shared.K8sConfig, &stdout, &stderr)
+	if err != nil && err.Error() == "command terminated with exit code 1" {
+		if errMsg := strings.Replace(getLastLine(stderr), "Error: ", "", 1); len(errMsg) != 0 {
+			err = errors.New(errMsg)
+		}
+	}
 	return strings.TrimSpace(stdout.String()), strings.TrimSpace(stderr.String()), err
 }
 
@@ -76,4 +82,22 @@ func execute(_ context.Context, method string, url *url.URL, config *restclient.
 		Stdout:             stdout,
 		Stderr:             stderr,
 	})
+}
+
+func getLastLine(buf bytes.Buffer) string {
+	var lines []string
+
+	s := bufio.NewScanner(&buf)
+	for s.Scan() {
+		lines = append(lines, s.Text())
+	}
+	if err := s.Err(); err != nil {
+		return ""
+	}
+
+	if len(lines) == 0 {
+		return ""
+	}
+
+	return lines[len(lines) - 1]
 }

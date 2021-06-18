@@ -82,7 +82,9 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 		return errors.Wrapf(err, "failed to create %s secret", tlsSecretName)
 	}
 
-	cmd.Printf("✅ Secret '%s' successfully created\n", tlsSecretName)
+	cmd.Printf("%s Secret '%s' successfully created\n",
+		viper.GetString("cli.success_emoji"), tlsSecretName,
+	)
 
 	// Create or update orderer transport CA secret:
 	if _, err = util.SecretAdapter(shared.K8s.CoreV1().Secrets(namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
@@ -103,7 +105,10 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 		return errors.Wrapf(err, "failed to create %s secret", caSecretName)
 	}
 
-	cmd.Printf("✅ Secret '%s' successfully created\n", caSecretName)
+	cmd.Printf("%s Secret '%s' successfully created\n",
+		viper.GetString("cli.success_emoji"),
+		caSecretName,
+	)
 
 	var (
 		values = make(map[string]interface{})
@@ -144,6 +149,6 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 	)
 	shared.ILogger.Stop()
 
-	cmd.Printf("✅ Orderer service successfully deployed on %s.%s!\n", hostname, domain)
+	cmd.Printf("🎉 Orderer service successfully deployed on %s.%s!\n", hostname, domain)
 	return nil
 }

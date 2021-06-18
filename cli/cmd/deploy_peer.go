@@ -109,7 +109,9 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 		return errors.Wrapf(err, "failed to create %s secret", tlsSecretName)
 	}
 
-	cmd.Printf("✅ Secret '%s' successfully created\n", tlsSecretName)
+	cmd.Printf("%s Secret '%s' successfully created\n",
+		viper.GetString("cli.success_emoji"), tlsSecretName,
+	)
 
 	// Create or update peer transport CA secret:
 	if _, err = util.SecretAdapter(shared.K8s.CoreV1().Secrets(namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
@@ -130,8 +132,9 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 		return errors.Wrapf(err, "failed to create %s secret", caSecretName)
 	}
 
-	cmd.Printf("✅ Secret '%s' successfully created\n", caSecretName)
-
+	cmd.Printf("%s Secret '%s' successfully created\n",
+		viper.GetString("cli.success_emoji"), caSecretName,
+	)
 
 	var (
 		values = make(map[string]interface{})
@@ -199,6 +202,6 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 	)
 	shared.ILogger.Stop()
 
-	cmd.Printf("✅ Peer successfully deployed on %s.%s.org.%s!\n", peer, org, domain)
+	cmd.Printf("🎉 Peer successfully deployed on %s.%s.org.%s!\n", peer, org, domain)
 	return nil
 }

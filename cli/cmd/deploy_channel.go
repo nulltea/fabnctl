@@ -28,10 +28,11 @@ func init() {
 
 func deployChannel(cmd *cobra.Command, args []string) error {
 	var (
-		err         error
-		org         string
-		peer        string
-		channel     string
+		err           error
+		org           string
+		peer          string
+		channel       string
+		channelExists bool
 	)
 
 	// Parse flags
@@ -80,17 +81,16 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 	}
 
 	var (
+		joinCmd = strings.Join([]string {
+			"peer channel join",
+			"-b", fmt.Sprintf("%s.block", channel),
+		}, " ")
+
 		fetchCmd = strings.Join([]string {
 			"peer channel fetch config", fmt.Sprintf("%s.block", channel),
 			"-c", channel,
 			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), domain),
-			"--tls", "true",
-			"--cafile", "$ORDERER_CA",
-		}, " ")
-
-		joinCmd = strings.Join([]string {
-			"peer channel join",
-			"-b", fmt.Sprintf("%s.block", channel),
+			"--tls", "--cafile", "$ORDERER_CA",
 		}, " ")
 
 		createCmd = strings.Join([]string {
@@ -98,48 +98,65 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 			"-c", channel,
 			"-f", fmt.Sprintf("./channel-artifacts/%s.tx", channel),
 			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), domain),
-			"--tls", "true",
-			"--cafile", "$ORDERER_CA",
+			"--tls", "--cafile", "$ORDERER_CA",
 		}, " ")
 	)
 
 	// Checking whether specified channel is already created or not,
 	// by trying to fetch in genesis block:
-	channelExists := false
-	if _, stderr, err := util.ExecShellInPod(cmd.Context(), cliPodName, namespace, fetchCmd); err != nil {
-		return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName)
-	} else if len(stderr) == 0 {
+	if _, stderr, err := util.ExecShellInPod(cmd.Context(), cliPodName, namespace, fetchCmd); err == nil {
 		channelExists = true
-	}
-
-	if channelExists {
 		cmd.Println(viper.GetString("cli.info_emoji"),
 			fmt.Sprintf("Channel '%s' already created, fetched its genesis block", channel),
 		)
-	} else {
-		// Creating channel in case it wasn't yet:
-		shared.DecorateWithInteractiveLog(func() error {
-			if _, stderr, err := util.ExecShellInPod(cmd.Context(), cliPodName, namespace, createCmd); err != nil {
-				return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName, )
-			} else if len(stderr) != 0 {
-				return errors.Wrap(err, "Failed to create channel")
-			}
+	} else if len(stderr) == 0 {
+		return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName)
+	}
 
+	var stderr string
+
+	// Creating channel in case it wasn't yet:
+	if !channelExists {
+		shared.DecorateWithInteractiveLog(func() error {
+			if _, stderr, err = util.ExecShellInPod(cmd.Context(), cliPodName, namespace, createCmd); err != nil {
+				if len(stderr) == 0 {
+					return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName)
+				}
+
+				return errors.New("Failed to create channel")
+			}
 			return nil
 		}, "Creating channel", fmt.Sprintf("Channel '%s' successfully created", channel))
+
+		if err != nil {
+			if len(stderr) != 0 && util.PromptStderrView(stderr) {
+				return nil
+			}
+			return nil
+		}
 	}
 
 	// Joining peer to channel:
 	shared.DecorateWithInteractiveLog(func() error {
-		if _, stderr, err := util.ExecShellInPod(cmd.Context(), cliPodName, namespace, joinCmd); err != nil {
-			return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName, )
-		} else if len(stderr) != 0 {
-			return errors.Wrap(err, "Failed to join channel")
-		}
+		if _, stderr, err = util.ExecShellInPod(cmd.Context(), cliPodName, namespace, joinCmd); err != nil {
+			if len(stderr) == 0 {
+				return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName )
+			}
 
+			return errors.Wrapf(err, "Failed to join channel")
+		}
 		return nil
 	}, fmt.Sprintf("Joing '%s' organization to '%s' channel", org, channel),
 	fmt.Sprintf("Organization '%s' successfully joined '%s' channel", org, channel))
+
+	if err != nil {
+		if len(stderr) != 0 && util.PromptStderrView(stderr) {
+			return err
+		}
+		return nil
+	}
+
+	cmd.Printf("🎉 Channel '%s' successfully deployed!\n", channel)
 
 	return nil
 }

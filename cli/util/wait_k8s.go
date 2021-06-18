@@ -83,7 +83,7 @@ func WaitForPodReady(
 			return false
 		},
 		func() string {
-			return fmt.Sprintf("Waiting for '%s' pot readiness", *name)
+			return fmt.Sprintf("Waiting for '%s' pod readiness", *name)
 		},
 		func() string {
 			return fmt.Sprintf("Pod '%s' is ready", *name)
@@ -117,7 +117,7 @@ func WaitForEvent(
 		select {
 		case event := <- watcher.ResultChan():
 			if onEvent(event) {
-				shared.ILogger.PersistWith(shared.ILogPrefixes[shared.ILogSuccess], " " + msgSuccess())
+				shared.ILogger.PersistWith(shared.ILogPrefixes[shared.ILogOk], " " + msgSuccess())
 				shared.ILogger.Stop()
 				cancel()
 				break LOOP

@@ -22,6 +22,7 @@ type ILogLevel int
 
 const (
 	ILogSuccess ILogLevel = iota
+	ILogOk
 	ILogError
 	ILogWarning
 	ILogInfo
@@ -61,6 +62,7 @@ func initLogger() {
 	ILogger = wow.New(os.Stderr, spin.Get(spin.Dots), "")
 	ILogPrefixes = map[ILogLevel]spin.Spinner{
 		ILogSuccess: {Frames: []string{viper.GetString("cli.success_emoji")}},
+		ILogOk:      {Frames: []string{viper.GetString("cli.ok_emoji")}},
 		ILogError:   {Frames: []string{viper.GetString("cli.error_emoji")}},
 		ILogWarning: {Frames: []string{viper.GetString("cli.warning_emoji")}},
 		ILogInfo:    {Frames: []string{viper.GetString("cli.info_emoji")}},

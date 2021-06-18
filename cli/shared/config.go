@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -17,15 +18,18 @@ func initConfig() {
 
 	viper.SetDefault("fabric.orderer_hostname_name", "orderer")
 
-	viper.SetDefault("cli.success_emoji", "✅")
-	viper.SetDefault("cli.error_emoji", "✘")
-	viper.SetDefault("cli.warning_emoji", "⚠️")
-	viper.SetDefault("cli.info_emoji", "ℹ️")
+	viper.SetDefault("cli.success_emoji", "👍")
+	viper.SetDefault("cli.ok_emoji", "👌")
+	viper.SetDefault("cli.error_emoji", "\n❌")
+	viper.SetDefault("cli.warning_emoji", "❗")
+	viper.SetDefault("cli.info_emoji", "👉")
 
 	viper.SetConfigType("yaml")
 	viper.SetConfigName(".cli-config")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("./cli")
 
-	_ = viper.ReadInConfig()
+	if err := viper.ReadInConfig(); err != nil {
+		fmt.Println(err)
+	}
 }

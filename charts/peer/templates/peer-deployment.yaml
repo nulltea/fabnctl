@@ -74,7 +74,7 @@ spec:
             - name: CORE_LEDGER_STATE_STATEDATABASE
               value: "CouchDB"
             - name: CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS
-              value: "couchdb-{{ .Values.config.peer}}-{{ .Release.Name }}:{{ .Values.couchdb.service.port }}"
+              value: "couchdb-{{ .Values.config.peer}}-{{ .Values.config.hostname | replace "." "-" }}:{{ .Values.couchdb.service.port }}"
             - name: CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME
               valueFrom:
                 secretKeyRef:

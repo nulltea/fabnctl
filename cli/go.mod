@@ -4,6 +4,7 @@ go 1.15
 
 require (
 	github.com/gernest/wow v0.1.0
+	github.com/manifoldco/promptui v0.8.0
 	github.com/mittwald/go-helm-client v0.5.0
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7
 	github.com/pkg/errors v0.9.1
