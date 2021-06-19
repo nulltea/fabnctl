@@ -30,23 +30,23 @@ func ExecCommandInContainer(
 			Name(pod).
 			Namespace(namespace).
 			SubResource("exec").
-			Param("container", container)
+			Param("container", container).
+			VersionedParams(&v1.PodExecOptions{
+				Container: container,
+				Command:   cmd,
+				Stdin:     false,
+				Stdout:    true,
+				Stderr:    true,
+			}, scheme.ParameterCodec)
 	)
 
-	req.VersionedParams(&v1.PodExecOptions{
-		Container: container,
-		Command:   cmd,
-		Stdin:     false,
-		Stdout:    true,
-		Stderr:    true,
-	}, scheme.ParameterCodec)
-
-	err := execute(ctx, "POST", req.URL(), shared.K8sConfig, &stdout, &stderr)
-	if err != nil && err.Error() == "command terminated with exit code 1" {
-		if errMsg := strings.Replace(getLastLine(stderr), "Error: ", "", 1); len(errMsg) != 0 {
-			err = errors.New(errMsg)
+	err := execute(ctx, "POST", req.URL(), shared.K8sConfig, nil, &stdout, &stderr)
+	if err != nil {
+		if stdErr := ErrFromStderr(stderr); stdErr != nil {
+			err = stdErr
 		}
 	}
+
 	return strings.TrimSpace(stdout.String()), strings.TrimSpace(stderr.String()), err
 }
 
@@ -72,13 +72,14 @@ func ExecShellInPod(ctx context.Context, podName, namespace string, cmd string) 
 	return ExecCommandInPod(ctx, podName, namespace,"/bin/sh", "-c", cmd)
 }
 
-func execute(_ context.Context, method string, url *url.URL, config *restclient.Config, stdout, stderr io.Writer) error {
+func execute(_ context.Context, method string, url *url.URL, config *restclient.Config, stdin io.Reader, stdout, stderr io.Writer) error {
 	// TODO launch exec in the goroutine
 	exec, err := remotecommand.NewSPDYExecutor(config, method, url)
 	if err != nil {
 		return err
 	}
 	return exec.Stream(remotecommand.StreamOptions{
+		Stdin:              stdin,
 		Stdout:             stdout,
 		Stderr:             stderr,
 	})
