@@ -1,8 +1,9 @@
-module github.com/timoth-y/chainmetric-network/cli
+module github.com/timoth-y/chainmetric-network
 
 go 1.15
 
 require (
+	github.com/docker/docker v20.10.7+incompatible
 	github.com/gernest/wow v0.1.0
 	github.com/manifoldco/promptui v0.8.0
 	github.com/mittwald/go-helm-client v0.5.0

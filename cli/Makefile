@@ -1,4 +1,0 @@
-OUTPUT=../fabnetd
-
-build:
-	go build -v  -o $(OUTPUT) .
