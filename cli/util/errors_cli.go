@@ -1,7 +1,9 @@
 package util
 
 import (
+	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/manifoldco/promptui"
 	"github.com/pkg/errors"
@@ -61,4 +63,13 @@ func WrapWithStderrViewPrompt(err error, stderr string, msg string) error {
 // and asks whether the full log output from stderr should be viewed.
 func WrapWithStderrViewPromptF(err error, stderr string, format string, v ...interface{}) error {
 	return WrapWithStderrViewPrompt(err, stderr, fmt.Sprintf(format, v))
+}
+
+// ErrFromStderr parses stderr to find last error message, which would be returned as error or <nil> otherwise.
+func ErrFromStderr(stderr bytes.Buffer) error {
+	if errMsg := strings.Replace(getLastLine(stderr), "Error: ", "", 1); len(errMsg) != 0 {
+		return errors.New(errMsg)
+	}
+
+	return nil
 }

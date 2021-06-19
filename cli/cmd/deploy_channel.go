@@ -48,7 +48,7 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 
 	if channel, err = cmd.Flags().GetString("channel"); err != nil {
 		return errors.Wrap(err, "failed to parse required 'channel' parameter")
-	} else if len(org) == 0 {
+	} else if len(channel) == 0 {
 		return errors.New("Required parameter 'channel' is not specified")
 	}
 
@@ -117,7 +117,7 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 
 	// Creating channel in case it wasn't yet:
 	if !channelExists {
-		shared.DecorateWithInteractiveLog(func() error {
+		if err = shared.DecorateWithInteractiveLog(func() error {
 			if _, stderr, err = util.ExecShellInPod(cmd.Context(), cliPodName, namespace, createCmd); err != nil {
 				if len(stderr) == 0 {
 					return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName)
@@ -126,9 +126,9 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 				return errors.New("Failed to create channel")
 			}
 			return nil
-		}, "Creating channel", fmt.Sprintf("Channel '%s' successfully created", channel))
-
-		if err != nil {
+		}, "Creating channel",
+			fmt.Sprintf("Channel '%s' successfully created", channel),
+		); err != nil {
 			if len(stderr) != 0 && util.PromptStderrView(stderr) {
 				return nil
 			}
@@ -137,19 +137,18 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 	}
 
 	// Joining peer to channel:
-	shared.DecorateWithInteractiveLog(func() error {
+	if err = shared.DecorateWithInteractiveLog(func() error {
 		if _, stderr, err = util.ExecShellInPod(cmd.Context(), cliPodName, namespace, joinCmd); err != nil {
 			if len(stderr) == 0 {
 				return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName )
 			}
 
-			return errors.Wrapf(err, "Failed to join channel")
+			return errors.Wrap(err, "Failed to join channel")
 		}
 		return nil
-	}, fmt.Sprintf("Joing '%s' organization to '%s' channel", org, channel),
-	fmt.Sprintf("Organization '%s' successfully joined '%s' channel", org, channel))
-
-	if err != nil {
+	}, fmt.Sprintf("Joinging '%s' organization to '%s' channel", org, channel),
+		fmt.Sprintf("Organization '%s' successfully joined '%s' channel", org, channel),
+	); err != nil {
 		if len(stderr) != 0 && util.PromptStderrView(stderr) {
 			return err
 		}
