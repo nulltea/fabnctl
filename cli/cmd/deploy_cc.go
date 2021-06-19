@@ -7,7 +7,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path"
+	"strings"
 
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/pkg/archive"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/timoth-y/chainmetric-network/cli/model"
@@ -17,9 +21,20 @@ import (
 
 // ccCmd represents the cc command
 var ccCmd = &cobra.Command{
-	Use:   "cc",
+	Use:   "cc [PATH] | -",
 	Short: "Performs deployment sequence of the Fabric chaincode package",
-	RunE:  deployChaincode,
+	Long: `TODO: example here`,
+	Args: func(cmd *cobra.Command, args []string) error {
+		if len(args) != 1 {
+			return errors.Errorf(
+				"%q requires exactly 1 argument: [PATH] (chaincode source code path)", cmd.CommandPath(),
+			)
+		}
+		return nil
+	},
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return deployChaincode(cmd, args[0])
+	},
 }
 
 func init() {
@@ -29,15 +44,21 @@ func init() {
 	ccCmd.Flags().StringP("peer", "p", "peer0", "Peer hostname")
 	ccCmd.Flags().StringP("channel", "C", "", "Channel name (required)")
 	ccCmd.Flags().StringP("chaincode", "c", "", "Chaincode name (required)")
+	ccCmd.Flags().StringP("imageReg", "r", "docker.io", "Image registry")
+	ccCmd.Flags().StringP("dockerfile", "d", "docker/{chaincode}.Dockerfile",
+		"Dockerfile path relative to working path",
+	)
 }
 
-func deployChaincode(cmd *cobra.Command, args []string) error {
+func deployChaincode(cmd *cobra.Command, srcPath string) error {
 	var (
 		err       error
 		org       string
 		peer      string
 		channel   string
 		chaincode string
+		imageReg  string
+		dockerfile string
 	)
 
 	// Parse flags
@@ -62,6 +83,15 @@ func deployChaincode(cmd *cobra.Command, args []string) error {
 	} else if len(chaincode) == 0 {
 		return errors.New("Required parameter 'chaincode' is not specified")
 	}
+
+	if imageReg, err = cmd.Flags().GetString("imageReg"); err != nil {
+		return errors.Wrap(err, "failed to parse 'imageReg' parameter")
+	}
+
+	if dockerfile, err = cmd.Flags().GetString("dockerfile"); err != nil {
+		return errors.Wrap(err, "failed to parse 'imageReg' parameter")
+	}
+	dockerfile = strings.ReplaceAll(dockerfile, "{chaincode}", chaincode)
 
 	var (
 		peerPodName     = fmt.Sprintf("%s.%s.org", peer, org)
@@ -113,6 +143,45 @@ func deployChaincode(cmd *cobra.Command, args []string) error {
 		return nil
 	}, fmt.Sprintf("Sending chaincode package to '%s' pod", cliPodName),
 		fmt.Sprintf("Chaincode package has been sent to '%s' pod", cliPodName),
+	); err != nil {
+		return nil
+	}
+
+	// Build images and push to registry:
+	var (
+		platform = fmt.Sprintf("linux/%s", targetArch)
+		imageTag = path.Join(imageReg, fmt.Sprintf("cc.%s", chaincode))
+		dockerResp types.ImageBuildResponse
+	)
+
+	if err = shared.DecorateWithInteractiveLog(func() error {
+		srcTar, err := archive.TarWithOptions(srcPath, &archive.TarOptions{})
+		if err != nil {
+			return errors.Wrapf(err, "failed to build tar archive of source code from path '%s'", srcPath)
+		}
+
+		shared.ILogger.Text("Source code packaged to tar archive and being now send to docker Daemon")
+
+		if dockerResp, err = shared.Docker.ImageBuild(cmd.Context(), srcTar, types.ImageBuildOptions{
+			Platform: fmt.Sprintf("linux/%s", targetArch),
+			Tags: []string{imageReg, fmt.Sprintf("cc.%s", chaincode)},
+			Dockerfile: dockerfile,
+		}); err != nil {
+			return errors.Wrap(err, "failed to build chaincode image from source path")
+		}
+
+		shared.ILogger.Text(fmt.Sprintf("Successfully built chaincode image and tagged it '%s'", imageTag))
+
+		if _, err := shared.Docker.ImagePush(cmd.Context(), imageTag, types.ImagePushOptions{
+			Platform: platform,
+			// TODO reg auth
+		}); err != nil {
+			return errors.Wrapf(err, "failed to push chaincode image to '%s' registry", imageReg)
+		}
+
+		return nil
+	}, "Packaging source code to tar archive",
+		fmt.Sprintf("Chaincode image '%s' has been pushed to registry", imageTag),
 	); err != nil {
 		return nil
 	}
