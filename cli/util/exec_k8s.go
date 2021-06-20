@@ -1,12 +1,10 @@
 package util
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"io"
 	"net/url"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/timoth-y/chainmetric-network/cli/shared"
@@ -22,7 +20,7 @@ func ExecCommandInContainer(
 	ctx context.Context,
 	pod, container, namespace string,
 	cmd ...string,
-) (string, string, error) {
+) (io.Reader, io.Reader, error) {
 	var (
 		stdout, stderr bytes.Buffer
 		req = shared.K8s.CoreV1().RESTClient().Post().
@@ -47,20 +45,24 @@ func ExecCommandInContainer(
 		}
 	}
 
-	return strings.TrimSpace(stdout.String()), strings.TrimSpace(stderr.String()), err
+	return &stdout, &stderr, err
 }
 
 // ExecShellInContainer executes a `sh` shell command
 // in the given `container` of `pod` and return stdout, stderr and error.
-func ExecShellInContainer(ctx context.Context, podName, containerName, namespace string, cmd string) (string, string, error) {
+func ExecShellInContainer(
+	ctx context.Context,
+	podName, containerName, namespace string,
+	cmd string,
+) (io.Reader, io.Reader, error) {
 	return ExecCommandInContainer(ctx, podName, containerName, namespace, "/bin/sh", "-c", cmd)
 }
 
 // ExecCommandInPod executes a command in the default container of the given `pod` and return stdout, stderr and error.
-func ExecCommandInPod(ctx context.Context, podName, namespace string, cmd ...string) (string, string, error) {
+func ExecCommandInPod(ctx context.Context, podName, namespace string, cmd ...string) (io.Reader, io.Reader, error) {
 	pod, err := shared.K8s.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
 	if err != nil {
-		return "", "", errors.Wrapf(err, "faield to determine container for '%s' pod", podName)
+		return nil, nil, errors.Wrapf(err, "faield to determine container for '%s' pod", podName)
 	}
 
 	return ExecCommandInContainer(ctx, podName, pod.Spec.Containers[0].Name, namespace, cmd...)
@@ -68,7 +70,7 @@ func ExecCommandInPod(ctx context.Context, podName, namespace string, cmd ...str
 
 // ExecShellInPod executes a `sh` shell command
 // in the default container of the given `pod` and return stdout, stderr and error.
-func ExecShellInPod(ctx context.Context, podName, namespace string, cmd string)  (string, string, error)  {
+func ExecShellInPod(ctx context.Context, podName, namespace string, cmd string)  (io.Reader, io.Reader, error)  {
 	return ExecCommandInPod(ctx, podName, namespace,"/bin/sh", "-c", cmd)
 }
 
@@ -83,22 +85,4 @@ func execute(_ context.Context, method string, url *url.URL, config *restclient.
 		Stdout:             stdout,
 		Stderr:             stderr,
 	})
-}
-
-func getLastLine(buf bytes.Buffer) string {
-	var lines []string
-
-	s := bufio.NewScanner(&buf)
-	for s.Scan() {
-		lines = append(lines, s.Text())
-	}
-	if err := s.Err(); err != nil {
-		return ""
-	}
-
-	if len(lines) == 0 {
-		return ""
-	}
-
-	return lines[len(lines) - 1]
 }

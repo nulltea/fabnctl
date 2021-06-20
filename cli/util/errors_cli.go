@@ -1,17 +1,22 @@
 package util
 
 import (
+	"bufio"
 	"bytes"
-	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"github.com/manifoldco/promptui"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
+)
+
+var (
+	ErrRemoteCmdFailed = errors.New("remote command failed")
 )
 
 // PromptStderrView asks whether the full log output from stderr should be viewed.
-func PromptStderrView(stderr string) bool {
+func PromptStderrView(stderr io.Reader) bool {
 	prompt := promptui.Prompt{
 		Label:    "View full error log?",
 		IsConfirm: true,
@@ -32,7 +37,7 @@ func PromptStderrView(stderr string) bool {
 
 		switch answer {
 		case "y", "yes":
-			fmt.Println(stderr)
+			io.Copy(os.Stderr, stderr)
 			return true
 		case "n", "no":
 			return false
@@ -45,31 +50,47 @@ func PromptStderrView(stderr string) bool {
 
 // WrapWithStderrViewPrompt wraps `err` from remote container with `msg`,
 // and asks whether the full log output from stderr should be viewed.
-func WrapWithStderrViewPrompt(err error, stderr string, msg string) error {
-	if err == nil || len(stderr) == 0 {
+func WrapWithStderrViewPrompt(err error, stderr io.Reader) error {
+	var buffer bytes.Buffer
+
+	if err == nil || stderr == nil {
 		return err
 	}
 
-	fmt.Println(viper.GetString("cli.error_emoji"), errors.Wrap(err, msg))
+	if size, err := io.Copy(&buffer, stderr); size == 0 || err != nil {
+		return err
+	}
 
-	if PromptStderrView(stderr) {
+	if PromptStderrView(&buffer) {
 		return err
 	}
 
 	return nil
-}
-
-// WrapWithStderrViewPromptF wraps `err` from remote container with formatted message`,
-// and asks whether the full log output from stderr should be viewed.
-func WrapWithStderrViewPromptF(err error, stderr string, format string, v ...interface{}) error {
-	return WrapWithStderrViewPrompt(err, stderr, fmt.Sprintf(format, v))
 }
 
 // ErrFromStderr parses stderr to find last error message, which would be returned as error or <nil> otherwise.
 func ErrFromStderr(stderr bytes.Buffer) error {
-	if errMsg := strings.Replace(getLastLine(stderr), "Error: ", "", 1); len(errMsg) != 0 {
-		return errors.New(errMsg)
+	if errMsg := strings.Replace(GetLastLine(&stderr), "Error: ", "", 1); len(errMsg) != 0 {
+		return errors.Wrapf(ErrRemoteCmdFailed, errMsg)
 	}
 
 	return nil
+}
+
+func GetLastLine(reader io.Reader) string {
+	var lines []string
+
+	s := bufio.NewScanner(reader)
+	for s.Scan() {
+		lines = append(lines, s.Text())
+	}
+	if err := s.Err(); err != nil {
+		return ""
+	}
+
+	if len(lines) == 0 {
+		return ""
+	}
+
+	return lines[len(lines) - 1]
 }

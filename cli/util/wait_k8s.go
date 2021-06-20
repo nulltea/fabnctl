@@ -110,7 +110,7 @@ func WaitForEvent(
 	var (
 		timer = time.NewTimer(15 * time.Second)
 	)
-	shared.ILogger.Text(" " + msgStart())
+	shared.ILogger.Text(msgStart())
 	shared.ILogger.Start()
 
 	LOOP: for {

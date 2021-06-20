@@ -5,4 +5,5 @@ func InitCore() {
 	initLogger()
 	initK8s()
 	initHelm()
+	initDocker()
 }

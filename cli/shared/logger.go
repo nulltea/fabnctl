@@ -1,10 +1,17 @@
 package shared
 
 import (
+	"bufio"
+	"context"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
+	"time"
 
+	"github.com/containerd/console"
 	"github.com/gernest/wow"
 	"github.com/gernest/wow/spin"
 	"github.com/op/go-logging"
@@ -59,7 +66,7 @@ func initLogger() {
 	logging.SetLevel(level, chaincodeName)
 
 	log.SetOutput(ioutil.Discard)
-	ILogger = wow.New(os.Stderr, spin.Get(spin.Dots), "")
+	ILogger = wow.New(os.Stderr, spin.Get(spin.Monkey), "")
 	ILogPrefixes = map[ILogLevel]spin.Spinner{
 		ILogSuccess: {Frames: []string{viper.GetString("cli.success_emoji")}},
 		ILogOk:      {Frames: []string{viper.GetString("cli.ok_emoji")}},
@@ -76,7 +83,7 @@ func DecorateWithInteractiveLog(fn func() error, start, complete string) error {
 	ILogger.Start()
 	defer ILogger.Stop()
 
-	ILogger.Text(" " + start)
+	ILogger.Text(start)
 	if err := fn(); err != nil {
 		ILogger.PersistWith(ILogPrefixes[ILogError], " " + err.Error())
 		return err
@@ -93,7 +100,61 @@ func DecorateWithInteractiveLogWithPersist(fn func() (level ILogLevel, msg strin
 	ILogger.Start()
 	defer ILogger.Stop()
 
-	ILogger.Text(" " + start)
+	ILogger.Text(start)
 	level, msg := fn()
 	ILogger.PersistWith(ILogPrefixes[level], " " + msg)
+}
+
+func StartInteractiveConsole(ctx context.Context) console.File {
+	var (
+		r, w = io.Pipe()
+		reader = bufio.NewReader(r)
+	)
+
+
+
+	go func() {
+		t := time.NewTicker(time.Second)
+		for {
+			select {
+			case <- ctx.Done():
+				return
+			case <- t.C:
+				str, _ := reader.ReadString('\n')
+
+
+				if len(str) == 0 {
+					continue
+				}
+
+				if str != "\n" {
+					fmt.Println(strings.Trim(str, "\n"))
+				}
+			}
+		}
+	}()
+
+
+
+	return &fakeConsoleFile{
+		Writer: w,
+		Reader: nil,
+	}
+}
+
+type fakeConsoleFile struct {
+	io.Reader
+	io.Writer
+}
+
+func (f *fakeConsoleFile) Close() error {
+	return nil
+}
+
+func (f *fakeConsoleFile) Fd() uintptr {
+	return os.Stdout.Fd()
+}
+
+func (f *fakeConsoleFile) Name() string {
+	return ""
 }

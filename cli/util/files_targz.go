@@ -12,7 +12,7 @@ import (
 
 // WriteBytesToTarGzip puts bytes from `reader` into the `targetPath` file in tar.gz archive,
 // by performing pipeline write to WriteBytesToTar.
-func WriteBytesToTarGzip(targetPath string, reader io.Reader, writer io.Writer, size int) error {
+func WriteBytesToTarGzip(targetPath string, reader SizedReader, writer io.Writer) error {
 	gzipWriter := gzip.NewWriter(writer)
 	defer func() {
 		if err := gzipWriter.Close(); err != nil {
@@ -22,11 +22,11 @@ func WriteBytesToTarGzip(targetPath string, reader io.Reader, writer io.Writer, 
 		}
 	}()
 
-	return WriteBytesToTar(targetPath, reader, gzipWriter, size)
+	return WriteBytesToTar(targetPath, reader, gzipWriter)
 }
 
 // WriteBytesToTar puts bytes from `reader` into the `targetPath` file in tar archive.
-func WriteBytesToTar(targetPath string, reader io.Reader, writer io.Writer, size int) error {
+func WriteBytesToTar(targetPath string, reader SizedReader, writer io.Writer) error {
 	tarWriter, ok := writer.(*tar.Writer)
 	if !ok {
 		tarWriter = tar.NewWriter(writer)
@@ -41,7 +41,7 @@ func WriteBytesToTar(targetPath string, reader io.Reader, writer io.Writer, size
 
 	if err := tarWriter.WriteHeader(&tar.Header{
 		Name:    targetPath,
-		Size:    int64(size),
+		Size:    int64(reader.Len()),
 		Mode:    int64(0755),
 		ModTime: time.Now(),
 	}); err != nil {

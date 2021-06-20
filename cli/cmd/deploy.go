@@ -5,10 +5,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	namespace string
-)
-
 // deployCmd represents the deploy command.
 var deployCmd = &cobra.Command{
 	Use:   "deploy",

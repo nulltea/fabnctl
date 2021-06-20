@@ -38,19 +38,19 @@ func gen(cmd *cobra.Command, _ []string) error {
 		values = make(map[string]interface{})
 		chartSpec = &helmclient.ChartSpec{
 			ReleaseName: "artifacts",
-			ChartName: path.Join(chartsPath, "artifacts"),
-			Namespace: namespace,
+			ChartName: path.Join(*chartsPath, "artifacts"),
+			Namespace: *namespace,
 			Wait: true,
 			CleanupOnFail: true,
 		}
 		waitPodName = "artifacts.wait"
-		cryptoConfigDir = fmt.Sprintf(".crypto-config.%s", domain)
-		channelArtifactsDir = fmt.Sprintf(".channel-artifacts.%s", domain)
+		cryptoConfigDir = fmt.Sprintf(".crypto-config.%s", *domain)
+		channelArtifactsDir = fmt.Sprintf(".channel-artifacts.%s", *domain)
 	)
 
 	// Preparing additional values for chart installation:
-	if targetArch == "arm64" {
-		armValues, err := util.ValuesFromFile(path.Join(chartsPath, "artifacts", "values.arm64.yaml"))
+	if *targetArch == "arm64" {
+		armValues, err := util.ValuesFromFile(path.Join(*chartsPath, "artifacts", "values.arm64.yaml"))
 		if err != nil {
 			return err
 		}
@@ -84,7 +84,7 @@ func gen(cmd *cobra.Command, _ []string) error {
 		cmd.Context(),
 		utils.StringPointer("artifacts.generate"),
 		"fabnetd/cid=artifacts.generate",
-		namespace,
+		*namespace,
 	); err != nil {
 		return err
 	} else if !ok {
@@ -94,22 +94,22 @@ func gen(cmd *cobra.Command, _ []string) error {
 	// Deploying 'artifacts.wait' job,
 	// that will span pod for hooking to PV with generated earlier artifacts:
 	if err = exec.Command("kubectl", "apply",
-		"-n", namespace,
-		"-f", path.Join(chartsPath, "artifacts", "artifacts-wait-job.yaml"),
+		"-n", *namespace,
+		"-f", path.Join(*chartsPath, "artifacts", "artifacts-wait-job.yaml"),
 	).Run(); err != nil {
 		return errors.Wrap(err, "failed to deploy 'artifacts.wait' pod")
 	}
 
 	// Cleaning 'artifacts.wait' job and pod:
 	defer func(cmd *cobra.Command) {
-		if err = shared.K8s.BatchV1().Jobs(namespace).DeleteCollection(cmd.Context(),
+		if err = shared.K8s.BatchV1().Jobs(*namespace).DeleteCollection(cmd.Context(),
 			metav1.DeleteOptions{}, metav1.ListOptions{
 				LabelSelector: "fabnetd/cid=artifacts.wait",
 			}); err != nil {
 			cmd.PrintErrln(errors.Wrap(err, "failed to delete artifacts.wait job"))
 		}
 
-		if err = shared.K8s.CoreV1().Pods(namespace).DeleteCollection(cmd.Context(),
+		if err = shared.K8s.CoreV1().Pods(*namespace).DeleteCollection(cmd.Context(),
 			metav1.DeleteOptions{GracePeriodSeconds: utils.Int64Pointer(0)}, metav1.ListOptions{
 				LabelSelector: "job-name=artifacts.wait",
 			}); err != nil {
@@ -122,7 +122,7 @@ func gen(cmd *cobra.Command, _ []string) error {
 		cmd.Context(),
 		&waitPodName,
 		"job-name=artifacts.wait",
-		namespace,
+		*namespace,
 	); err != nil {
 		return err
 	} else if !ok {
