@@ -55,11 +55,11 @@ func init() {
 	deployCmd.AddCommand(ccCmd)
 
 	ccCmd.Flags().StringArrayP("org", "o", nil,
-		"Organization owning chaincode. Can be used multiply time to pass list of organizations")
+		"Organization owning chaincode. Can be used multiply time to pass list of organizations (required)")
 	ccCmd.Flags().StringArrayP("peer", "p", nil,
-		"Peer hostname. Can be used multiply time to pass list of peers by")
-	ccCmd.Flags().StringP("channel", "C", "", "Channel name")
-	ccCmd.Flags().StringP("chaincode", "c", "", "Chaincode name")
+		"Peer hostname. Can be used multiply time to pass list of peers by (required)")
+	ccCmd.Flags().StringP("channel", "C", "", "Channel name (required)")
+	ccCmd.Flags().StringP("chaincode", "c", "", "Chaincode name (required)")
 	ccCmd.Flags().StringP("registry", "r", "",
 		"Image registry that would be used to tag and push chaincode image (default: search in docker config)")
 	ccCmd.Flags().String("registry-auth", "", `Registry auth credentials formatted as 'username:password'.
@@ -257,30 +257,6 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			return nil
 		}
 
-		// Packaging chaincode into tar.gz archive:
-		if err = shared.DecorateWithInteractiveLog(func() error {
-			if err = packageExternalChaincodeInTarGzip(chaincode, peer, org, &packageBuffer); err != nil {
-				return errors.Wrapf(err, "failed to package chaincode in '%s' archive", packageTarGzip)
-			}
-			return nil
-		}, fmt.Sprintf("Packaging chaincode into '%s' archive", packageTarGzip),
-			fmt.Sprintf("Chaincode has been packaged into '%s' archive", packageTarGzip),
-		); err != nil {
-			return nil
-		}
-
-		// Copping chaincode package to cli pod:
-		if err = shared.DecorateWithInteractiveLog(func() error {
-			if err = util.CopyToPod(cmd.Context(), cliPodName, namespace, &packageBuffer, packageTarGzip); err != nil {
-				return err
-			}
-			return nil
-		}, fmt.Sprintf("Sending chaincode package to '%s' pod", cliPodName),
-			fmt.Sprintf("Chaincode package has been sent to '%s' pod", cliPodName),
-		); err != nil {
-			return nil
-		}
-
 		var (
 			stdout    io.Reader
 			stderr    io.Reader
@@ -294,7 +270,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			if errors.Cause(err) == util.ErrRemoteCmdFailed {
 				err = errors.Wrap(err, "Failed to query installed chaincodes")
 				cmd.Println(viper.GetString("cli.error_emoji"), "Error:", err)
-				return util.WrapWithStderrViewPrompt(err, stderr)
+				return util.WrapWithStderrViewPrompt(err, stderr, false)
 			}
 
 			return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName)
@@ -304,6 +280,30 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 
 		// Installing chaincode package if needed:
 		if len(packageID) == 0 || !updateInstalled {
+			// Packaging chaincode into tar.gz archive:
+			if err = shared.DecorateWithInteractiveLog(func() error {
+				if err = packageExternalChaincodeInTarGzip(chaincode, peer, org, &packageBuffer); err != nil {
+					return errors.Wrapf(err, "failed to package chaincode in '%s' archive", packageTarGzip)
+				}
+				return nil
+			}, fmt.Sprintf("Packaging chaincode into '%s' archive", packageTarGzip),
+				fmt.Sprintf("Chaincode has been packaged into '%s' archive", packageTarGzip),
+			); err != nil {
+				return nil
+			}
+
+			// Copping chaincode package to cli pod:
+			if err = shared.DecorateWithInteractiveLog(func() error {
+				if err = util.CopyToPod(cmd.Context(), cliPodName, namespace, &packageBuffer, packageTarGzip); err != nil {
+					return err
+				}
+				return nil
+			}, fmt.Sprintf("Sending chaincode package to '%s' pod", cliPodName),
+				fmt.Sprintf("Chaincode package has been sent to '%s' pod", cliPodName),
+			); err != nil {
+				return nil
+			}
+
 			if err = shared.DecorateWithInteractiveLog(func() error {
 				if _, stderr, err = util.ExecCommandInPod(cmd.Context(), cliPodName, namespace,
 					"peer", "lifecycle", "chaincode", "install", packageTarGzip,
@@ -317,7 +317,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 
 				return nil
 			}, "Installing chaincode package", "Chaincode package has been installed"); err != nil {
-				return util.WrapWithStderrViewPrompt(err, stderr)
+				return util.WrapWithStderrViewPrompt(err, stderr, false)
 			}
 
 			packageID = parseInstalledPackageID(stderr)
@@ -374,10 +374,9 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			checkCommitReadinessCmd,
 		); err != nil {
 			if errors.Cause(err) == util.ErrRemoteCmdFailed {
-				cmd.Println(viper.GetString("cli.error_emoji"), "Error:", err)
 				return util.WrapWithStderrViewPrompt(
 					errors.Wrapf(err, "Failed to check chaincode approval by '%s' organization", org),
-					stderr,
+					stderr, true,
 				)
 			}
 
@@ -390,7 +389,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			"-v", "1.0",
 			"--sequence", "1",
 			"--package-id", packageID,
-			"--init-required", "false",
+			"--init-required=false",
 			"-C", channel,
 			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), domain),
 			"--tls", "--cafile", "$ORDERER_CA",
@@ -415,7 +414,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			}, "Approving chaincode",
 				fmt.Sprintf("Chaincode has been approved for '%s' organization", org),
 			); err != nil {
-				return util.WrapWithStderrViewPrompt(err, stderr)
+				return util.WrapWithStderrViewPrompt(err, stderr, false)
 			}
 		} else {
 			cmd.Printf(
@@ -435,9 +434,10 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		checkCommitReadinessCmd,
 	); err != nil {
 		if errors.Cause(err) == util.ErrRemoteCmdFailed {
-			err = errors.Wrap(err, "Failed to check chaincode commit readiness")
-			cmd.Println(viper.GetString("cli.error_emoji"), "Error:", err)
-			return util.WrapWithStderrViewPrompt(err, stderr)
+			return util.WrapWithStderrViewPrompt(
+				errors.Wrap(err, "Failed to check chaincode commit readiness"),
+				stderr, true,
+			)
 		}
 
 		return errors.Wrapf(err, "Failed to execute command on '%s' pod", availableCliPod)
@@ -454,12 +454,12 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		)
 	}
 
-	var commitPartialCmd = util.FormShellCommand(
+	var commitCmd = util.FormShellCommand(
 		"peer", "lifecycle", "chaincode", "commit",
 		"-n", chaincode,
 		"-v", "1.0",
 		"--sequence", "1",
-		"--init-required", "false",
+		"--init-required=false",
 		"-C", channel,
 		"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), domain),
 		"--tls", "--cafile", "$ORDERER_CA",
@@ -468,9 +468,8 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 	// Committing chaincode on peers of all given organizations:
 	for org, peer := range orgPeers {
 		var (
-			stderr io.Reader
-			orgHost = fmt.Sprintf("%s.%s", org, domain)
-			peerHost = fmt.Sprintf("%s.%s", org, orgHost)
+			orgHost = fmt.Sprintf("%s.org.%s", org, domain)
+			peerHost = fmt.Sprintf("%s.%s", peer, orgHost)
 			cryptoConfigPathBase = "/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto-config"
 			commitCmdEnding = util.FormShellCommand(
 				"--peerAddresses", fmt.Sprintf("%s:443", peerHost),
@@ -481,32 +480,34 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 					"tls", "ca.crt",
 				),
 			)
-			commitForOrgCmd = util.FormShellCommand(commitPartialCmd, commitCmdEnding)
 		)
 
-		if err = shared.DecorateWithInteractiveLog(func() error {
-			if _, stderr, err = util.ExecCommandInPod(
-				cmd.Context(),
-				availableCliPod, namespace,
-				commitForOrgCmd,
-			); err != nil {
-				if errors.Cause(err) == util.ErrRemoteCmdFailed {
-					return errors.Wrapf(err,
-						"Failed to commit chaincode on '%s' peer of '%s' organization",
-						peer, org,
-					)
-				}
+		commitCmd = util.FormShellCommand(commitCmd, commitCmdEnding)
+	}
 
-				return errors.Wrapf(err, "Failed to execute command on '%s' pod", availableCliPod)
+	cmd.Println()
+
+	var stderr io.Reader
+	if err = shared.DecorateWithInteractiveLog(func() error {
+		if _, stderr, err = util.ExecShellInPod(
+			cmd.Context(),
+			availableCliPod, namespace,
+			commitCmd,
+		); err != nil {
+			if errors.Cause(err) == util.ErrRemoteCmdFailed {
+				return errors.Wrapf(err,
+					"Failed to commit chaincode",
+				)
 			}
 
-			return nil
-		}, fmt.Sprintf("Committing chaincode on '%s' peer of '%s' organization", peer, org),
-			fmt.Sprintf("Chaincode has been commited on '%s' peer of '%s' organization", peer, org),
-		); err != nil {
-			cmd.Println(viper.GetString("cli.error_emoji"), "Error:", err)
-			return util.WrapWithStderrViewPrompt(err, stderr)
+			return errors.Wrapf(err, "Failed to execute command on '%s' pod", availableCliPod)
 		}
+
+		return nil
+	}, "Committing chaincode on organization peers",
+		"Chaincode has been committed on all organization peers",
+	); err != nil {
+		return util.WrapWithStderrViewPrompt(err, stderr, false)
 	}
 
 	cmd.Printf("\n🎉 Chaincode '%s' successfully deployed!\n", chaincode)
@@ -644,9 +645,9 @@ func parseQueriedPackageID(reader io.Reader, cc string) string {
 	return ""
 }
 
-func checkChaincodeApprovalByOrg(reader io.Reader, org ...string) bool {
-	return len(regexp.MustCompile(fmt.Sprintf("(?:%s): true", strings.Join(org, "|"))).
-		FindReaderIndex(bufio.NewReader(reader))) == len(org)
+func checkChaincodeApprovalByOrg(reader io.Reader, org string) bool {
+	return regexp.MustCompile(fmt.Sprintf("(?:%s): true", org)).
+		MatchReader(bufio.NewReader(reader))
 }
 
 func checkChaincodeCommitReadiness(reader io.Reader) (ready bool, notApprovedBy []string) {

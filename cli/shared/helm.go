@@ -16,7 +16,7 @@ func initHelm() {
 			Debug:            true,
 			Linting:          true,
 			DebugLog: func(format string, v ...interface{}) {
-				ILogger.Text(" Helm: " + fmt.Sprintf(format, v...))
+				ILogger.Text("Helm: " + fmt.Sprintf(format, v...))
 			},
 		}
 	)

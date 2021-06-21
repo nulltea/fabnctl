@@ -3,12 +3,14 @@ package util
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"strings"
 
 	"github.com/manifoldco/promptui"
 	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -50,7 +52,7 @@ func PromptStderrView(stderr io.Reader) bool {
 
 // WrapWithStderrViewPrompt wraps `err` from remote container with `msg`,
 // and asks whether the full log output from stderr should be viewed.
-func WrapWithStderrViewPrompt(err error, stderr io.Reader) error {
+func WrapWithStderrViewPrompt(err error, stderr io.Reader, printErrPriorPrompt bool) error {
 	var buffer bytes.Buffer
 
 	if err == nil || stderr == nil {
@@ -59,6 +61,10 @@ func WrapWithStderrViewPrompt(err error, stderr io.Reader) error {
 
 	if size, err := io.Copy(&buffer, stderr); size == 0 || err != nil {
 		return err
+	}
+
+	if printErrPriorPrompt {
+		fmt.Println(viper.GetString("cli.error_emoji"), "Error:", err)
 	}
 
 	if PromptStderrView(&buffer) {
