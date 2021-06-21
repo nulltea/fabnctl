@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -62,7 +61,7 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 	if ok, err := util.WaitForPodReady(
 		cmd.Context(),
 		&peerPodName,
-		fmt.Sprintf("fabnetd/app=%s.%s.org", peer, org), *namespace,
+		fmt.Sprintf("fabnetd/app=%s.%s.org", peer, org), namespace,
 	); err != nil {
 		return err
 	} else if !ok {
@@ -74,7 +73,7 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 		cmd.Context(),
 		&cliPodName,
 		fmt.Sprintf("fabnetd/app=cli.%s.%s.org", peer, org),
-		*namespace,
+		namespace,
 	); err != nil {
 		return err
 	} else if !ok {
@@ -82,30 +81,30 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 	}
 
 	var (
-		joinCmd = strings.Join([]string {
+		joinCmd = util.FormShellCommand(
 			"peer channel join",
 			"-b", fmt.Sprintf("%s.block", channel),
-		}, " ")
+		)
 
-		fetchCmd = strings.Join([]string {
+		fetchCmd = util.FormShellCommand(
 			"peer channel fetch config", fmt.Sprintf("%s.block", channel),
 			"-c", channel,
-			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), *domain),
+			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), domain),
 			"--tls", "--cafile", "$ORDERER_CA",
-		}, " ")
+		)
 
-		createCmd = strings.Join([]string {
+		createCmd = util.FormShellCommand(
 			"peer channel create",
 			"-c", channel,
 			"-f", fmt.Sprintf("./channel-artifacts/%s.tx", channel),
-			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), *domain),
+			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), domain),
 			"--tls", "--cafile", "$ORDERER_CA",
-		}, " ")
+		)
 	)
 
 	// Checking whether specified channel is already created or not,
 	// by trying to fetch in genesis block:
-	if _, _, err = util.ExecShellInPod(cmd.Context(), cliPodName, *namespace, fetchCmd); err == nil {
+	if _, _, err = util.ExecShellInPod(cmd.Context(), cliPodName, namespace, fetchCmd); err == nil {
 		channelExists = true
 		cmd.Println(viper.GetString("cli.info_emoji"),
 			fmt.Sprintf("Channel '%s' already created, fetched its genesis block", channel),
@@ -119,12 +118,12 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 	// Creating channel in case it wasn't yet:
 	if !channelExists {
 		if err = shared.DecorateWithInteractiveLog(func() error {
-			if _, stderr, err = util.ExecShellInPod(cmd.Context(), cliPodName, *namespace, createCmd); err != nil {
+			if _, stderr, err = util.ExecShellInPod(cmd.Context(), cliPodName, namespace, createCmd); err != nil {
 				if errors.Cause(err) == util.ErrRemoteCmdFailed {
-					return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName)
+					return errors.New("Failed to create channel")
 				}
 
-				return errors.New("Failed to create channel")
+				return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName)
 			}
 			return nil
 		}, "Creating channel",
@@ -136,12 +135,12 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 
 	// Joining peer to channel:
 	if err = shared.DecorateWithInteractiveLog(func() error {
-		if _, stderr, err = util.ExecShellInPod(cmd.Context(), cliPodName, *namespace, joinCmd); err != nil {
+		if _, stderr, err = util.ExecShellInPod(cmd.Context(), cliPodName, namespace, joinCmd); err != nil {
 			if errors.Cause(err) == util.ErrRemoteCmdFailed {
-				return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName )
+				return errors.Wrap(err, "Failed to join channel")
 			}
 
-			return errors.Wrap(err, "Failed to join channel")
+			return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName )
 		}
 		return nil
 	}, fmt.Sprintf("Joinging '%s' organization to '%s' channel", org, channel),

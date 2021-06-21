@@ -59,16 +59,16 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 
 	var (
 		tlsDir = path.Join(
-			fmt.Sprintf(".crypto-config.%s", *domain),
-			"peerOrganizations", fmt.Sprintf("%s.org.%s", org, *domain),
-			"peers", fmt.Sprintf("%s.%s.org.%s", peer, org, *domain),
+			fmt.Sprintf(".crypto-config.%s", domain),
+			"peerOrganizations", fmt.Sprintf("%s.org.%s", org, domain),
+			"peers", fmt.Sprintf("%s.%s.org.%s", peer, org, domain),
 			"tls",
 		)
 		pkPath        = path.Join(tlsDir, "server.key")
 		certPath      = path.Join(tlsDir, "server.crt")
 		caPath        = path.Join(tlsDir, "ca.crt")
-		tlsSecretName = fmt.Sprintf("%s.%s.org.%s-tls", peer, org, *domain)
-		caSecretName  = fmt.Sprintf("%s.%s.org.%s-ca", peer, org, *domain)
+		tlsSecretName = fmt.Sprintf("%s.%s.org.%s-tls", peer, org, domain)
+		caSecretName  = fmt.Sprintf("%s.%s.org.%s-ca", peer, org, domain)
 	)
 
 	// Retrieve orderer transport TLS private key:
@@ -90,7 +90,7 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create or update peer transport TLS secret:
-	if _, err = util.SecretAdapter(shared.K8s.CoreV1().Secrets(*namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
+	if _, err = util.SecretAdapter(shared.K8s.CoreV1().Secrets(namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
 		Type: corev1.SecretTypeTLS,
 		Data: map[string][]byte{
 			corev1.TLSPrivateKeyKey: pkPayload,
@@ -98,10 +98,10 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      tlsSecretName,
-			Namespace: *namespace,
+			Namespace: namespace,
 			Labels: map[string]string{
 				"fabnetd/cid": "peer.tls.secret",
-				"fabnetd/domain": *domain,
+				"fabnetd/domain": domain,
 				"fabnetd/host": fmt.Sprintf("%s.%s.org", peer, org),
 			},
 		},
@@ -114,17 +114,17 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 	)
 
 	// Create or update peer transport CA secret:
-	if _, err = util.SecretAdapter(shared.K8s.CoreV1().Secrets(*namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
+	if _, err = util.SecretAdapter(shared.K8s.CoreV1().Secrets(namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
 			"ca.crt": caPayload,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: caSecretName,
-			Namespace: *namespace,
+			Namespace: namespace,
 			Labels: map[string]string{
 				"fabnetd/cid": "peer.ca.secret",
-				"fabnetd/domain": *domain,
+				"fabnetd/domain": domain,
 				"fabnetd/host": fmt.Sprintf("%s.%s.org", peer, org),
 			},
 		},
@@ -136,18 +136,19 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 		viper.GetString("cli.success_emoji"), caSecretName,
 	)
 
+	// Preparing additional values for chart installation:
 	var (
 		values = make(map[string]interface{})
 		chartSpec = &helmclient.ChartSpec{
 			ReleaseName: fmt.Sprintf("%s-%s", peer, org),
-			ChartName: path.Join(*chartsPath, "peer"),
-			Namespace: *namespace,
+			ChartName: path.Join(chartsPath, "peer"),
+			Namespace: namespace,
 			Wait: true,
 		}
 	)
 
-	if *targetArch == "arm64" {
-		armValues, err := util.ValuesFromFile(path.Join(*chartsPath, "peer", "values.arm64.yaml"))
+	if targetArch == "arm64" {
+		armValues, err := util.ValuesFromFile(path.Join(chartsPath, "peer", "values.arm64.yaml"))
 		if err != nil {
 			return err
 		}
@@ -190,18 +191,21 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 
 	chartSpec.ValuesYaml = string(valuesYaml)
 
+	// Installing orderer helm chart:
 	ctx, cancel := context.WithTimeout(cmd.Context(), viper.GetDuration("helm.install_timeout"))
 	defer cancel()
 
-	shared.ILogger.Start()
-	if err = shared.Helm.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
-		return errors.Wrap(err, "failed to install peer helm chart")
+	if err = shared.DecorateWithInteractiveLog(func() error {
+		if err = shared.Helm.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
+			return errors.Wrap(err, "failed to install peer helm chart")
+		}
+		return nil
+	}, fmt.Sprintf("Installing 'peer/%s-%s' chart", peer, org),
+		fmt.Sprintf("Chart 'peer/%s' installed successfully", chartSpec.ReleaseName),
+	); err != nil {
+		return nil
 	}
-	shared.ILogger.PersistWith(shared.ILogPrefixes[shared.ILogSuccess],
-		fmt.Sprintf(" Chart 'peer/%s' installed successfully", fmt.Sprintf("%s-%s", peer, org)),
-	)
-	shared.ILogger.Stop()
 
-	cmd.Printf("🎉 Peer successfully deployed on %s.%s.org.%s!\n", peer, org, *domain)
+	cmd.Printf("🎉 Peer successfully deployed on %s.%s.org.%s!\n", peer, org, domain)
 	return nil
 }

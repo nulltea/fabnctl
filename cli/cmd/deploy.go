@@ -22,8 +22,7 @@ Examples:
   fabnetd deploy channel -o chipa-inu -p peer0 -C supply-channel 
 
   # Deploy chaincode (Smart Contracts package)
-  fabnetd deploy cc eploy cc -o chipa-inu -p peer0 -C supply-channel --cc_name assets
-`,
+  fabnetd deploy cc eploy cc -o chipa-inu -p peer0 -C supply-channel --cc_name assets`,
 	RunE: deploy,
 }
 

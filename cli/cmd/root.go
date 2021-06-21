@@ -7,10 +7,10 @@ import (
 )
 
 var (
-	targetArch *string
-	domain     *string
-	chartsPath *string
-	namespace  *string
+	targetArch string
+	domain     string
+	chartsPath string
+	namespace  string
 )
 
 var (
@@ -30,19 +30,34 @@ func Execute() {
 }
 
 func init() {
-	targetArch = rootCmd.PersistentFlags().StringP(
-		"arch", "a", "arm64", `Deployment target architecture.
+	rootCmd.PersistentFlags().StringVarP(
+		&targetArch,
+		"arch", "a",
+		"arm64",
+		`Deployment target architecture.
 Supported are:
  - ARM64: -a=arm64
- - AMD64 (x86) -a=amd64`)
+ - AMD64 (x86) -a=amd64`,
+ 	)
 
-	domain = rootCmd.PersistentFlags().StringP(
-		"domain", "d", "chainmetric.network", "Deployment target domain")
+	 rootCmd.PersistentFlags().StringVarP(
+	 	&domain,
+	 	"domain", "d",
+	 	"chainmetric.network",
+	 	"Deployment target domain",
+	 )
 
-	chartsPath = rootCmd.PersistentFlags().String(
-		"charts", "./charts", "Helm deployment charts path")
+	rootCmd.PersistentFlags().StringVar(
+		&chartsPath,
+		"charts",
+		"./charts",
+		"Helm deployment charts path",
+	)
 
-	namespace = deployCmd.PersistentFlags().StringP("namespace", "n", "network",
+	deployCmd.PersistentFlags().StringVarP(
+		&namespace,
+		"namespace", "n",
+		"network",
 		"namespace scope for the deployment request",
 	)
 }

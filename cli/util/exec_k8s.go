@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"net/url"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/timoth-y/chainmetric-network/cli/shared"
@@ -85,4 +86,9 @@ func execute(_ context.Context, method string, url *url.URL, config *restclient.
 		Stdout:             stdout,
 		Stderr:             stderr,
 	})
+}
+
+// FormShellCommand forms command for shell execution `sh -c "cmd"`.
+func FormShellCommand(cmd ...string) string {
+	return strings.Join(cmd, " ")
 }

@@ -18,11 +18,11 @@ func initConfig() {
 
 	viper.SetDefault("fabric.orderer_hostname_name", "orderer")
 
-	viper.SetDefault("cli.success_emoji", "👍")
-	viper.SetDefault("cli.ok_emoji", "👌")
-	viper.SetDefault("cli.error_emoji", "\n❌")
-	viper.SetDefault("cli.warning_emoji", "❗")
-	viper.SetDefault("cli.info_emoji", "👉")
+	viper.Set("cli.success_emoji", "👍")
+	viper.Set("cli.ok_emoji", "👌")
+	viper.Set("cli.error_emoji", "\n❌")
+	viper.Set("cli.warning_emoji", "❗")
+	viper.Set("cli.info_emoji", "👉")
 
 	viper.SetConfigType("yaml")
 	viper.SetConfigName(".cli-config")
