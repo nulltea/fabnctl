@@ -1,0 +1,83 @@
+include .env
+export
+
+k3s:
+	k3sup install --ip=${NODE_IP} --user=${NODE_USERNAME}
+	kubectl config use-context rpi-${CLUSTER_NAME}-k3s
+
+storage:
+	kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
+
+traefik:
+	helm upgrade --install traefik -n=kube-system -f=charts/values-traefik.yaml \
+		--set=ports.websecure.tls.domains.main=$DOMAIN,ports.websecure.tls.domains.sans=*.$DOMAIN \
+		traefik/traefik
+	helm upgrade --install -n=kube-system --set=ingress.routes.host=proxy.$DOMAIN \
+		traefik-dashboard charts/ingress
+
+hyperledger-init:
+	kubectl create namespace network || echo "Namespace 'network' already exists"
+	kubectl config set-context --current --namespace=network
+	./fabnctl gen -a=arm64 -d=chainmetric.network -f ./network-config.yaml
+
+hyperledger-deploy:
+	./fabnctl deploy orderer -a=arm64 -d=chainmetric.network
+
+	./fabnctl deploy peer -a=arm64 -d=chainmetric.network -o chipa-inu -p peer0
+	./fabnctl deploy peer -a=arm64 -d=chainmetric.network -o blueberry-go -p peer0
+	./fabnctl deploy peer -a=arm64 -d=chainmetric.network -o moon-lan -p peer0
+
+	./fabnctl deploy channel -a=arm64 -d=chainmetric.network -c=supply-channel \
+		-o=chipa-inu -p=peer0 \
+		-o=blueberry-go -p=peer0 \
+		-o=moon-lan -p=peer0
+
+	./fabnctl deploy cc -c assets -C=supply-channel \
+		-o=chipa-inu -p=peer0 \
+		-o=blueberry-go -p=peer0 \
+		-o=moon-lan -p=peer0 \
+		-r iotchainnetwork ../contracts
+
+	./fabnctl deploy cc -c devices -C=supply-channel \
+		-o=chipa-inu -p=peer0 \
+		-o=blueberry-go -p=peer0 \
+		-o=moon-lan -p=peer0 \
+		-r iotchainnetwork ../contracts
+
+	./fabnctl deploy cc -c requirements -C=supply-channel \
+		-o=chipa-inu -p=peer0 \
+		-o=blueberry-go -p=peer0 \
+		-o=moon-lan -p=peer0 \
+		-r iotchainnetwork ../contracts
+
+	./fabnctl deploy cc -c readings -C=supply-channel \
+		-o=chipa-inu -p=peer0 \
+		-o=blueberry-go -p=peer0 \
+		-o=moon-lan -p=peer0 \
+		-r iotchainnetwork ../contracts
+
+hyperledger-clear:
+	helm uninstall peer0-chipa-inu | echo "Chart 'peer/peer0-chipa-inu' already uninstalled"
+	helm uninstall peer0-blueberry-go | echo "Chart 'peer/peer0-blueberry-go' already uninstalled"
+	helm uninstall peer0-moon-lan | echo "Chart 'peer/peer0-moon-lan' already uninstalled"
+
+	helm uninstall assets-cc-peer0-chipa-inu | echo "Chart 'peer/assets-cc-peer0-chipa-inu' already uninstalled"
+	helm uninstall assets-cc-peer0-blueberry-go | echo "Chart 'peer/assets-cc-peer0-blueberry-go' already uninstalled"
+	helm uninstall assets-cc-peer0-moon-lan | echo "Chart 'peer/assets-cc-peer0-moon-lan' already uninstalled"
+
+	helm uninstall devices-cc-peer0-chipa-inu | echo "Chart 'peer/devices-cc-peer0-chipa-inu' already uninstalled"
+	helm uninstall devices-cc-peer0-blueberry-go | echo "Chart 'peer/devices-cc-peer0-blueberry-go' already uninstalled"
+	helm uninstall devices-cc-peer0-moon-lan | echo "Chart 'peer/devices-cc-peer0-moon-lan' already uninstalled"
+
+	helm uninstall requirements-cc-peer0-chipa-inu | echo "Chart 'peer/requirements-cc-peer0-chipa-inu' already uninstalled"
+	helm uninstall requirements-cc-peer0-blueberry-go | echo "Chart 'peer/requirements-cc-peer0-blueberry-go' already uninstalled"
+	helm uninstall requirements-cc-peer0-moon-lan | echo "Chart 'peer/requirements-cc-peer0-chipa-inu' already uninstalled"
+
+	helm uninstall readings-cc-peer0-chipa-inu | echo "Chart 'peer/readings-cc-peer0-chipa-inu' already uninstalled"
+	helm uninstall readings-cc-peer0-blueberry-go | echo "Chart 'peer/readings-cc-peer0-blueberry-go' already uninstalled"
+	helm uninstall readings-cc-peer0-moon-lan | echo "Chart 'peer/readings-cc-peer0-moon-lan' already uninstalled"
+
+	helm uninstall orderer | echo "Chart 'orderer/orderer' already uninstalled"
+
+	helm uninstall artifacts | echo "Chart 'artifacts/artifacts' already uninstalled"
+

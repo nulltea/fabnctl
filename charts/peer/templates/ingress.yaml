@@ -13,7 +13,7 @@ spec:
     - match: Host(`{{ .Values.config.peer }}.{{ .Values.config.hostname }}.{{ .Values.config.domain }}`)
       kind: Rule
       services:
-        - name:  {{ .Values.config.peer}}-{{ .Release.Name }}
+        - name: {{ .Values.config.peer}}-{{ .Values.config.hostname | replace "." "-" }}
           port: {{ .Values.peer.service.port }}
           scheme: https
           {{- if .Values.config.tls }}
@@ -24,7 +24,7 @@ spec:
     - match: Host(`ca.{{ .Values.config.hostname }}.{{ .Values.config.domain }}`)
       kind: Rule
       services:
-        - name: ca-{{ .Release.Name }}
+        - name: ca-{{ .Values.config.hostname | replace "." "-" }}
           port: {{ .Values.ca.service.port }}
           scheme: https
       middlewares:
@@ -33,7 +33,7 @@ spec:
     - match: Host(`couchdb.{{ .Values.config.peer }}.{{ .Values.config.hostname }}.{{ .Values.config.domain }}`)
       kind: Rule
       services:
-        - name: couchdb-{{ .Values.config.peer}}-{{ .Release.Name }}
+        - name: couchdb-{{ .Values.config.peer}}-{{ .Values.config.hostname | replace "." "-" }}
           port: {{ .Values.couchdb.service.port }}
           scheme: https
       middlewares:
@@ -49,7 +49,7 @@ kind: ServersTransport
 metadata:
   name: {{ .Release.Name }}-transport
 spec:
-  serverName:  {{ .Values.config.peer}}-{{ .Release.Name }}
+  serverName: {{ .Values.config.peer}}-{{ .Values.config.hostname | replace "." "-" }}
   rootCAsSecrets:
     - {{ .Values.config.peer }}.{{ .Values.config.hostname }}.{{ .Values.config.domain }}-ca
   certificatesSecrets:

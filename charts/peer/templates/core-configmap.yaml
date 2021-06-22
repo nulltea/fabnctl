@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Release.Name }}.core.config
+  name: {{ .Values.config.peer}}.{{ .Values.config.hostname }}.core.config
   labels:
   {{- include "chart.labels" . | nindent 4 }}
 data:

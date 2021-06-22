@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Values.config.peer}}-{{ .Release.Name }}
+  name: {{ .Values.config.peer}}-{{ .Values.config.hostname | replace "." "-" }}
   labels:
   {{- include "chart.labels" . | nindent 4 }}
 spec:
@@ -11,4 +11,4 @@ spec:
       port: {{ .Values.peer.service.port }}
       targetPort: {{ .Values.peer.service.port }}
   selector:
-    app: {{ .Values.config.peer }}.{{ .Release.Name }}
+    app: {{ .Values.config.peer}}.{{ .Values.config.hostname }}

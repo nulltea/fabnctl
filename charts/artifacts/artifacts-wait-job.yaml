@@ -3,7 +3,7 @@ kind: Job
 metadata:
   name: artifacts.wait
   labels:
-    app: waiter
+    fabnctl/cid: artifacts.wait
 spec:
   template:
     metadata:

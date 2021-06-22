@@ -26,7 +26,7 @@ data:
         {{- range .peers }}
           - Hostname: {{ .subdomain }}
             SANS:
-              - {{ .service }}
+              - {{ .service }}-org
               - localhost
         {{- end }}
         Users:

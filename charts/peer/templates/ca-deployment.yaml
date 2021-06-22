@@ -2,24 +2,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ca.{{ .Release.Name }}
+  name: ca.{{ .Values.config.hostname }}
   labels:
-    app: ca.{{ .Release.Name }}
+    app: ca.{{ .Values.config.hostname }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: ca.{{ .Release.Name }}
+      app: ca.{{ .Values.config.hostname }}
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
-        app: ca.{{ .Release.Name }}
+        app: ca.{{ .Values.config.hostname }}
+        fabnctl/cid: org-ca
+        fabnctl/app: ca.{{ .Values.config.hostname }}
+        fabnctl/domain: {{ .Values.config.domain }}
+        fabnctl/hostname: ca.{{ .Values.config.hostname }}
     spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
       containers:
-        - name: {{ .Chart.Name }}
+        - name: ca
           image: "{{ .Values.ca.image.repository }}:{{ .Values.ca.image.tag }}"
           imagePullPolicy: {{ .Values.ca.image.pullPolicy }}
           ports:
@@ -42,7 +46,7 @@ spec:
           volumeMounts:
             - name: artifacts
               mountPath: /etc/hyperledger/fabric-ca-server-config
-              subPath: crypto-config/peerOrganizations/{{.Values.config.hostname}}}.{{ .Values.config.domain }}
+              subPath: crypto-config/peerOrganizations/{{.Values.config.hostname}}.{{ .Values.config.domain }}
           workingDir: /opt/gopath/src/github.com/hyperledger/fabric
       restartPolicy: Always
       volumes:

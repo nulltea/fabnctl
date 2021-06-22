@@ -18,22 +18,22 @@ function generateArtifacts(){
   kubectl apply -n network -f charts/artifacts/artifacts-wait-job.yaml
   pod=$(kubectl get pods -n network | awk '{print $1}' | grep artifacts.wait)
   kubectl wait -n network --for=condition=ready "pod/$pod"
-  rm -rf crypto-config.$DOMAIN
-  kubectl cp -n network "$pod:crypto-config" crypto-config.$DOMAIN
+  rm -rf .crypto-config.$DOMAIN
+  kubectl cp -n network "$pod:crypto-config" .crypto-config.$DOMAIN
   echo "crypto-config copied successfully!"
-  rm -rf channel-artifacts.$DOMAIN
-  kubectl cp -n network "$pod:channel-artifacts" channel-artifacts.$DOMAIN
+  rm -rf .channel-artifacts.$DOMAIN
+  kubectl cp -n network "$pod:channel-artifacts" .channel-artifacts.$DOMAIN
   echo "channel-artifacts copied successfully!"
   kubectl delete -n network job artifacts.wait
 }
 
 function deployOrderer(){
   kubectl create -n network secret tls orderer.$DOMAIN-tls \
-    --key=crypto-config.$DOMAIN/ordererOrganizations/$DOMAIN/orderers/$ORDERER.$DOMAIN/tls/server.key \
-    --cert=crypto-config.$DOMAIN/ordererOrganizations/$DOMAIN/orderers/$ORDERER.$DOMAIN/tls/server.crt \
+    --key=.crypto-config.$DOMAIN/ordererOrganizations/$DOMAIN/orderers/$ORDERER.$DOMAIN/tls/server.key \
+    --cert=.crypto-config.$DOMAIN/ordererOrganizations/$DOMAIN/orderers/$ORDERER.$DOMAIN/tls/server.crt \
     --dry-run=client -o yaml | kubectl apply -f -
   kubectl create secret generic orderer.$DOMAIN-ca \
-    --from-file=crypto-config.$DOMAIN/ordererOrganizations/$DOMAIN/orderers/$ORDERER.$DOMAIN/tls/ca.crt \
+    --from-file=.crypto-config.$DOMAIN/ordererOrganizations/$DOMAIN/orderers/$ORDERER.$DOMAIN/tls/ca.crt \
     --dry-run=client -o yaml | kubectl apply -f -
   echo "tls secrets created successfully!"
   if [ $TARGET_ARCH = "ARM64" ]; then
@@ -50,11 +50,11 @@ function deployOrderer(){
 function deployPeer() {
   org=$1
   kubectl create -n network secret tls "peer0.$org.org.$DOMAIN-tls" \
-    --key="crypto-config.$DOMAIN/peerOrganizations/$org.org.$DOMAIN/peers/peer0.$org.org.$DOMAIN/tls/server.key" \
-    --cert="crypto-config.$DOMAIN/peerOrganizations/$org.org.$DOMAIN/peers/peer0.$org.org.$DOMAIN/tls/server.crt" \
+    --key=".crypto-config.$DOMAIN/peerOrganizations/$org.org.$DOMAIN/peers/peer0.$org.org.$DOMAIN/tls/server.key" \
+    --cert=".crypto-config.$DOMAIN/peerOrganizations/$org.org.$DOMAIN/peers/peer0.$org.org.$DOMAIN/tls/server.crt" \
     --dry-run=client -o yaml | kubectl apply -f -
   kubectl create secret generic "peer0.$org.org.$DOMAIN-ca" \
-    --from-file="crypto-config.$DOMAIN/peerOrganizations/$org.org.$DOMAIN/peers/peer0.$org.org.$DOMAIN/tls/ca.crt" \
+    --from-file=".crypto-config.$DOMAIN/peerOrganizations/$org.org.$DOMAIN/peers/peer0.$org.org.$DOMAIN/tls/ca.crt" \
     --dry-run=client -o yaml | kubectl apply -f -
   echo "tls secrets created successfully!"
   echo
@@ -149,7 +149,7 @@ function upgradeChaincode() {
 }
 
 function cleanNetwork() {
-  # rm -rf ./crypto-config.$DOMAIN/* ./channel-artifacts/*
+  # rm -rf ./.crypto-config.$DOMAIN/* ./channel-artifacts/*
   # helm uninstall -n network artifacts
   helm uninstall -n network orderer supplier deliverer peer0-supplier-cc-assets
   kubectl get pods -n network -w

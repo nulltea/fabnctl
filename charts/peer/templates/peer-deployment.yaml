@@ -1,20 +1,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.config.peer }}.{{ .Release.Name }}
+  name: {{ .Values.config.peer}}.{{ .Values.config.hostname }}
   labels:
-    app: {{ .Values.config.peer }}.{{ .Release.Name }}
+    app: {{ .Values.config.peer}}.{{ .Values.config.hostname }}
+    fabnctl/cid: org.peer
+    fabnctl/app: {{ .Values.config.peer}}.{{ .Values.config.hostname }}
+    fabnctl/domain: {{ .Values.config.domain }}
+    fabnctl/hostname: {{ .Values.config.peer }}.{{ .Values.config.hostname }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ .Values.config.peer }}.{{ .Release.Name }}
+      app: {{ .Values.config.peer}}.{{ .Values.config.hostname }}
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
-        app: {{ .Values.config.peer }}.{{ .Release.Name }}
+        app: {{ .Values.config.peer}}.{{ .Values.config.hostname }}
+        fabnctl/cid: org.peer
+        fabnctl/app: {{ .Values.config.peer}}.{{ .Values.config.hostname }}
+        fabnctl/domain: {{ .Values.config.domain }}
+        fabnctl/hostname: {{ .Values.config.peer }}.{{ .Values.config.hostname }}
     spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
       containers:
@@ -66,7 +74,7 @@ spec:
             - name: CORE_LEDGER_STATE_STATEDATABASE
               value: "CouchDB"
             - name: CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS
-              value: "couchdb-{{ .Values.config.peer}}-{{ .Release.Name }}:{{ .Values.couchdb.service.port }}"
+              value: "couchdb-{{ .Values.config.peer}}-{{ .Values.config.hostname | replace "." "-" }}:{{ .Values.couchdb.service.port }}"
             - name: CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -104,33 +112,33 @@ spec:
       volumes:
         - name: storage
           persistentVolumeClaim:
-            claimName: {{ .Release.Name }}.storage.pvc
+            claimName: {{ .Values.config.peer}}.{{ .Values.config.hostname }}.storage.pvc
         - name: artifacts
           persistentVolumeClaim:
             claimName: {{ .Values.artifacts.claim }}
         - name: core
           configMap:
-            name: {{ .Release.Name }}.core.config
+            name: {{ .Values.config.peer}}.{{ .Values.config.hostname }}.core.config
             items:
               - key: core.yaml
                 path: core.yaml
         - name: builders-detect
           configMap:
-            name: {{ .Release.Name }}.builders.config
+            name: {{ .Values.config.peer}}.{{ .Values.config.hostname }}.builders.config
             items:
               - key: detect
                 path: detect
                 mode: 0544
         - name: builders-build
           configMap:
-            name: {{ .Release.Name }}.builders.config
+            name: {{ .Values.config.peer}}.{{ .Values.config.hostname }}.builders.config
             items:
               - key: build
                 path: build
                 mode: 0544
         - name: builders-release
           configMap:
-            name: {{ .Release.Name }}.builders.config
+            name: {{ .Values.config.peer}}.{{ .Values.config.hostname }}.builders.config
             items:
               - key: release
                 path: release
