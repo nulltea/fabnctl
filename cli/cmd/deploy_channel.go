@@ -15,6 +15,15 @@ import (
 var channelCmd = &cobra.Command{
 	Use:   "channel",
 	Short: "Performs setup sequence of the Fabric channel for organization",
+	Long: `Performs setup sequence of the Fabric channel for organization
+
+Examples:
+  # Deploy channel:
+  fabnctl deploy channel -d example.com -C supply-channel -o org1 -p peer0
+
+  # Deploy channel on multiply organization and peers:
+  fabnctl deploy channel -d example.com -C supply-channel -o org1 -p peer0 -o org2 -p peer1`,
+
 	RunE: deployChannel,
 }
 
@@ -46,17 +55,15 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 
 	// Parse flags
 	if orgs, err = cmd.Flags().GetStringArray("org"); err != nil {
-		return errors.Wrap(err, "failed to parse required parameter 'org' (organization)")
+		return errors.Wrapf(ErrInvalidArgs, "failed to parse required parameter 'org' (organization): %s", err)
 	}
 
 	if peers, err = cmd.Flags().GetStringArray("peer"); err != nil {
-		return errors.Wrap(err, "failed to parse 'peer' parameter")
+		return errors.Wrapf(ErrInvalidArgs, "failed to parse 'peer' parameter: %s", err)
 	}
 
 	if channel, err = cmd.Flags().GetString("channel"); err != nil {
-		return errors.Wrap(err, "failed to parse required 'channel' parameter")
-	} else if len(channel) == 0 {
-		return errors.New("Required parameter 'channel' is not specified")
+		return errors.Wrapf(ErrInvalidArgs, "failed to parse required 'channel' parameter: %s", err)
 	}
 
 	// Bind organizations arguments along with peers:
@@ -83,7 +90,7 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 		if ok, err := util.WaitForPodReady(
 			cmd.Context(),
 			&peerPodName,
-			fmt.Sprintf("fabnetd/app=%s.%s.org", peer, org), namespace,
+			fmt.Sprintf("fabnctl/app=%s.%s.org", peer, org), namespace,
 		); err != nil {
 			return err
 		} else if !ok {
@@ -94,7 +101,7 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 		if ok, err := util.WaitForPodReady(
 			cmd.Context(),
 			&cliPodName,
-			fmt.Sprintf("fabnetd/app=cli.%s.%s.org", peer, org),
+			fmt.Sprintf("fabnctl/app=cli.%s.%s.org", peer, org),
 			namespace,
 		); err != nil {
 			return err

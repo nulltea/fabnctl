@@ -15,10 +15,10 @@ spec:
     metadata:
       labels:
         app: cli.{{ .Values.config.peer}}.{{ .Values.config.hostname }}
-        fabnetd/cid: org-peer-cli
-        fabnetd/app: cli.{{ .Values.config.peer}}.{{ .Values.config.hostname }}
-        fabnetd/domain: {{ .Values.config.domain }}
-        fabnetd/hostname: {{ .Values.config.peer }}.{{ .Values.config.hostname }}
+        fabnctl/cid: org-peer-cli
+        fabnctl/app: cli.{{ .Values.config.peer}}.{{ .Values.config.hostname }}
+        fabnctl/domain: {{ .Values.config.domain }}
+        fabnctl/hostname: {{ .Values.config.peer }}.{{ .Values.config.hostname }}
     spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
       containers:

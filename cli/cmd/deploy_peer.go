@@ -21,7 +21,16 @@ import (
 var peerCmd = &cobra.Command{
 	Use:   "peer",
 	Short: "Performs deployment sequence of the Fabric peer",
-	RunE: deployPeer,
+	Long: `Performs deployment sequence of the Fabric peer
+
+Examples:
+  # Deploy peer:
+  fabnctl deploy peer -d example.com -o org1 -p peer0
+
+  # Deploy peer but skip CA service installation:
+  fabnctl deploy peer -d example.com -o org1 -p peer0 --withCA=false`,
+
+	RunE: handleErrors(deployPeer),
 }
 
 func init() {
@@ -32,6 +41,8 @@ func init() {
 	peerCmd.Flags().Bool("withCA", true,
 		"Deploy CA service along with peer",
 	)
+
+	peerCmd.MarkFlagRequired("org")
 }
 
 func deployPeer(cmd *cobra.Command, args []string) error {
@@ -44,17 +55,15 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 
 	// Parse flags
 	if org, err = cmd.Flags().GetString("org"); err != nil {
-		return errors.Wrap(err, "failed to parse required parameter 'org' (organization)")
-	} else if len(org) == 0 {
-		return errors.New("Required parameter 'org' (organization) is not specified")
+		return errors.Wrapf(ErrInvalidArgs, "failed to parse required parameter 'org' (organization): %s", err)
 	}
 
 	if peer, err = cmd.Flags().GetString("peer"); err != nil {
-		return errors.Wrap(err, "failed to parse 'peer' parameter")
+		return errors.Wrapf(ErrInvalidArgs, "failed to parse 'peer' parameter: %s", err)
 	}
 
 	if withCA, err = cmd.Flags().GetBool("withCA"); err != nil {
-		return errors.Wrap(err, "failed to parse 'withCA' parameter")
+		return errors.Wrapf(ErrInvalidArgs, "failed to parse 'withCA' parameter: %s", err)
 	}
 
 	var (
@@ -100,9 +109,9 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 			Name:      tlsSecretName,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"fabnetd/cid": "peer.tls.secret",
-				"fabnetd/domain": domain,
-				"fabnetd/host": fmt.Sprintf("%s.%s.org", peer, org),
+				"fabnctl/cid": "peer.tls.secret",
+				"fabnctl/domain": domain,
+				"fabnctl/host": fmt.Sprintf("%s.%s.org", peer, org),
 			},
 		},
 	}); err != nil {
@@ -123,9 +132,9 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 			Name: caSecretName,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"fabnetd/cid": "peer.ca.secret",
-				"fabnetd/domain": domain,
-				"fabnetd/host": fmt.Sprintf("%s.%s.org", peer, org),
+				"fabnctl/cid": "peer.ca.secret",
+				"fabnctl/domain": domain,
+				"fabnctl/host": fmt.Sprintf("%s.%s.org", peer, org),
 			},
 		},
 	}); err != nil {

@@ -3,7 +3,7 @@ kind: Job
 metadata:
   name: artifacts.generate
   labels:
-    fabnetd/cid: artifacts.generate
+    fabnctl/cid: artifacts.generate
 spec:
   backoffLimit: 0
   parallelism: 1

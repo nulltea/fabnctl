@@ -16,10 +16,10 @@ spec:
     metadata:
       labels:
         app: couchdb.{{ .Values.config.peer}}.{{ .Values.config.hostname }}
-        fabnetd/cid: org-peer-couchdb
-        fabnetd/app: couchdb.{{ .Values.config.peer}}.{{ .Values.config.hostname }}
-        fabnetd/domain: {{ .Values.config.domain }}
-        fabnetd/hostname: couchdb.{{ .Values.config.peer }}.{{ .Values.config.hostname }}
+        fabnctl/cid: org-peer-couchdb
+        fabnctl/app: couchdb.{{ .Values.config.peer}}.{{ .Values.config.hostname }}
+        fabnctl/domain: {{ .Values.config.domain }}
+        fabnctl/hostname: couchdb.{{ .Values.config.peer }}.{{ .Values.config.hostname }}
     spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
       containers:

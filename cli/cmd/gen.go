@@ -22,19 +22,27 @@ import (
 var genCmd = &cobra.Command{
 	Use:   "gen",
 	Short: "Generates crypto materials and channel artifacts",
-	RunE: gen,
+	Long: `Generates crypto materials and channel artifacts
+
+Examples:
+  # Generate:
+  fabnctl gen -f ./network-config.yaml`,
+
+	RunE: handleErrors(gen),
 }
 
 func init() {
 	rootCmd.AddCommand(genCmd)
 
-	rootCmd.Flags().StringP("config", "f", "./network-config.yaml",
+	genCmd.Flags().StringP("config", "f", "./network-config.yaml",
 		"Network structure config file path required for deployment",
 	)
 }
 
 func gen(cmd *cobra.Command, _ []string) error {
 	var (
+		err error
+		configPath string
 		values = make(map[string]interface{})
 		chartSpec = &helmclient.ChartSpec{
 			ReleaseName: "artifacts",
@@ -48,7 +56,18 @@ func gen(cmd *cobra.Command, _ []string) error {
 		channelArtifactsDir = fmt.Sprintf(".channel-artifacts.%s", domain)
 	)
 
+	// Parsing flags:
+	if configPath, err = cmd.Flags().GetString("config"); err != nil {
+		return errors.Wrap(ErrInvalidArgs, "failed to parse 'config' parameter")
+	}
+
 	// Preparing additional values for chart installation:
+	configValues, err := util.ValuesFromFile(configPath)
+	if err != nil {
+		return err
+	}
+	values["config"] = configValues["network"]
+
 	if targetArch == "arm64" {
 		armValues, err := util.ValuesFromFile(path.Join(chartsPath, "artifacts", "values.arm64.yaml"))
 		if err != nil {
@@ -86,7 +105,7 @@ func gen(cmd *cobra.Command, _ []string) error {
 	if ok, err := util.WaitForJobComplete(
 		cmd.Context(),
 		utils.StringPointer("artifacts.generate"),
-		"fabnetd/cid=artifacts.generate",
+		"fabnctl/cid=artifacts.generate",
 		namespace,
 	); err != nil {
 		return err
@@ -107,7 +126,7 @@ func gen(cmd *cobra.Command, _ []string) error {
 	defer func(cmd *cobra.Command) {
 		if err = shared.K8s.BatchV1().Jobs(namespace).DeleteCollection(cmd.Context(),
 			metav1.DeleteOptions{}, metav1.ListOptions{
-				LabelSelector: "fabnetd/cid=artifacts.wait",
+				LabelSelector: "fabnctl/cid=artifacts.wait",
 			}); err != nil {
 			cmd.PrintErrln(errors.Wrap(err, "failed to delete artifacts.wait job"))
 		}

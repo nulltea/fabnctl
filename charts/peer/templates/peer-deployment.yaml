@@ -4,10 +4,10 @@ metadata:
   name: {{ .Values.config.peer}}.{{ .Values.config.hostname }}
   labels:
     app: {{ .Values.config.peer}}.{{ .Values.config.hostname }}
-    fabnetd/cid: org.peer
-    fabnetd/app: {{ .Values.config.peer}}.{{ .Values.config.hostname }}
-    fabnetd/domain: {{ .Values.config.domain }}
-    fabnetd/hostname: {{ .Values.config.peer }}.{{ .Values.config.hostname }}
+    fabnctl/cid: org.peer
+    fabnctl/app: {{ .Values.config.peer}}.{{ .Values.config.hostname }}
+    fabnctl/domain: {{ .Values.config.domain }}
+    fabnctl/hostname: {{ .Values.config.peer }}.{{ .Values.config.hostname }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -19,10 +19,10 @@ spec:
     metadata:
       labels:
         app: {{ .Values.config.peer}}.{{ .Values.config.hostname }}
-        fabnetd/cid: org.peer
-        fabnetd/app: {{ .Values.config.peer}}.{{ .Values.config.hostname }}
-        fabnetd/domain: {{ .Values.config.domain }}
-        fabnetd/hostname: {{ .Values.config.peer }}.{{ .Values.config.hostname }}
+        fabnctl/cid: org.peer
+        fabnctl/app: {{ .Values.config.peer}}.{{ .Values.config.hostname }}
+        fabnctl/domain: {{ .Values.config.domain }}
+        fabnctl/hostname: {{ .Values.config.peer }}.{{ .Values.config.hostname }}
     spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
       containers:

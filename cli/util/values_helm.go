@@ -15,13 +15,13 @@ func ValuesFromFile(path string) (map[string]interface{}, error) {
 	armValYaml, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, errors.Wrapf(err,
-			"missing ARM64 configuration values on path %s", path,
+			"missing configuration values on path %s", path,
 		)
 	}
 
 	if err = yaml.Unmarshal(armValYaml, &values); err != nil {
 		return nil, errors.Wrapf(err,
-			"failed to decode ARM64 configuration YAMl file on path %s",
+			"failed to decode configuration YAMl file on path %s",
 			path,
 		)
 	}

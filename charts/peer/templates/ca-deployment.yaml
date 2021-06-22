@@ -16,10 +16,10 @@ spec:
     metadata:
       labels:
         app: ca.{{ .Values.config.hostname }}
-        fabnetd/cid: org-ca
-        fabnetd/app: ca.{{ .Values.config.hostname }}
-        fabnetd/domain: {{ .Values.config.domain }}
-        fabnetd/hostname: ca.{{ .Values.config.hostname }}
+        fabnctl/cid: org-ca
+        fabnctl/app: ca.{{ .Values.config.hostname }}
+        fabnctl/domain: {{ .Values.config.domain }}
+        fabnctl/hostname: ca.{{ .Values.config.hostname }}
     spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
       containers:

@@ -13,16 +13,16 @@ var deployCmd = &cobra.Command{
 
 Examples:
   # Deploy orderer service
-  fabnetd deploy orderer
+  fabnctl deploy orderer -d example.com
 
   # Deploy peer
-  fabnetd deploy peer -o chipa-inu
+  fabnctl deploy -d example.com peer -o org1
 
   # Deploy channel
-  fabnetd deploy channel -o chipa-inu -p peer0 -C supply-channel 
+  fabnctl deploy channel -d example.com -C supply-channel -o org1 -p peer0 -o org2 -p peer0  
 
   # Deploy chaincode (Smart Contracts package)
-  fabnetd deploy cc eploy cc -o chipa-inu -p peer0 -C supply-channel --cc_name assets`,
+  fabnctl deploy cc -d example.com -C supply-channel --cc_name assets -o org1 -p peer0 -o org2 -p peer0 /contracts`,
 	RunE: deploy,
 }
 

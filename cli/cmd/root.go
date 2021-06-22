@@ -19,7 +19,7 @@ var (
 
 // rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
-	Use:   "fabnetd",
+	Use:   "fabnctl",
 	Short: "Tool for deployment and configuration of the Hyperledger Fabric blockchain network",
 }
 

@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/docker/buildx/build"
@@ -30,6 +31,7 @@ import (
 	"github.com/timoth-y/chainmetric-network/cli/model"
 	"github.com/timoth-y/chainmetric-network/cli/shared"
 	"github.com/timoth-y/chainmetric-network/cli/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -37,7 +39,24 @@ import (
 var ccCmd = &cobra.Command{
 	Use:   "cc [path]",
 	Short: "Performs deployment sequence of the Fabric chaincode package",
-	Long: `TODO: example here`,
+	Long: `Performs deployment sequence of the Fabric chaincode package
+
+Examples:
+  # Deploy chaincode:
+  fabnctl deploy cc -d example.com -c assets -C supply-channel -o org1 -p peer0 /contracts
+
+  # Deploy chaincode on multiply organization and peers:
+  fabnctl deploy cc -d example.com -c assets -C supply-channel -o org1 -p peer0 -o org2 -p peer1 /contracts
+
+  # Set custom image registry and Dockerfile path:
+  fabnctl deploy cc -d example.com -c assets -C supply-channel -o org1 -p peer0 -r my-registry.io -f docker_files/assets_new.Dockerfile
+
+  # Set custom version for new chaincode or it's update:
+  fabnctl deploy cc -d example.com -c assets -C supply-channel -o org1 -p peer0 -v 2.2
+
+  # Disable image rebuild and automatic update:
+  fabnctl deploy cc -d example.com -c assets -C supply-channel -o org1 -p peer0 --rebuild=false --update=false`,
+
 	Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
 			return errors.Errorf(
@@ -71,6 +90,9 @@ If nothing passed docker auth config would be searched for credentials by given 
 	ccCmd.Flags().Bool("update", true,
 		`In case chaincode which given name was already installed it will be updated, otherwise will be installed as a new one`,
 	)
+	ccCmd.Flags().Float64P("version", "v", 1.0,
+		"Version for chaincode commit. If not set and update will be required it will be automatically incremented",
+	)
 
 	ccCmd.MarkFlagRequired("org")
 	ccCmd.MarkFlagRequired("peers")
@@ -81,16 +103,18 @@ If nothing passed docker auth config would be searched for credentials by given 
 
 func deployChaincode(cmd *cobra.Command, srcPath string) error {
 	var (
-		err             error
-		orgs            []string
-		peers           []string
-		channel         string
-		chaincode       string
-		registry        string
-		regAuth         string
-		dockerfile      string
-		buildImage      bool
-		updateInstalled bool
+		err        error
+		orgs       []string
+		peers      []string
+		channel    string
+		chaincode  string
+		registry   string
+		regAuth    string
+		dockerfile string
+		buildImage bool
+		update     bool
+		version    float64
+		sequence   = 1
 	)
 
 	// Parse flags
@@ -127,8 +151,16 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 	}
 	dockerfile = strings.ReplaceAll(dockerfile, "{chaincode}", chaincode)
 
-	if updateInstalled, err = cmd.Flags().GetBool("update"); err != nil {
+	if update, err = cmd.Flags().GetBool("update"); err != nil {
 		return errors.Wrapf(ErrInvalidArgs, "failed to parse 'update' parameter: %s", err)
+	}
+
+	if update, err = cmd.Flags().GetBool("update"); err != nil {
+		return errors.Wrapf(ErrInvalidArgs, "failed to parse 'update' parameter: %s", err)
+	}
+
+	if version, err = cmd.Flags().GetFloat64("version"); err != nil {
+		return errors.Wrapf(ErrInvalidArgs, "failed to parse 'version' parameter: %s", err)
 	}
 
 	var (
@@ -204,13 +236,37 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		)
 	}
 
-	// Shared commands required for chaincode deployment in the latter steps:
+	if committed, ver, seq, err := checkChaincodeCommitStatus(cmd.Context(), chaincode, channel); err != nil {
+		return err
+	} else if committed {
+		cmd.Printf(
+			"%s Chaincode '%s' is already committed on '%s' channel with version '%.1f' and sequence '%d'. ",
+			viper.GetString("cli.info_emoji"), chaincode, channel, ver, seq,
+		)
+
+		if !cmd.Flags().Changed("version") {
+			ver += 0.1
+		}
+
+		seq += 1
+
+		if update {
+			version = ver
+			sequence = seq
+			cmd.Printf("It will be updated to version '%.1f' and sequence '%d'\n", version, sequence)
+		} else {
+			cmd.Printf("Further steps will be skipped\n")
+			return nil
+		}
+	}
+
+	// Shared commands required for chaincode deployment in the letter steps:
 	var (
 		checkCommitReadinessCmd = util.FormShellCommand(
 			"peer", "lifecycle", "chaincode", "checkcommitreadiness",
 			"-n", chaincode,
-			"-v", "1.0",
-			"--sequence", "1",
+			"-v", vtoa(version),
+			"--sequence", stoa(sequence),
 			"-C", channel,
 			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), domain),
 			"--tls", "--cafile", "$ORDERER_CA",
@@ -238,7 +294,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		if ok, err := util.WaitForPodReady(
 			cmd.Context(),
 			&peerPodName,
-			fmt.Sprintf("fabnetd/app=%s.%s.org", peer, org), namespace,
+			fmt.Sprintf("fabnctl/app=%s.%s.org", peer, org), namespace,
 		); err != nil {
 			return err
 		} else if !ok {
@@ -249,7 +305,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		if ok, err := util.WaitForPodReady(
 			cmd.Context(),
 			&cliPodName,
-			fmt.Sprintf("fabnetd/app=cli.%s.%s.org", peer, org),
+			fmt.Sprintf("fabnctl/app=cli.%s.%s.org", peer, org),
 			namespace,
 		); err != nil {
 			return err
@@ -279,7 +335,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		packageID = parseQueriedPackageID(stdout, chaincode)
 
 		// Installing chaincode package if needed:
-		if len(packageID) == 0 || !updateInstalled {
+		if len(packageID) == 0 || !update {
 			// Packaging chaincode into tar.gz archive:
 			if err = shared.DecorateWithInteractiveLog(func() error {
 				if err = packageExternalChaincodeInTarGzip(chaincode, peer, org, &packageBuffer); err != nil {
@@ -386,8 +442,8 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		var approveCmd = util.FormShellCommand(
 			"peer", "lifecycle", "chaincode", "approveformyorg",
 			"-n", chaincode,
-			"-v", "1.0",
-			"--sequence", "1",
+			"-v", vtoa(version),
+			"--sequence", stoa(sequence),
 			"--package-id", packageID,
 			"--init-required=false",
 			"-C", channel,
@@ -457,8 +513,8 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 	var commitCmd = util.FormShellCommand(
 		"peer", "lifecycle", "chaincode", "commit",
 		"-n", chaincode,
-		"-v", "1.0",
-		"--sequence", "1",
+		"-v", vtoa(version),
+		"--sequence", stoa(sequence),
 		"--init-required=false",
 		"-C", channel,
 		"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), domain),
@@ -485,7 +541,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		commitCmd = util.FormShellCommand(commitCmd, commitCmdEnding)
 	}
 
-	cmd.Println()
+	cmd.Println("\n")
 
 	var stderr io.Reader
 	if err = shared.DecorateWithInteractiveLog(func() error {
@@ -510,7 +566,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		return util.WrapWithStderrViewPrompt(err, stderr, false)
 	}
 
-	cmd.Printf("\n🎉 Chaincode '%s' successfully deployed!\n", chaincode)
+	cmd.Printf("\n🎉 Chaincode '%s' v%.1f successfully deployed!\n", chaincode, version)
 
 	return nil
 }
@@ -668,4 +724,79 @@ func checkChaincodeCommitReadiness(reader io.Reader) (ready bool, notApprovedBy 
 	}
 
 	return false, notApprovedBy
+}
+
+func checkChaincodeCommitStatus(ctx context.Context, chaincode, channel string) (bool, float64, int, error) {
+	var (
+		availableCliPod string
+		buffer bytes.Buffer
+	)
+
+	if pods, err := shared.K8s.CoreV1().Pods("").List(ctx, metav1.ListOptions{
+		LabelSelector: "fabnctl/cid=org-peer-cli",
+	}); err != nil {
+		return false, 0, 0, errors.Wrap(err, "failed to find available cli pod for chaincode commit status check")
+	} else if pods == nil || pods.Size() == 0 {
+		return false, 0, 0, errors.New("failed to find available cli pod for chaincode commit status check")
+	} else {
+		availableCliPod = pods.Items[0].Name
+	}
+
+	// Checking whether the chaincode was already committed:
+	stdout, stderr, err := util.ExecCommandInPod(
+		ctx,
+		availableCliPod, namespace,
+		"peer", "lifecycle", "chaincode", "querycommitted", "-C", channel,
+	)
+
+	if err != nil {
+		if errors.Cause(err) == util.ErrRemoteCmdFailed {
+			return false, 0, 0, util.WrapWithStderrViewPrompt(
+				errors.Wrapf(err, "Failed to check сommit status for '%s' chaincode", chaincode),
+				stderr, true,
+			)
+		}
+
+		return false, 0, 0, errors.Wrapf(err, "Failed to execute command on '%s' pod", availableCliPod)
+	}
+
+
+	if n, err := io.Copy(&buffer, stdout); err != nil || n == 0 {
+		return false, 0, 0, nil
+	}
+
+	match := regexp.MustCompile(fmt.Sprintf("Name: %s, Version: (\\d.\\d?), Sequence: (\\d?)", chaincode)).
+		FindStringSubmatch(buffer.String())
+
+	if len(match) < 3 {
+		return false, 0, 0, nil
+	}
+
+	return true, atov(match[1]), atos(match[2]), nil
+}
+
+func vtoa(version float64) string {
+	return fmt.Sprintf("%.1f", version)
+}
+
+func atov(str string) float64 {
+	version, err := strconv.ParseFloat(str, 32)
+	if err != nil {
+		return 1.0
+	}
+
+	return version
+}
+
+func stoa(sequence int) string {
+	return fmt.Sprintf("%d", sequence)
+}
+
+func atos(str string) int {
+	sequence, err := strconv.Atoi(str)
+	if err != nil {
+		return 1.0
+	}
+
+	return sequence
 }

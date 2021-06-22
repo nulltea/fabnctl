@@ -13,4 +13,5 @@ bin
 .env
 .lego
 
-fabnetd
+fabnctl
+fabnctl.exe

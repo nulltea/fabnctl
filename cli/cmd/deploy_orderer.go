@@ -21,7 +21,13 @@ import (
 var ordererCmd = &cobra.Command{
 	Use:   "orderer",
 	Short: "Performs deployment sequence of the Fabric orderer service",
-	RunE: deployOrderer,
+	Long: `Performs deployment sequence of the Fabric orderer service
+
+Examples:
+  # Deploy orderer:
+  fabnctl deploy orderer -d example.com`,
+
+	RunE: handleErrors(deployOrderer),
 }
 
 func init() {
@@ -73,9 +79,9 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 			Name:      tlsSecretName,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"fabnetd/cid": "orderer.tls.secret",
-				"fabnetd/domain": domain,
-				"fabnetd/host": hostname,
+				"fabnctl/cid": "orderer.tls.secret",
+				"fabnctl/domain": domain,
+				"fabnctl/host": hostname,
 			},
 		},
 	}); err != nil {
@@ -96,9 +102,9 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 			Name: caSecretName,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"fabnetd/cid": "orderer.ca.secret",
-				"fabnetd/domain": domain,
-				"fabnetd/host": hostname,
+				"fabnctl/cid": "orderer.ca.secret",
+				"fabnctl/domain": domain,
+				"fabnctl/host": hostname,
 			},
 		},
 	}); err != nil {
