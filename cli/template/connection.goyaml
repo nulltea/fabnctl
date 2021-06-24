@@ -1,0 +1,87 @@
+# Docs: https://hyperledger-fabric.readthedocs.io/en/release-2.2/developapps/connectionprofile.html
+# Example: https://github.com/hyperledger/fabric/blob/main/internal/peer/chaincode/testdata/connectionprofile.yaml
+
+name: {{ .Name }}
+
+description: {{ .Description }}
+
+version: {{ .Version }}
+
+{{- $domain := .Domain }}
+{{- $ownerOrg := .OwnerOrg }}
+
+client:
+  organization: {{ $ownerOrg }}
+  cryptoconfig:
+    path: /crypto-config
+
+  credentialStore:
+    cryptoStore:
+      path: keystore
+
+channels:
+  {{ .Channel }}:
+    orderers:
+      - {{ .Orderer.Hostname }}.{{ .Domain }}
+    peers:
+  {{- range .Organizations }}
+  {{- $orgHost := .Hostname }}
+  {{- range .Peers }}
+    {{ .Hostname }}.{{ $orgHost }}.{{ $domain }}:
+      endorsingPeer: true
+      chaincodeQuery: true
+      ledgerQuery: true
+      eventSource: true
+  {{- end }}
+  {{- end }}
+
+organizations:
+{{- range .Organizations }}
+{{- $orgHost := .Hostname }}
+  {{ .Name }}:
+    mspid: {{ .MspID }}
+    peers:
+    {{- range .Peers }}
+     - {{ .Hostname }}.{{ $orgHost }}.{{ $domain }}:
+    {{- end }}
+    certificateAuthorities:
+      - ca.{{ .Hostname }}.org.{{ $domain }}
+{{- end }}
+
+orderers:
+  {{ .Orderer.Name }}:
+    url: {{ .Orderer.Hostname }}.{{ .Domain }}:443
+    grpcOptions:
+      hostnameOverride: {{ .Orderer.Hostname }}.{{ .Domain }}
+      ssl-target-name-override: {{ .Orderer.Hostname }}.{{ .Domain }}
+    tlsCACerts:
+      pem: |
+        {{ .Orderer.TLSCert }}
+
+peers:
+{{- range .Organizations }}
+{{- $orgHost := .Hostname }}
+{{- $tlsCA := .TLSCert }}
+{{- range .Peers }}
+  {{ .Hostname }}.{{ $orgHost }}.{{ $domain }}:
+    url: grpcs://{{ .Hostname }}.{{ $orgHost }}.{{ $domain }}:443
+    grpcOptions:
+      hostnameOverride: {{ .Hostname }}.{{ $orgHost }}.{{ $domain }}
+      ssl-target-name-override: {{ .Hostname }}.{{ $orgHost }}.{{ $domain }}
+    tlsCACerts:
+      pem: |
+        {{ $tlsCA }}
+{{- end }}
+{{- end }}
+
+certificateAuthorities:
+{{- range .Organizations }}
+  ca.{{ .Hostname }}.{{ $domain }}:
+    url: https://ca.{{ .Hostname }}.{{ $domain }}:443
+    caName: ca-{{ .MspID }}
+    httpOptions:
+      verify: false
+    tlsCACerts:
+      pem: |
+        {{ .CertAuthority.TLSCert }}
+{{- end }}
