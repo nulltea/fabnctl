@@ -18,13 +18,13 @@ data:
               - localhost
     {{ end }}
     PeerOrgs:
-    {{- range .Values.config.peerOrgs }}
+    {{- range .Values.config.organizations }}
       - Name: {{ .name }}
         Domain: {{ .hostname }}.{{ $domain }}
         EnableNodeOUs: true
         Specs:
         {{- range .peers }}
-          - Hostname: {{ .subdomain }}
+          - Hostname: {{ .hostname }}
             SANS:
               - {{ .service }}-org
               - localhost

@@ -20,12 +20,12 @@ config:
     port: 7050
     profile: OrdererGenesis
     channelID: system-channel
-  peerOrgs:
+  organizations:
     - name: Chipa-INU
       mspID: chipa-inu
       hostname: chipa-inu.org
       peers:
-        - subdomain: peer0
+        - hostname: peer0
           service: peer0-chipa-inu
           port: 7051
       channelProfile: SupplyChannel
@@ -72,9 +72,9 @@ config:
       channelID: supply-channel
       consortium: SupplyConsortium
       organizations:
-        - name: Chipa-INU
-        - name: Blueberry-GO
-        - name: MoonLAN
+        - Chipa-INU
+        - Blueberry-GO
+        - MoonLAN
   crypto: |
   configtx: |
 

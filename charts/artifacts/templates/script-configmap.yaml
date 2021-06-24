@@ -20,8 +20,8 @@ data:
     {{- $profile := .profile }}
     {{- $id := .channelID }}
       {{- range .organizations }}
-    configtxgen -configPath . -profile {{ $profile }} -channelID {{ $id }} -asOrg {{ .name }} \
-        -outputAnchorPeersUpdate ./channel-artifacts/{{ .name | lower }}-supplierAnchors.tx;
+    configtxgen -configPath . -profile {{ $profile }} -channelID {{ $id }} -asOrg {{ . }} \
+        -outputAnchorPeersUpdate ./channel-artifacts/{{ . | lower }}-supplierAnchors.tx;
       {{- end }}
     {{- end }}
     echo "<$ Done! $>"
