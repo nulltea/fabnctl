@@ -1,11 +1,13 @@
 package model
 
+// ChaincodeMetadata defines chaincode package metadata file structure.
 type ChaincodeMetadata struct {
 	Path  string `json:"path"`
 	Type  string `json:"type"`
 	Label string `json:"label"`
 }
 
+// ChaincodeConnection defines external chaincode connection file structure.
 type ChaincodeConnection struct {
 	Address string `json:"address"`
 	DialTimeout string `json:"dial_timeout"`

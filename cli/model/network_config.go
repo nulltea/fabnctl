@@ -1,5 +1,6 @@
 package model
 
+// NetworkConfig defines network deployment configuration structure.
 type NetworkConfig struct {
 	Domain string `yaml:"domain" json:"domain"`
 	Orderer Orderer `yaml:"orderer" json:"orderer"`
@@ -10,12 +11,14 @@ type NetworkConfig struct {
 	channelsMap map[string]*Channel
 }
 
+// Orderer defines orderer block structure from NetworkConfig.
 type Orderer struct {
 	Name     string `yaml:"name" json:"name"`
 	Hostname string `yaml:"hostname" json:"hostname"`
 	TLSCert  string `yaml:"-" json:"-"`
 }
 
+// Organization defines organization block structure from NetworkConfig.
 type Organization struct {
 	Name     string `yaml:"name" json:"name"`
 	Hostname string `yaml:"hostname" json:"hostname"`
@@ -29,11 +32,13 @@ type Organization struct {
 	} `yaml:"cert_authority" json:"cert_authority"`
 }
 
+// Channel defines channel block structure from NetworkConfig.
 type Channel struct {
 	ChannelID string `yaml:"channelID" json:"channelID"`
 	Organizations []string `yaml:"organizations" json:"organizations"`
 }
 
+// GetChannel finds single Channel config in the NetworkConfig.
 func (n NetworkConfig) GetChannel(channelID string) *Channel {
 	if n.channelsMap == nil {
 		n.channelsMap = make(map[string]*Channel)
@@ -49,6 +54,7 @@ func (n NetworkConfig) GetChannel(channelID string) *Channel {
 	return nil
 }
 
+// HasOrganization determines whether the Organization is a part of Channel in the NetworkConfig.
 func (c *Channel) HasOrganization(name string) bool {
 	for _, org := range c.Organizations {
 		if org == name {
@@ -59,6 +65,7 @@ func (c *Channel) HasOrganization(name string) bool {
 	return false
 }
 
+// GetOrganization finds single Organization config in the NetworkConfig.
 func (n NetworkConfig) GetOrganization(orgID string) *Organization {
 	if n.orgMap == nil {
 		n.orgMap = make(map[string]*Organization)
