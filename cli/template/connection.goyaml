@@ -2,16 +2,19 @@
 # Example: https://github.com/hyperledger/fabric/blob/main/internal/peer/chaincode/testdata/connectionprofile.yaml
 
 name: {{ .Name }}
-
 description: {{ .Description }}
-
 version: {{ .Version }}
+
+{{ range $key, $value := .XProperties -}}
+x-{{ $key }}: {{ $value }}
+{{- end }}
 
 {{- $domain := .Domain }}
 {{- $ownerOrg := .OwnerOrg }}
 
 client:
   organization: {{ $ownerOrg }}
+  channel: {{ .Channel }}
   cryptoconfig:
     path: /crypto-config
 
@@ -21,42 +24,42 @@ client:
 
 channels:
   {{ .Channel }}:
-    orderers:
-      - {{ .Orderer.Hostname }}.{{ .Domain }}
     peers:
   {{- range .Organizations }}
   {{- $orgHost := .Hostname }}
-  {{- range .Peers }}
-    {{ .Hostname }}.{{ $orgHost }}.{{ $domain }}:
-      endorsingPeer: true
-      chaincodeQuery: true
-      ledgerQuery: true
-      eventSource: true
-  {{- end }}
+      {{- range .Peers }}
+      {{ .Hostname }}.{{ $orgHost }}.{{ $domain }}:
+        endorsingPeer: true
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: true
+      {{- end }}
   {{- end }}
 
 organizations:
 {{- range .Organizations }}
 {{- $orgHost := .Hostname }}
-  {{ .Name }}:
+  {{ .MspID }}:
     mspid: {{ .MspID }}
     peers:
     {{- range .Peers }}
-     - {{ .Hostname }}.{{ $orgHost }}.{{ $domain }}:
+     - {{ .Hostname }}.{{ $orgHost }}.{{ $domain }}
     {{- end }}
     certificateAuthorities:
       - ca.{{ .Hostname }}.org.{{ $domain }}
 {{- end }}
 
 orderers:
-  {{ .Orderer.Name }}:
-    url: {{ .Orderer.Hostname }}.{{ .Domain }}:443
+{{- with .Orderer }}
+  {{ .Hostname }}.{{ $domain }}:
+    url: "grpcs://{{ .Hostname }}.{{ $domain }}:443"
     grpcOptions:
-      hostnameOverride: {{ .Orderer.Hostname }}.{{ .Domain }}
-      ssl-target-name-override: {{ .Orderer.Hostname }}.{{ .Domain }}
+      hostnameOverride: {{ .Hostname }}.{{ $domain }}
+      ssl-target-name-override: {{ .Hostname }}.{{ $domain }}
     tlsCACerts:
       pem: |
-        {{ .Orderer.TLSCert }}
+{{ .TLSCert | indent 8 }}
+{{- end }}
 
 peers:
 {{- range .Organizations }}
@@ -64,24 +67,25 @@ peers:
 {{- $tlsCA := .TLSCert }}
 {{- range .Peers }}
   {{ .Hostname }}.{{ $orgHost }}.{{ $domain }}:
-    url: grpcs://{{ .Hostname }}.{{ $orgHost }}.{{ $domain }}:443
+    url: "grpcs://{{ .Hostname }}.{{ $orgHost }}.{{ $domain }}:443"
     grpcOptions:
       hostnameOverride: {{ .Hostname }}.{{ $orgHost }}.{{ $domain }}
       ssl-target-name-override: {{ .Hostname }}.{{ $orgHost }}.{{ $domain }}
     tlsCACerts:
       pem: |
-        {{ $tlsCA }}
+{{ $tlsCA | indent 8 }}
 {{- end }}
 {{- end }}
 
 certificateAuthorities:
 {{- range .Organizations }}
   ca.{{ .Hostname }}.{{ $domain }}:
-    url: https://ca.{{ .Hostname }}.{{ $domain }}:443
+    url: "https://ca.{{ .Hostname }}.{{ $domain }}:443"
     caName: ca-{{ .MspID }}
     httpOptions:
       verify: false
     tlsCACerts:
-      pem: |
-        {{ .CertAuthority.TLSCert }}
-{{- end }}
+      pem:
+      - |
+{{ .CertAuthority.TLSCert | indent 8 }}
+{{- end -}}

@@ -119,48 +119,48 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 
 	// Parse flags
 	if orgs, err = cmd.Flags().GetStringArray("org"); err != nil {
-		return errors.Wrapf(ErrInvalidArgs, "failed to parse required parameter 'org' (organization): %s", err)
+		return errors.WithMessagef(ErrInvalidArgs, "failed to parse required parameter 'org' (organization): %s", err)
 	}
 
 	if peers, err = cmd.Flags().GetStringArray("peer"); err != nil {
-		return errors.Wrapf(ErrInvalidArgs, "failed to parse required 'peer' parameter: %s", err)
+		return errors.WithMessagef(ErrInvalidArgs, "failed to parse required 'peer' parameter: %s", err)
 	}
 
 	if channel, err = cmd.Flags().GetString("channel"); err != nil {
-		return errors.Wrapf(ErrInvalidArgs, "failed to parse required 'channel' parameter: %s", err)
+		return errors.WithMessagef(ErrInvalidArgs, "failed to parse required 'channel' parameter: %s", err)
 	}
 
 	if chaincode, err = cmd.Flags().GetString("chaincode"); err != nil {
-		return errors.Wrapf(ErrInvalidArgs, "failed to parse required 'chaincode' parameter: %s", err)
+		return errors.WithMessagef(ErrInvalidArgs, "failed to parse required 'chaincode' parameter: %s", err)
 	}
 
 	if registry, err = cmd.Flags().GetString("registry"); err != nil {
-		return errors.Wrapf(ErrInvalidArgs, "failed to parse 'registry' parameter: %s", err)
+		return errors.WithMessagef(ErrInvalidArgs, "failed to parse 'registry' parameter: %s", err)
 	}
 
 	if regAuth, err = cmd.Flags().GetString("registry-auth"); err != nil {
-		return errors.Wrapf(ErrInvalidArgs, "failed to parse 'registry-auth' parameter: %s", err)
+		return errors.WithMessagef(ErrInvalidArgs, "failed to parse 'registry-auth' parameter: %s", err)
 	}
 
 	if buildImage, err = cmd.Flags().GetBool("rebuild"); err != nil {
-		return errors.Wrapf(ErrInvalidArgs, "failed to parse 'rebuild' parameter: %s", err)
+		return errors.WithMessagef(ErrInvalidArgs, "failed to parse 'rebuild' parameter: %s", err)
 	}
 
 	if dockerfile, err = cmd.Flags().GetString("dockerfile"); err != nil {
-		return errors.Wrapf(ErrInvalidArgs, "failed to parse 'imageReg' parameter: %s", err)
+		return errors.WithMessagef(ErrInvalidArgs, "failed to parse 'imageReg' parameter: %s", err)
 	}
 	dockerfile = strings.ReplaceAll(dockerfile, "{chaincode}", chaincode)
 
 	if update, err = cmd.Flags().GetBool("update"); err != nil {
-		return errors.Wrapf(ErrInvalidArgs, "failed to parse 'update' parameter: %s", err)
+		return errors.WithMessagef(ErrInvalidArgs, "failed to parse 'update' parameter: %s", err)
 	}
 
 	if update, err = cmd.Flags().GetBool("update"); err != nil {
-		return errors.Wrapf(ErrInvalidArgs, "failed to parse 'update' parameter: %s", err)
+		return errors.WithMessagef(ErrInvalidArgs, "failed to parse 'update' parameter: %s", err)
 	}
 
 	if version, err = cmd.Flags().GetFloat64("version"); err != nil {
-		return errors.Wrapf(ErrInvalidArgs, "failed to parse 'version' parameter: %s", err)
+		return errors.WithMessagef(ErrInvalidArgs, "failed to parse 'version' parameter: %s", err)
 	}
 
 	var (
@@ -171,7 +171,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 	// Bind organizations arguments along with peers:
 	for i, org := range orgs {
 		if len(peers) < i + 1 {
-			return errors.Wrapf(ErrInvalidArgs, "some passed organizations missing corresponding peer parameter: %s", org)
+			return errors.WithMessagef(ErrInvalidArgs, "some passed organizations missing corresponding peer parameter: %s", org)
 		}
 		orgPeers[org] = peers[i]
 	}

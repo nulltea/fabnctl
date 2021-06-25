@@ -1,7 +1,9 @@
 package shared
 
 import (
-	"fmt"
+	"os"
+	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -28,8 +30,15 @@ func initConfig() {
 	viper.SetConfigName(".cli-config")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("./cli")
-
-	if err := viper.ReadInConfig(); err != nil {
-		fmt.Println(err)
+	if installPath, err := GetInstallationPath(); err == nil {
+		viper.AddConfigPath(installPath)
+		viper.AddConfigPath(path.Join(installPath, "cli"))
 	}
+
+	_ = viper.ReadInConfig()
+}
+
+// GetInstallationPath determines cli binary installation path
+func GetInstallationPath() (string, error) {
+	return filepath.Abs(filepath.Dir(os.Args[0]))
 }

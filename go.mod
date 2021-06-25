@@ -3,6 +3,7 @@ module github.com/timoth-y/chainmetric-network
 go 1.15
 
 require (
+	github.com/Masterminds/sprig v2.22.0+incompatible
 	github.com/containerd/console v1.0.1
 	github.com/containerd/containerd v1.5.0-beta.4 // indirect
 	github.com/docker/buildx v0.5.1
@@ -10,7 +11,6 @@ require (
 	github.com/docker/docker v20.10.5+incompatible
 	github.com/docker/libnetwork v0.8.0-dev.2.0.20201215162534-fa125a3512ee // indirect
 	github.com/gernest/wow v0.1.0
-	github.com/gobuffalo/packr/v2 v2.7.1
 	github.com/manifoldco/promptui v0.8.0
 	github.com/mittwald/go-helm-client v0.5.0
 	github.com/moby/buildkit v0.8.3 // indirect
