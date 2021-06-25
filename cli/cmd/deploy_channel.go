@@ -55,21 +55,21 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 
 	// Parse flags
 	if orgs, err = cmd.Flags().GetStringArray("org"); err != nil {
-		return errors.Wrapf(ErrInvalidArgs, "failed to parse required parameter 'org' (organization): %s", err)
+		return errors.WithMessagef(ErrInvalidArgs, "failed to parse required parameter 'org' (organization): %s", err)
 	}
 
 	if peers, err = cmd.Flags().GetStringArray("peer"); err != nil {
-		return errors.Wrapf(ErrInvalidArgs, "failed to parse 'peer' parameter: %s", err)
+		return errors.WithMessagef(ErrInvalidArgs, "failed to parse 'peer' parameter: %s", err)
 	}
 
 	if channel, err = cmd.Flags().GetString("channel"); err != nil {
-		return errors.Wrapf(ErrInvalidArgs, "failed to parse required 'channel' parameter: %s", err)
+		return errors.WithMessagef(ErrInvalidArgs, "failed to parse required 'channel' parameter: %s", err)
 	}
 
 	// Bind organizations arguments along with peers:
 	for i, org := range orgs {
 		if len(peers) < i + 1 {
-			return errors.Wrapf(ErrInvalidArgs, "some passed organizations missing corresponding peer parameter: %s", org)
+			return errors.WithMessagef(ErrInvalidArgs, "some passed organizations missing corresponding peer parameter: %s", org)
 		}
 		orgPeers[org] = peers[i]
 	}

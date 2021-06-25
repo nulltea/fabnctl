@@ -55,15 +55,15 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 
 	// Parse flags
 	if org, err = cmd.Flags().GetString("org"); err != nil {
-		return errors.Wrapf(ErrInvalidArgs, "failed to parse required parameter 'org' (organization): %s", err)
+		return errors.WithMessagef(ErrInvalidArgs, "failed to parse required parameter 'org' (organization): %s", err)
 	}
 
 	if peer, err = cmd.Flags().GetString("peer"); err != nil {
-		return errors.Wrapf(ErrInvalidArgs, "failed to parse 'peer' parameter: %s", err)
+		return errors.WithMessagef(ErrInvalidArgs, "failed to parse 'peer' parameter: %s", err)
 	}
 
 	if withCA, err = cmd.Flags().GetBool("withCA"); err != nil {
-		return errors.Wrapf(ErrInvalidArgs, "failed to parse 'withCA' parameter: %s", err)
+		return errors.WithMessagef(ErrInvalidArgs, "failed to parse 'withCA' parameter: %s", err)
 	}
 
 	var (
