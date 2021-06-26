@@ -62,7 +62,7 @@ Supported are:
 	)
 }
 
-func handleErrors(fn func(cmd *cobra.Command, _ []string) error) func(*cobra.Command, []string) error {
+func handleErrors(fn func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		if err := fn(cmd, args); err != nil {
 			if errors.Cause(err) == ErrInvalidArgs {

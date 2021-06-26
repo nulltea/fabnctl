@@ -19,6 +19,7 @@ spec:
         fabnctl/app: cli.{{ .Values.config.peer}}.{{ .Values.config.hostname }}
         fabnctl/domain: {{ .Values.config.domain }}
         fabnctl/hostname: {{ .Values.config.peer }}.{{ .Values.config.hostname }}
+        fabnctl/org: {{ .Values.config.mspID }}
     spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
       containers:

@@ -31,16 +31,16 @@ func init() {
 	deployCmd.AddCommand(channelCmd)
 
 	channelCmd.Flags().StringArrayP("org", "o", nil,
-		"Organization owning peer. Can be used multiply time to pass list of organizations (required)",
+		"Organization names. Can be used multiply time to pass list of organizations (required)",
 	)
 	channelCmd.Flags().StringArrayP("peer", "p", nil,
 		"Peer hostname. Can be used multiply time to pass list of peers by (required)",
 	)
 	channelCmd.Flags().StringP("channel", "c", "", "Channel name (required)")
 
-	channelCmd.MarkFlagRequired("org")
-	channelCmd.MarkFlagRequired("peer")
-	channelCmd.MarkFlagRequired("channel")
+	_ = channelCmd.MarkFlagRequired("org")
+	_ = channelCmd.MarkFlagRequired("peer")
+	_ = channelCmd.MarkFlagRequired("channel")
 }
 
 func deployChannel(cmd *cobra.Command, args []string) error {
