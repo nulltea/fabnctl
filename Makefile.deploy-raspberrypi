@@ -18,7 +18,7 @@ traefik:
 hyperledger-init:
 	kubectl create namespace network || echo "Namespace 'network' already exists"
 	kubectl config set-context --current --namespace=network
-	./fabnctl gen -a=arm64 -d=chainmetric.network -f ./network-config.yaml
+	./fabnctl gen artifacts -a=arm64 -d=chainmetric.network -f ./network-config.yaml
 
 hyperledger-deploy:
 	./fabnctl deploy orderer -a=arm64 -d=chainmetric.network

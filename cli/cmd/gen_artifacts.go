@@ -58,12 +58,6 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Preparing additional values for chart installation:
-	configValues, err := util.ValuesFromFile(configPath)
-	if err != nil {
-		return err
-	}
-	values["config"] = configValues
-
 	if targetArch == "arm64" {
 		armValues, err := util.ValuesFromFile(path.Join(chartsPath, "artifacts", "values.arm64.yaml"))
 		if err != nil {
@@ -71,6 +65,12 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 		}
 		values = armValues
 	}
+
+	configValues, err := util.ValuesFromFile(configPath)
+	if err != nil {
+		return err
+	}
+	values["config"] = configValues
 
 	values["domain"] = domain
 

@@ -19,6 +19,7 @@ data:
     {{ end }}
     PeerOrgs:
     {{- range .Values.config.organizations }}
+    {{- $orgHostname := .hostname }}
       - Name: {{ .name }}
         Domain: {{ .hostname }}.{{ $domain }}
         EnableNodeOUs: true
@@ -26,7 +27,7 @@ data:
         {{- range .peers }}
           - Hostname: {{ .hostname }}
             SANS:
-              - {{ .service }}-org
+              - {{ .hostname }}-{{ $orgHostname | replace "." "-" }}
               - localhost
         {{- end }}
         Users:
