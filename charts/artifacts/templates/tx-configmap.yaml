@@ -26,13 +26,14 @@ data:
     {{ end }}
 
     {{- range .Values.config.organizations }}
+    {{- $orgHostname := .hostname }}
       - &{{ .name }}
         Name: {{ .name }}
         ID: {{ .mspID }}
         MSPDir: crypto-config/peerOrganizations/{{ .hostname }}.{{ $domain }}/msp
         {{- range .peers }}
         AnchorPeers:
-          - Host: {{ .service }}
+          - Host: {{ .hostname }}-{{ $orgHostname | replace "." "-" }}
             Port: {{ .port }}
         {{- end }}
         Policies:

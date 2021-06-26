@@ -15,7 +15,6 @@ organizations:
     hostname: chipa-inu.org
     peers:
       - hostname: peer0
-        service: peer0-chipa-inu
         port: 7051
     channelProfile: SupplyChannel
     channelID: supply-channel
@@ -24,7 +23,6 @@ organizations:
     hostname: blueberry-go.org
     peers:
       - hostname: peer0
-        service: peer0-blueberry-go
         port: 7051
     channelProfile: SupplyChannel
     channelID: supply-channel
@@ -33,7 +31,6 @@ organizations:
     hostname: moon-lan.org
     peers:
       - hostname: peer0
-        service: peer0-moon-lan
         port: 7051
     channelProfile: SupplyChannel
     channelID: supply-channel
@@ -42,7 +39,6 @@ organizations:
     hostname: blockchampion.org
     peers:
       - hostname: peer0
-        service: peer0-blockchampion
         port: 7051
     channelProfile: SupplyChannel
     channelID: supply-channel
@@ -51,7 +47,6 @@ organizations:
     hostname: sigan-labs.org
     peers:
       - hostname: peer0
-        service: peer0-sigan-labs
         port: 7051
     channelProfile: SupplyChannel
     channelID: supply-channel

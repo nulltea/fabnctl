@@ -21,7 +21,7 @@ data:
     {{- $id := .channelID }}
       {{- range .organizations }}
     configtxgen -configPath . -profile {{ $profile }} -channelID {{ $id }} -asOrg {{ . }} \
-        -outputAnchorPeersUpdate ./channel-artifacts/{{ . | lower }}-supplierAnchors.tx;
+        -outputAnchorPeersUpdate ./channel-artifacts/{{ . | lower }}-anchors.tx;
       {{- end }}
     {{- end }}
     echo "<$ Done! $>"
