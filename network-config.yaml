@@ -26,7 +26,7 @@ organizations:
         port: 7051
     channelProfile: SupplyChannel
     channelID: supply-channel
-  - name: MoonLAN
+  - name: Moon-LAN
     mspID: moon-lan
     hostname: moon-lan.org
     peers:
@@ -59,4 +59,4 @@ channels:
     organizations:
       - Chipa-INU
       - Blueberry-GO
-      - MoonLAN
+      - Moon-LAN

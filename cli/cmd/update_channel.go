@@ -27,12 +27,12 @@ Examples:
 func init() {
 	updateCmd.AddCommand(updateChannelCmd)
 
-	updateCmd.Flags().StringArrayP("org", "o", nil, "Owner organization names (required)")
-	updateCmd.Flags().StringP("channel", "c", "", "Channel name (required)")
-	updateCmd.Flags().Bool("setAnchors", true, "Update to setup anchor peers (default option)")
+	updateChannelCmd.Flags().StringArrayP("org", "o", nil, "Owner organization names (required)")
+	updateChannelCmd.Flags().StringP("channel", "c", "", "Channel name (required)")
+	updateChannelCmd.Flags().Bool("setAnchors", true, "Update to setup anchor peers (default option)")
 
-	_ = updateCmd.MarkFlagRequired("org")
-	_ = updateCmd.MarkFlagRequired("channel")
+	_ = updateChannelCmd.MarkFlagRequired("org")
+	_ = updateChannelCmd.MarkFlagRequired("channel")
 }
 
 func updateChannel(cmd *cobra.Command, _ []string) error {
