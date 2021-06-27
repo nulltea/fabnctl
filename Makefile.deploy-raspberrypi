@@ -56,6 +56,12 @@ hyperledger-deploy:
 		-o=moon-lan -p=peer0 \
 		-r iotchainnetwork ../contracts
 
+	./fabnctl update channel --setAnchors -c=supply-channel \
+			-o=chipa-inu \
+			-o=blueberry-go \
+			-o=moon-lan
+
+
 hyperledger-clear:
 	helm uninstall peer0-chipa-inu | echo "Chart 'peer/peer0-chipa-inu' already uninstalled"
 	helm uninstall peer0-blueberry-go | echo "Chart 'peer/peer0-blueberry-go' already uninstalled"

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -319,65 +320,52 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			packageID string
 		)
 
-		// Checking whether the chaincode was already installed:
-		if stdout, stderr, err = util.ExecCommandInPod(cmd.Context(), cliPodName, namespace,
-			"peer", "lifecycle", "chaincode", "queryinstalled",
+		// Packaging chaincode into tar.gz archive:
+		if err = shared.DecorateWithInteractiveLog(func() error {
+			if err = packageExternalChaincodeInTarGzip(
+				chaincode, peer, org,
+				path.Join(srcPath, "src", chaincode),
+				&packageBuffer,
+			); err != nil {
+				return errors.Wrapf(err, "failed to package chaincode in '%s' archive", packageTarGzip)
+			}
+			return nil
+		}, fmt.Sprintf("Packaging chaincode into '%s' archive", packageTarGzip),
+			fmt.Sprintf("Chaincode has been packaged into '%s' archive", packageTarGzip),
 		); err != nil {
-			if errors.Cause(err) == util.ErrRemoteCmdFailed {
-				err = errors.Wrap(err, "Failed to query installed chaincodes")
-				cmd.Println(viper.GetString("cli.error_emoji"), "Error:", err)
-				return util.WrapWithStderrViewPrompt(err, stderr, false)
-			}
-
-			return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName)
+			return nil
 		}
 
-		packageID = parseQueriedPackageID(stdout, chaincode)
-
-		// Installing chaincode package if needed:
-		if len(packageID) == 0 || !update {
-			// Packaging chaincode into tar.gz archive:
-			if err = shared.DecorateWithInteractiveLog(func() error {
-				if err = packageExternalChaincodeInTarGzip(chaincode, peer, org, &packageBuffer); err != nil {
-					return errors.Wrapf(err, "failed to package chaincode in '%s' archive", packageTarGzip)
-				}
-				return nil
-			}, fmt.Sprintf("Packaging chaincode into '%s' archive", packageTarGzip),
-				fmt.Sprintf("Chaincode has been packaged into '%s' archive", packageTarGzip),
-			); err != nil {
-				return nil
+		// Copping chaincode package to cli pod:
+		if err = shared.DecorateWithInteractiveLog(func() error {
+			if err = util.CopyToPod(cmd.Context(), cliPodName, namespace, &packageBuffer, packageTarGzip); err != nil {
+				return err
 			}
-
-			// Copping chaincode package to cli pod:
-			if err = shared.DecorateWithInteractiveLog(func() error {
-				if err = util.CopyToPod(cmd.Context(), cliPodName, namespace, &packageBuffer, packageTarGzip); err != nil {
-					return err
-				}
-				return nil
-			}, fmt.Sprintf("Sending chaincode package to '%s' pod", cliPodName),
-				fmt.Sprintf("Chaincode package has been sent to '%s' pod", cliPodName),
-			); err != nil {
-				return nil
-			}
-
-			if err = shared.DecorateWithInteractiveLog(func() error {
-				if _, stderr, err = util.ExecCommandInPod(cmd.Context(), cliPodName, namespace,
-					"peer", "lifecycle", "chaincode", "install", packageTarGzip,
-				); err != nil {
-					if errors.Cause(err) == util.ErrRemoteCmdFailed {
-						return errors.Wrap(err, "Failed to install chaincode package")
-					}
-
-					return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName)
-				}
-
-				return nil
-			}, "Installing chaincode package", "Chaincode package has been installed"); err != nil {
-				return util.WrapWithStderrViewPrompt(err, stderr, false)
-			}
-
-			packageID = parseInstalledPackageID(stderr)
+			return nil
+		}, fmt.Sprintf("Sending chaincode package to '%s' pod", cliPodName),
+			fmt.Sprintf("Chaincode package has been sent to '%s' pod", cliPodName),
+		); err != nil {
+			return nil
 		}
+
+		// Installing chaincode package:
+		if err = shared.DecorateWithInteractiveLog(func() error {
+			if _, stderr, err = util.ExecCommandInPod(cmd.Context(), cliPodName, namespace,
+				"peer", "lifecycle", "chaincode", "install", packageTarGzip,
+			); err != nil {
+				if errors.Cause(err) == util.ErrRemoteCmdFailed {
+					return errors.Wrap(err, "Failed to install chaincode package")
+				}
+
+				return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName)
+			}
+
+			return nil
+		}, "Installing chaincode package", "Chaincode package has been installed"); err != nil {
+			return util.WrapWithStderrViewPrompt(err, stderr, false)
+		}
+
+		packageID = parseInstalledPackageID(stderr)
 
 		fmt.Printf("%s Chaincode package identifier: %s\n", viper.GetString("cli.info_emoji"), packageID)
 
@@ -571,14 +559,17 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 	return nil
 }
 
-func packageExternalChaincodeInTarGzip(chaincode, peer, org string, writer io.Writer) error {
+func packageExternalChaincodeInTarGzip(chaincode, peer, org, sourcePath string, writer io.Writer) error {
 	var (
 		codeBuffer    bytes.Buffer
 		mdBuffer      bytes.Buffer
 		connBuffer    bytes.Buffer
 
+		codeGzip = gzip.NewWriter(&codeBuffer)
+		codeTar = tar.NewWriter(codeGzip)
+
 		packageGzip = gzip.NewWriter(writer)
-		packageTar = tar.NewWriter(packageGzip)
+		packageTar  = tar.NewWriter(packageGzip)
 
 		metadata   = model.ChaincodeMetadata{
 			Type:  "external",
@@ -597,8 +588,8 @@ func packageExternalChaincodeInTarGzip(chaincode, peer, org string, writer io.Wr
 	}()
 
 	defer func() {
-		if err := packageTar.Close(); err != nil {
-			shared.Logger.Error(errors.Wrapf(err, "failed to close package tar writer"))
+		if err := codeTar.Close(); err != nil {
+			shared.Logger.Error(errors.Wrapf(err, "failed to close code tar writer"))
 		}
 	}()
 
@@ -606,8 +597,31 @@ func packageExternalChaincodeInTarGzip(chaincode, peer, org string, writer io.Wr
 		return errors.Wrap(err, "failed to encode to 'connection.json'")
 	}
 
-	if err := util.WriteBytesToTarGzip("connection.json", &connBuffer, &codeBuffer); err != nil {
+	if err := util.WriteBytesToTar("connection.json", &connBuffer, codeTar); err != nil {
 		return errors.Wrap(err, "failed to write 'connection.json' into 'code.tar.gz' archive")
+	}
+
+	indexesPath := path.Join(sourcePath, "META-INF", "statedb", "couchdb", "indexes")
+	if indexes, err := ioutil.ReadDir(indexesPath); err == nil {
+		for _, index := range indexes {
+			indexBytes, err := ioutil.ReadFile(path.Join(indexesPath, index.Name()))
+			if err != nil {
+				continue
+			}
+
+			metaIndexPath := path.Join("META-INF", "statedb", "couchdb", "indexes", index.Name())
+			if err := util.WriteBytesToTar(metaIndexPath, bytes.NewBuffer(indexBytes), codeTar); err != nil {
+				return errors.Wrapf(err, "failed to write '%s' into code tar archive", metaIndexPath)
+			}
+		}
+	}
+
+	if err := codeTar.Close(); err != nil {
+		shared.Logger.Error(errors.Wrapf(err, "failed to close code tar writer"))
+	}
+
+	if err := codeGzip.Close(); err != nil {
+		shared.Logger.Error(errors.Wrapf(err, "failed to close code gzip writer"))
 	}
 
 	if err := util.WriteBytesToTar("code.tar.gz", &codeBuffer, packageTar); err != nil {
@@ -765,7 +779,7 @@ func checkChaincodeCommitStatus(ctx context.Context, chaincode, channel string) 
 		return false, 0, 0, nil
 	}
 
-	match := regexp.MustCompile(fmt.Sprintf("Name: %s, Version: (\\d.\\d?), Sequence: (\\d?)", chaincode)).
+	match := regexp.MustCompile(fmt.Sprintf("Name: %s, Version: (\\d*.\\d*), Sequence: (\\d*)", chaincode)).
 		FindStringSubmatch(buffer.String())
 
 	if len(match) < 3 {
@@ -795,7 +809,7 @@ func stoa(sequence int) string {
 func atos(str string) int {
 	sequence, err := strconv.Atoi(str)
 	if err != nil {
-		return 1.0
+		return 1
 	}
 
 	return sequence

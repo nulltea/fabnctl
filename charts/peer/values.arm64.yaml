@@ -15,5 +15,5 @@ ca:
 
 couchdb:
   image:
-    repository: mohitkukreja/fabric-couchdb
-    tag: aarch64-0.4.15
+    repository: busan15/fabric-couchdb
+    tag: arm64-0.4.20
