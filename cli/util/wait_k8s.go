@@ -28,7 +28,7 @@ func WaitForJobComplete(
 		LabelSelector: selector,
 	})
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to wait for '%s' job completion", name)
+		return false, errors.Wrap(err, "failed to wait for job completion")
 	}
 
 	return WaitForEvent(ctx, cancel,
@@ -70,7 +70,7 @@ func WaitForPodReady(
 		LabelSelector: selector,
 	})
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to wait for '%s' pod readiness", name)
+		return false, errors.Wrap(err, "failed to wait for pod readiness")
 	}
 
 	return WaitForEvent(ctx, cancel,

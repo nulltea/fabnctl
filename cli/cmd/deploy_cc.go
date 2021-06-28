@@ -185,7 +185,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			printer    = progress.NewPrinter(cmd.Context(), os.Stdout, "auto")
 		)
 		srcPathAbs, _ = filepath.Abs(srcPath)
-		cmd.Println("🚀 Builder for chaincode image started\n")
+		cmd.Printf("🚀 Builder for chaincode image started\n\n")
 
 		dis, err := shared.DockerBuildDrivers(srcPathAbs)
 		if err != nil {
@@ -529,7 +529,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		commitCmd = util.FormShellCommand(commitCmd, commitCmdEnding)
 	}
 
-	cmd.Println("\n")
+	cmd.Printf("\n")
 
 	var stderr io.Reader
 	if err = shared.DecorateWithInteractiveLog(func() error {
