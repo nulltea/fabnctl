@@ -1,5 +1,4 @@
-project: iot-blockchain
-component: orderer
+component: artifacts
 
 replicaCount: 1
 logging: DEBUG

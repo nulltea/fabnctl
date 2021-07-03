@@ -1,4 +1,4 @@
-This is {{ .Values.component }} of {{ .Values.project }} project.
+This is {{ .Values.component }}.
 From outside the cluster, the {{ .Values.component }} is available by URL:
 {{- if .Values.ingress.enabled }}
 {{- range .Values.ingress.routes }} {{ $host := .host }}

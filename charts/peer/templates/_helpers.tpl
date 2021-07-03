@@ -3,7 +3,6 @@ Common labels
 */}}
 {{- define "chart.labels" -}}
 {{ include "chart.selectorLabels" . }}
-project: {{ .Values.project }}
 component: {{ .Values.component }}
 release: {{ .Release.Name }}
 {{- end }}

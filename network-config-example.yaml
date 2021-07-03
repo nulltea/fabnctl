@@ -1,0 +1,37 @@
+domain: example.com
+
+orderer:
+  name: Orderer
+  type: etcdraft
+  mspID: orderer
+  hostname: orderer
+  port: 7050
+  profile: OrdererGenesis
+  channelID: system-channel
+
+organizations:
+  - name: Org1
+    mspID: org1
+    hostname: org1
+    peers:
+      - hostname: peer0
+        port: 7051
+    channelProfile: SupplyChannel
+    channelID: supply-channel
+  - name: Org2
+    mspID: org2
+    hostname: org2
+    peers:
+      - hostname: peer0
+        port: 7051
+    channelProfile: SupplyChannel
+    channelID: supply-channel
+
+channels:
+  - name: SupplyChannel
+    profile: SupplyChannel
+    channelID: supply-channel
+    consortium: SupplyConsortium
+    organizations:
+      - Org1
+      - Org2

@@ -1,4 +1,3 @@
-project: iot-blockchain
 component: orderer
 
 replicaCount: 1
