@@ -47,13 +47,17 @@ Consider checking it out too.
 Download the latest release:
 
 ```shell
-curl --location "https://github.com/timoth-y/fabnctl/releases/latest/download/fabnctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+mkdir /tmp/fabnctl
+curl --location "https://github.com/timoth-y/fabnctl/releases/latest/download/fabnctl-$(uname -s)-amd64.tar.gz" \
+ | tar xz -C /tmp/fabnctl
 ```
 
-For ARM system, please change ARCH (e.g. armv6, armv7 or arm64) accordingly:
+For ARM system, please change ARCH to `arm64`:
 
 ```shell
-curl --location "https://github.com/timoth-y/fabnctl/releases/latest/download/fabnctl_$(uname -s)_arm64.tar.gz" | tar xz -C /tmp
+mkdir /tmp/fabnctl
+curl --location "https://github.com/timoth-y/fabnctl/releases/latest/download/fabnctl-$(uname -s)-arm64.tar.gz" \
+ | tar xz -C /tmp/fabnctl
 ```
 
 Install tool:
