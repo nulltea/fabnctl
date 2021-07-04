@@ -1,6 +1,6 @@
 name: Release
 
-on: 
+on:
   release:
     types: [created]
   workflow_dispatch:
@@ -13,9 +13,9 @@ jobs:
       matrix:
         goos: [linux, windows, darwin]
         goarch: [amd64, arm64]
-        exclude:  
+        exclude:
           - goarch: arm64
-            goos: windows 
+            goos: windows
     steps:
       - uses: actions/checkout@v2
 
@@ -34,5 +34,5 @@ jobs:
           build_flags: -v
           project_path: ./cli
           ldflags: -X "main.appVersion=${{ env.APP_VERSION }}" -X "main.buildTime=${{ env.BUILD_TIME }}" -X main.gitCommit=${{ github.sha }} -X main.gitRef=${{ github.ref }}
-          extra_files: LICENSE README.md Makefile ./charts ./cli/template
+          extra_files: LICENSE README.md Makefile .cli-config.yaml ./charts ./template
           asset_name: fabnctl-${{ matrix.goos }}-${{ matrix.goarch }}
