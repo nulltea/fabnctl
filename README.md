@@ -2,6 +2,10 @@
 
 _`fabnctl` is a developer friendly CLI for Hyperledger Fabric on your Kubernetes infrastructure._
 
+![cmd help image]
+
+[cmd help image]: https://github.com/timoth-y/fabnctl/blob/github/update_readme/docs/help.png?raw=true
+
 ## Intentions
 
 [Hyperledger Fabric][hyperledger fabric url] is a powerful enterprise-grade permissioned distributed ledger framework. 
