@@ -4,7 +4,7 @@ _`fabnctl` is a developer friendly CLI for Hyperledger Fabric on your Kubernetes
 
 ![cmd help image]
 
-[cmd help image]: https://github.com/timoth-y/fabnctl/blob/github/update_readme/docs/fabnctl.png?raw=true
+[cmd help image]: https://github.com/timoth-y/fabnctl/blob/main/docs/fabnctl.png?raw=true
 
 ## Intentions
 
@@ -207,13 +207,13 @@ fabnctl gen connection -f ./network-config.yaml --name application \
 
 ![gen connection gif]
 
-[gen artifacts gif]: https://github.com/timoth-y/fabnctl/blob/github/update_readme/docs/gen_artifacts.gif?raw=true
-[deploy orderer gif]: https://github.com/timoth-y/fabnctl/blob/github/update_readme/docs/deploy_orderer.gif?raw=true
-[deploy peer gif]: https://github.com/timoth-y/fabnctl/blob/github/update_readme/docs/deploy_peer.gif?raw=true
-[deploy channel gif]: https://github.com/timoth-y/fabnctl/blob/github/update_readme/docs/deploy_channel.gif?raw=true
-[deploy cc gif]: https://github.com/timoth-y/fabnctl/blob/github/update_readme/docs/deploy_cc.gif?raw=true
-[update channel gif]: https://github.com/timoth-y/fabnctl/blob/github/update_readme/docs/update_channel.gif?raw=true
-[gen connection gif]: https://github.com/timoth-y/fabnctl/blob/github/update_readme/docs/gen_connection.gif?raw=true
+[gen artifacts gif]: https://github.com/timoth-y/fabnctl/blob/main/docs/gen_artifacts.gif?raw=true
+[deploy orderer gif]: https://github.com/timoth-y/fabnctl/blob/main/docs/deploy_orderer.gif?raw=true
+[deploy peer gif]: https://github.com/timoth-y/fabnctl/blob/main/docs/deploy_peer.gif?raw=true
+[deploy channel gif]: https://github.com/timoth-y/fabnctl/blob/main/docs/deploy_channel.gif?raw=true
+[deploy cc gif]: https://github.com/timoth-y/fabnctl/blob/main/docs/deploy_cc.gif?raw=true
+[update channel gif]: https://github.com/timoth-y/fabnctl/blob/main/docs/update_channel.gif?raw=true
+[gen connection gif]: https://github.com/timoth-y/fabnctl/blob/main/docs/gen_connection.gif?raw=true
 
 [crypto material]: https://hyperledger-fabric.readthedocs.io/en/release-2.2/identity/identity.html#digital-certificates
 [channel]: https://hyperledger-fabric.readthedocs.io/en/release-2.2/glossary.html#channel
