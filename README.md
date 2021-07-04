@@ -48,14 +48,18 @@ Download the latest release:
 
 ```shell
 curl --location "https://github.com/timoth-y/fabnctl/releases/latest/download/fabnctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
-sudo mv /tmp/fabnctl /usr/local/bin
 ```
 
 For ARM system, please change ARCH (e.g. armv6, armv7 or arm64) accordingly:
 
 ```shell
 curl --location "https://github.com/timoth-y/fabnctl/releases/latest/download/fabnctl_$(uname -s)_arm64.tar.gz" | tar xz -C /tmp
-sudo mv /tmp/fabnctl /usr/local/bin
+```
+
+Install tool:
+
+```shell
+cd /tmp/fabnctl && make install
 ```
 
 ## Usage
@@ -66,7 +70,7 @@ Before starting deploying Fabric on your cluster, check if all requirements met.
 You can use `prepare-cluster` rule to install all required charts on your cluster:
 
 ```shell
-$ make prepare-cluster
+make prepare-cluster
 ```
 
 ### Network configuration
@@ -74,7 +78,7 @@ $ make prepare-cluster
 Now when we sure cluster is ready to go, first thing to do is fill the network configuration based on your needs:
 
 ```shell
-$ nano network-config.yaml # See network-config-example.yaml for example
+nano network-config.yaml # See network-config-example.yaml for example
 ```
 
 ### Generate artifacts
@@ -82,7 +86,7 @@ $ nano network-config.yaml # See network-config-example.yaml for example
 Okay, one more thing before deploying an actual Fabric components is to generate crypto-materials and channel artifacts:
 
 ```shell
-$ fabnctl gen artifacts --arch=arm64 --domain=example.network -f ./network-config.yaml
+fabnctl gen artifacts --arch=arm64 --domain=example.network -f ./network-config.yaml
 ```
 
 ![gen artifacts gif]
@@ -98,7 +102,7 @@ which is responsible for ensuring data consistency and enables performance at sc
 Though, its deployment is actually a piece of cake:
 
 ```shell
-$ fabnctl deploy orderer --arch=arm64 --domain=example.network
+fabnctl deploy orderer --arch=arm64 --domain=example.network
 ```
 
 ![deploy orderer gif]
@@ -111,7 +115,7 @@ which will store a copy of ledger and perform read/write operations on it.
 To deploy peer for certain organization use following command:
 
 ```shell
-$ fabnctl deploy peer --arch=arm64 --domain=example.network --org=org1 --peer=peer0
+fabnctl deploy peer --arch=arm64 --domain=example.network --org=org1 --peer=peer0
 ```
 
 ![deploy peer gif]
@@ -127,7 +131,7 @@ one more crucially important thing is needed to be done - provide communication 
 Doing that also won't take much of your time and effort:
 
 ```shell
-$ fabnctl deploy channel --domain=example.network --channel=example-channel \
+fabnctl deploy channel --domain=example.network --channel=example-channel \
    -o=org1 -p=peer0 \
    -o=org2 -p=peer0 \
    -o=org3 -p=peer0
@@ -143,7 +147,7 @@ Now we're talking! So, assuming your Smart Contract is written and ready to be t
 the following command will perform a sequence of actions to make that happened:
 
 ```shell
-$ fabnctl deploy cc --arch=arm64 --domain=example.network --chaincode=example -C=example-channel \
+fabnctl deploy cc --arch=arm64 --domain=example.network --chaincode=example -C=example-channel \
    -o=org1 -p=peer0 \
    -o=org2 -p=peer0 \
    -o=org3 -p=peer0 \
@@ -175,7 +179,7 @@ without this step organization peers won't be aware where the other organization
 To prevent this causing troubles letter use this simple command now:
 
 ```shell
-$ fabnctl update channel --setAnchors --domain=example.network  --channel=example-channel \
+fabnctl update channel --setAnchors --domain=example.network  --channel=example-channel \
    -o=org1 \
    -o=org2 \
    -o=org3
@@ -191,7 +195,8 @@ which would require connection config.
 This command line utility will gladly help you with that too:
 
 ```shell
-$ fabnctl gen connection -f ./network-config.yaml --name application --channel=example-channel --org=chipa-inu ./artifacts
+fabnctl gen connection -f ./network-config.yaml --name application \
+   --channel=example-channel --org=chipa-inu ./artifacts
 ```
 
 ![gen connection gif]
@@ -203,7 +208,6 @@ $ fabnctl gen connection -f ./network-config.yaml --name application --channel=e
 [deploy cc gif]: https://github.com/timoth-y/fabnctl/blob/github/update_readme/docs/deploy_cc.gif?raw=true
 [update channel gif]: https://github.com/timoth-y/fabnctl/blob/github/update_readme/docs/update_channel.gif?raw=true
 [gen connection gif]: https://github.com/timoth-y/fabnctl/blob/github/update_readme/docs/gen_connection.gif?raw=true
-
 
 [crypto material]: https://hyperledger-fabric.readthedocs.io/en/release-2.2/identity/identity.html#digital-certificates
 [channel]: https://hyperledger-fabric.readthedocs.io/en/release-2.2/glossary.html#channel
