@@ -34,4 +34,4 @@ jobs:
           build_flags: -v
           project_path: ./cli
           ldflags: -X "main.appVersion=${{ env.APP_VERSION }}" -X "main.buildTime=${{ env.BUILD_TIME }}" -X main.gitCommit=${{ github.sha }} -X main.gitRef=${{ github.ref }}
-          extra_files: LICENSE README.md
+          extra_files: LICENSE README.md Makefile charts cli/templates
