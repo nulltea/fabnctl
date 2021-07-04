@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/timoth-y/chainmetric-network/cli/model"
-	"github.com/timoth-y/chainmetric-network/cli/shared"
 	"sigs.k8s.io/yaml"
 )
 
@@ -213,17 +212,12 @@ func genConnection(cmd *cobra.Command, artifactsPath string) error {
 		XProperties: xProperties,
 	}
 
-	installPath, err := shared.GetInstallationPath()
-	if err != nil {
-		return errors.Wrap(err, "failed to determine installation location path")
-	}
-
 	var (
 		tpl = template.Must(
 			template.New("connection").
 				Funcs(sprig.TxtFuncMap()).
 				ParseFiles(
-					path.Join(installPath, "cli/template/connection.goyaml"),
+					path.Join(viper.GetString("installation_path"), "template/connection.goyaml"),
 				),
 		)
 	)

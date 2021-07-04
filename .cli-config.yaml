@@ -1,0 +1,9 @@
+fabric:
+  orderer_hostname_name: orderer
+
+k8s:
+  wait_timeout: 30s
+
+helm:
+  install_timeout: 60s
+  storage_class: local-path

@@ -470,6 +470,8 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		availableCliPod = cliPodName
 	}
 
+	cmd.Printf("\n")
+
 	// Verifying commit readiness,
 	// by checking that all organizations on channel approved chaincode:
 	if stdout, stderr, err := util.ExecShellInPod(

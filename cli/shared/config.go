@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
+	"k8s.io/client-go/util/homedir"
 )
 
 // initConfig configures viper from environment variables and configuration files.
@@ -17,6 +18,7 @@ func initConfig() {
 	viper.SetDefault("k8s.wait_timeout", "60s")
 
 	viper.SetDefault("helm.install_timeout", "120s")
+	viper.SetDefault("helm.charts_path", path.Join(homedir.HomeDir(), "fabnctl", "charts"))
 
 	viper.SetDefault("fabric.orderer_hostname_name", "orderer")
 
@@ -26,10 +28,13 @@ func initConfig() {
 	viper.Set("cli.warning_emoji", "❗")
 	viper.Set("cli.info_emoji", "👉")
 
+	viper.SetDefault("installation_path", path.Join(homedir.HomeDir(), "fabnctl"))
+
 	viper.SetConfigType("yaml")
 	viper.SetConfigName(".cli-config")
 	viper.AddConfigPath(".")
-	viper.AddConfigPath("./cli")
+	viper.AddConfigPath(viper.GetString("installation_path"))
+
 	if installPath, err := GetInstallationPath(); err == nil {
 		viper.AddConfigPath(installPath)
 		viper.AddConfigPath(path.Join(installPath, "cli"))

@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/timoth-y/chainmetric-network/cli/shared"
 )
 
 var (
@@ -30,10 +31,12 @@ func Execute() {
 }
 
 func init() {
+	shared.InitCore()
+
 	rootCmd.PersistentFlags().StringVarP(
 		&targetArch,
 		"arch", "a",
-		"arm64",
+		"amd64",
 		`Deployment target architecture.
 Supported are:
  - ARM64: -a=arm64
@@ -43,14 +46,14 @@ Supported are:
 	 rootCmd.PersistentFlags().StringVarP(
 	 	&domain,
 	 	"domain", "d",
-	 	"chainmetric.network",
+	 	"",
 	 	"Deployment target domain",
 	 )
 
 	rootCmd.PersistentFlags().StringVar(
 		&chartsPath,
 		"charts",
-		"./charts",
+		viper.GetString("helm.charts_path"),
 		"Helm deployment charts path",
 	)
 
@@ -60,6 +63,8 @@ Supported are:
 		"network",
 		"namespace scope for the deployment request",
 	)
+
+	rootCmd.MarkFlagRequired("domain")
 }
 
 func handleErrors(fn func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) error {

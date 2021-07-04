@@ -5,7 +5,7 @@ name: {{ .Name }}
 description: {{ .Description }}
 version: {{ .Version }}
 
-{{ range $key, $value := .XProperties -}}
+{{ range $key, $value := .XProperties }}
 x-{{ $key }}: {{ $value }}
 {{- end }}
 
