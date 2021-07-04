@@ -107,6 +107,12 @@ fabnctl deploy orderer --arch=arm64 --domain=example.network
 
 ![deploy orderer gif]
 
+> Hyperledger foundation does not provide official images for ARM-based systems.
+> Instead this project currently use alternative images found on DockerHub.
+> It's planned to build and source own images latter on to keep up with Fabric releases.
+> Unless of course Hyperledger decides to include support for ARM, which may indeed be highly possibly since the rise of
+> single-board ARM based computers such as Raspberry Pi and others.
+
 ### Deploy organization peers
 
 Great, moving on to [organizations][organization] and [peers][peer] owned by them,
@@ -220,7 +226,19 @@ fabnctl gen connection -f ./network-config.yaml --name application \
 
 ## Roadmap
 
+- [ ] Add multiply orderers deployment support
+- [ ] Simplify interactive logging implementation
+- [ ] Source charts on [artifacthub.io](https://artifacthub.io)
+
+## Contributing
+
+Contributions are always welcome! Fork this repo to get started.
+
 ## Wrap up
+
+The development of `fabnctl` utility was motivated by the need of providing more convenient and straightforward way of deploying
+Hyperledger Fabric network for those who are getting started with this awesome technology
+and potentially satisfy some needs of those who are already into Fabric's DevOps processes.
 
 ## License
 
