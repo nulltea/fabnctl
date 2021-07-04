@@ -6,3 +6,4 @@ k8s:
 
 helm:
   install_timeout: 60s
+  storage_class: local-path
