@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/timoth-y/chainmetric-core/utils"
-	"github.com/timoth-y/chainmetric-network/cli/shared"
-	"github.com/timoth-y/chainmetric-network/cli/util"
+	core2 "github.com/timoth-y/chainmetric-network/shared/core"
+	"github.com/timoth-y/chainmetric-network/shared/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
@@ -41,10 +41,10 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 		configPath string
 		values = make(map[string]interface{})
 		chartSpec = &helmclient.ChartSpec{
-			ReleaseName: "artifacts",
-			ChartName: path.Join(chartsPath, "artifacts"),
-			Namespace: namespace,
-			Wait: true,
+			ReleaseName:   "artifacts",
+			ChartName:     path.Join(chartsPath, "artifacts"),
+			Namespace:     namespace,
+			Wait:          true,
 			CleanupOnFail: true,
 		}
 		waitPodName = "artifacts.wait"
@@ -84,8 +84,8 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 	ctx, cancel := context.WithTimeout(cmd.Context(), viper.GetDuration("helm.install_timeout"))
 	defer cancel()
 
-	if err = shared.DecorateWithInteractiveLog(func() error {
-		if err = shared.Helm.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
+	if err = core2.DecorateWithInteractiveLog(func() error {
+		if err = core2.Helm.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
 			return errors.Wrap(err, "failed to install artifacts helm chart")
 		}
 		return nil
@@ -120,14 +120,14 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 
 	// Cleaning 'artifacts.wait' job and pod:
 	defer func(cmd *cobra.Command) {
-		if err = shared.K8s.BatchV1().Jobs(namespace).DeleteCollection(cmd.Context(),
+		if err = core2.K8s.BatchV1().Jobs(namespace).DeleteCollection(cmd.Context(),
 			metav1.DeleteOptions{}, metav1.ListOptions{
 				LabelSelector: "fabnctl/cid=artifacts.wait",
 			}); err != nil {
 			cmd.PrintErrln(errors.Wrap(err, "failed to delete artifacts.wait job"))
 		}
 
-		if err = shared.K8s.CoreV1().Pods(namespace).DeleteCollection(cmd.Context(),
+		if err = core2.K8s.CoreV1().Pods(namespace).DeleteCollection(cmd.Context(),
 			metav1.DeleteOptions{GracePeriodSeconds: utils.Int64Pointer(0)}, metav1.ListOptions{
 				LabelSelector: "job-name=artifacts.wait",
 			}); err != nil {

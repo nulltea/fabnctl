@@ -10,8 +10,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/timoth-y/chainmetric-network/cli/shared"
-	"github.com/timoth-y/chainmetric-network/cli/util"
+	core2 "github.com/timoth-y/chainmetric-network/shared/core"
+	"github.com/timoth-y/chainmetric-network/shared/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
@@ -69,7 +69,7 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Create or update orderer transport TLS secret:
-	if _, err = util.SecretAdapter(shared.K8s.CoreV1().Secrets(namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
+	if _, err = util.SecretAdapter(core2.K8s.CoreV1().Secrets(namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
 		Type: corev1.SecretTypeTLS,
 		Data: map[string][]byte{
 			corev1.TLSPrivateKeyKey: pkPayload,
@@ -79,9 +79,9 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 			Name:      tlsSecretName,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"fabnctl/cid": "orderer.tls.secret",
+				"fabnctl/cid":    "orderer.tls.secret",
 				"fabnctl/domain": domain,
-				"fabnctl/host": hostname,
+				"fabnctl/host":   hostname,
 			},
 		},
 	}); err != nil {
@@ -93,18 +93,18 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 	)
 
 	// Create or update orderer transport CA secret:
-	if _, err = util.SecretAdapter(shared.K8s.CoreV1().Secrets(namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
+	if _, err = util.SecretAdapter(core2.K8s.CoreV1().Secrets(namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
 			"ca.crt": caPayload,
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: caSecretName,
+			Name:      caSecretName,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"fabnctl/cid": "orderer.ca.secret",
+				"fabnctl/cid":    "orderer.ca.secret",
 				"fabnctl/domain": domain,
-				"fabnctl/host": hostname,
+				"fabnctl/host":   hostname,
 			},
 		},
 	}); err != nil {
@@ -121,9 +121,9 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 		values = make(map[string]interface{})
 		chartSpec = &helmclient.ChartSpec{
 			ReleaseName: "orderer",
-			ChartName: path.Join(chartsPath, "orderer"),
-			Namespace: namespace,
-			Wait: true,
+			ChartName:   path.Join(chartsPath, "orderer"),
+			Namespace:   namespace,
+			Wait:        true,
 		}
 	)
 
@@ -148,8 +148,8 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 	ctx, cancel := context.WithTimeout(cmd.Context(), viper.GetDuration("helm.install_timeout"))
 	defer cancel()
 
-	if err = shared.DecorateWithInteractiveLog(func() error {
-		if err = shared.Helm.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
+	if err = core2.DecorateWithInteractiveLog(func() error {
+		if err = core2.Helm.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
 			return errors.Wrap(err, "failed to install orderer helm chart")
 		}
 		return nil

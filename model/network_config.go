@@ -2,10 +2,10 @@ package model
 
 // NetworkConfig defines network deployment configuration structure.
 type NetworkConfig struct {
-	Domain string `yaml:"domain" json:"domain"`
-	Orderer Orderer `yaml:"orderer" json:"orderer"`
+	Domain        string         `yaml:"domain" json:"domain"`
+	Orderer       Orderer        `yaml:"orderer" json:"orderer"`
 	Organizations []Organization `yaml:"organizations" json:"organizations"`
-	Channels []Channel `yaml:"channels" json:"channels"`
+	Channels      []Channel      `yaml:"channels" json:"channels"`
 
 	orgMap      map[string]*Organization
 	channelsMap map[string]*Channel

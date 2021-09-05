@@ -7,8 +7,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/timoth-y/chainmetric-network/cli/shared"
-	"github.com/timoth-y/chainmetric-network/cli/util"
+	"github.com/timoth-y/chainmetric-network/shared/core"
+	"github.com/timoth-y/chainmetric-network/shared/util"
 )
 
 // channelCmd represents the channel command
@@ -148,7 +148,7 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 
 		// Creating channel in case it wasn't yet:
 		if !channelExists {
-			if err = shared.DecorateWithInteractiveLog(func() error {
+			if err = core.DecorateWithInteractiveLog(func() error {
 				if _, stderr, err = util.ExecShellInPod(cmd.Context(), cliPodName, namespace, createCmd); err != nil {
 					if errors.Cause(err) == util.ErrRemoteCmdFailed {
 						return errors.New("Failed to create channel")
@@ -165,7 +165,7 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 		}
 
 		// Joining peer to channel:
-		if err = shared.DecorateWithInteractiveLog(func() error {
+		if err = core.DecorateWithInteractiveLog(func() error {
 			if _, stderr, err = util.ExecShellInPod(cmd.Context(), cliPodName, namespace, joinCmd); err != nil {
 				if errors.Cause(err) == util.ErrRemoteCmdFailed {
 					return errors.Wrap(err, "Failed to join channel")

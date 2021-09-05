@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/timoth-y/chainmetric-network/cli/model"
+	"github.com/timoth-y/chainmetric-network/model"
 	"sigs.k8s.io/yaml"
 )
 
@@ -203,13 +203,13 @@ func genConnection(cmd *cobra.Command, artifactsPath string) error {
 	}
 
 	values := ConnectionValues{
-		Name: name,
-		Description: desc,
-		Version: vtoa(version),
-		OwnerOrg: ownerOrg,
-		Channel: channel,
+		Name:          name,
+		Description:   desc,
+		Version:       vtoa(version),
+		OwnerOrg:      ownerOrg,
+		Channel:       channel,
 		NetworkConfig: netConfig,
-		XProperties: xProperties,
+		XProperties:   xProperties,
 	}
 
 	var (

@@ -4,7 +4,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/timoth-y/chainmetric-network/cli/shared"
+	"github.com/timoth-y/chainmetric-network/shared/core"
 )
 
 var (
@@ -31,7 +31,7 @@ func Execute() {
 }
 
 func init() {
-	shared.InitCore()
+	core.InitCore()
 
 	rootCmd.PersistentFlags().StringVarP(
 		&targetArch,

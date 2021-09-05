@@ -1,4 +1,4 @@
-package shared
+package core
 
 func InitCore() {
 	initConfig()

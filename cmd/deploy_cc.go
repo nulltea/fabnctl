@@ -29,9 +29,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/timoth-y/chainmetric-network/cli/model"
-	"github.com/timoth-y/chainmetric-network/cli/shared"
-	"github.com/timoth-y/chainmetric-network/cli/util"
+	"github.com/timoth-y/chainmetric-network/model"
+	core2 "github.com/timoth-y/chainmetric-network/shared/core"
+	"github.com/timoth-y/chainmetric-network/shared/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
@@ -187,7 +187,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		srcPathAbs, _ = filepath.Abs(srcPath)
 		cmd.Printf("🚀 Builder for chaincode image started\n\n")
 
-		dis, err := shared.DockerBuildDrivers(srcPathAbs)
+		dis, err := core2.DockerBuildDrivers(srcPathAbs)
 		if err != nil {
 			return err
 		}
@@ -204,7 +204,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 					DockerfilePath: path.Join(srcPathAbs, dockerfile),
 				},
 			},
-		}, shared.DockerAPI(), shared.DockerCLI.ConfigFile(), printer); err != nil {
+		}, core2.DockerAPI(), core2.DockerCLI.ConfigFile(), printer); err != nil {
 			return errors.Wrap(err, "failed to build chaincode image from source path")
 		}
 
@@ -221,7 +221,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 
 		cmd.Printf("\n🚀 Pushing chaincode image to '%s' registry\n\n", registry)
 
-		resp, err := shared.Docker.ImagePush(cmd.Context(), imageTag, types.ImagePushOptions{
+		resp, err := core2.Docker.ImagePush(cmd.Context(), imageTag, types.ImagePushOptions{
 			Platform:     platform,
 			RegistryAuth: regAuth,
 			All: true,
@@ -230,7 +230,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			return errors.Wrapf(err, "failed to push chaincode image to '%s' registry", registry)
 		}
 
-		_ = jsonmessage.DisplayJSONMessagesToStream(resp, shared.DockerCLI.Out(), nil)
+		_ = jsonmessage.DisplayJSONMessagesToStream(resp, core2.DockerCLI.Out(), nil)
 
 		cmd.Printf("\n%s Chaincode image '%s' has been pushed to registry\n",
 			viper.GetString("cli.success_emoji"), imageTag,
@@ -321,7 +321,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		)
 
 		// Packaging chaincode into tar.gz archive:
-		if err = shared.DecorateWithInteractiveLog(func() error {
+		if err = core2.DecorateWithInteractiveLog(func() error {
 			if err = packageExternalChaincodeInTarGzip(
 				chaincode, peer, org,
 				path.Join(srcPath, "src", chaincode),
@@ -337,7 +337,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		}
 
 		// Copping chaincode package to cli pod:
-		if err = shared.DecorateWithInteractiveLog(func() error {
+		if err = core2.DecorateWithInteractiveLog(func() error {
 			if err = util.CopyToPod(cmd.Context(), cliPodName, namespace, &packageBuffer, packageTarGzip); err != nil {
 				return err
 			}
@@ -349,7 +349,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		}
 
 		// Installing chaincode package:
-		if err = shared.DecorateWithInteractiveLog(func() error {
+		if err = core2.DecorateWithInteractiveLog(func() error {
 			if _, stderr, err = util.ExecCommandInPod(cmd.Context(), cliPodName, namespace,
 				"peer", "lifecycle", "chaincode", "install", packageTarGzip,
 			); err != nil {
@@ -399,9 +399,9 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		// Installing orderer helm chart:
 		ctx, cancel := context.WithTimeout(cmd.Context(), viper.GetDuration("helm.install_timeout"))
 
-		if err = shared.DecorateWithInteractiveLog(func() error {
+		if err = core2.DecorateWithInteractiveLog(func() error {
 			defer cancel()
-			if err = shared.Helm.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
+			if err = core2.Helm.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
 				return errors.Wrap(err, "failed to install chaincode helm chart")
 			}
 			return nil
@@ -441,7 +441,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 
 		// Approving chaincode if needed:
 		if !checkChaincodeApprovalByOrg(stdout, org) {
-			if err = shared.DecorateWithInteractiveLog(func() error {
+			if err = core2.DecorateWithInteractiveLog(func() error {
 				if _, stderr, err = util.ExecShellInPod(
 					cmd.Context(),
 					cliPodName, namespace,
@@ -534,7 +534,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 	cmd.Printf("\n")
 
 	var stderr io.Reader
-	if err = shared.DecorateWithInteractiveLog(func() error {
+	if err = core2.DecorateWithInteractiveLog(func() error {
 		if _, stderr, err = util.ExecShellInPod(
 			cmd.Context(),
 			availableCliPod, namespace,
@@ -585,13 +585,13 @@ func packageExternalChaincodeInTarGzip(chaincode, peer, org, sourcePath string, 
 
 	defer func() {
 		if err := packageGzip.Close(); err != nil {
-			shared.Logger.Error(errors.Wrapf(err, "failed to close package gzip writer"))
+			core2.Logger.Error(errors.Wrapf(err, "failed to close package gzip writer"))
 		}
 	}()
 
 	defer func() {
 		if err := codeTar.Close(); err != nil {
-			shared.Logger.Error(errors.Wrapf(err, "failed to close code tar writer"))
+			core2.Logger.Error(errors.Wrapf(err, "failed to close code tar writer"))
 		}
 	}()
 
@@ -619,11 +619,11 @@ func packageExternalChaincodeInTarGzip(chaincode, peer, org, sourcePath string, 
 	}
 
 	if err := codeTar.Close(); err != nil {
-		shared.Logger.Error(errors.Wrapf(err, "failed to close code tar writer"))
+		core2.Logger.Error(errors.Wrapf(err, "failed to close code tar writer"))
 	}
 
 	if err := codeGzip.Close(); err != nil {
-		shared.Logger.Error(errors.Wrapf(err, "failed to close code gzip writer"))
+		core2.Logger.Error(errors.Wrapf(err, "failed to close code gzip writer"))
 	}
 
 	if err := util.WriteBytesToTar("code.tar.gz", &codeBuffer, packageTar); err != nil {
@@ -647,7 +647,7 @@ func determineDockerCredentials(registry *string, regAuth *string) error {
 		hostname = "https://index.docker.io/v1/"
 	)
 
-	dockerCredentials, _ := shared.DockerCLI.ConfigFile().GetAllCredentials()
+	dockerCredentials, _ := core2.DockerCLI.ConfigFile().GetAllCredentials()
 	if dockerCredentials == nil {
 		dockerCredentials = map[string]clitypes.AuthConfig{}
 	}
@@ -748,7 +748,7 @@ func checkChaincodeCommitStatus(ctx context.Context, chaincode, channel string) 
 		buffer bytes.Buffer
 	)
 
-	if pods, err := shared.K8s.CoreV1().Pods("").List(ctx, metav1.ListOptions{
+	if pods, err := core2.K8s.CoreV1().Pods("").List(ctx, metav1.ListOptions{
 		LabelSelector: "fabnctl/cid=org-peer-cli",
 	}); err != nil {
 		return false, 0, 0, errors.Wrap(err, "failed to find available cli pod for chaincode commit status check")

@@ -7,8 +7,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/timoth-y/chainmetric-network/cli/shared"
-	"github.com/timoth-y/chainmetric-network/cli/util"
+	core2 "github.com/timoth-y/chainmetric-network/shared/core"
+	"github.com/timoth-y/chainmetric-network/shared/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -59,7 +59,7 @@ func updateChannel(cmd *cobra.Command, _ []string) error {
 			viper.GetString("cli.info_emoji"), org,
 		)
 
-		if pods, err := shared.K8s.CoreV1().Pods(namespace).List(cmd.Context(), metav1.ListOptions{
+		if pods, err := core2.K8s.CoreV1().Pods(namespace).List(cmd.Context(), metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("fabnctl/cid=org-peer-cli,fabnctl/org=%s", org),
 		}); err != nil {
 			return errors.Wrapf(err, "failed to find CLI pod for '%s' organization", org)
@@ -79,7 +79,7 @@ func updateChannel(cmd *cobra.Command, _ []string) error {
 
 		// Update channel with org's anchor peers:
 		var stderr io.Reader
-		if err = shared.DecorateWithInteractiveLog(func() error {
+		if err = core2.DecorateWithInteractiveLog(func() error {
 			if _, stderr, err = util.ExecShellInPod(cmd.Context(), cliPodName, namespace, updateCmd); err != nil {
 				if errors.Cause(err) == util.ErrRemoteCmdFailed {
 					return errors.Wrap(err, "Failed to update channel")
