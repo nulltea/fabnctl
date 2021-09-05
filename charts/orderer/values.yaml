@@ -28,7 +28,7 @@ serviceAccount:
   name: ""
 
 artifacts:
-  claim: artifacts.pvc
+  claim: artifacts
 
 config:
   mspID: orderer

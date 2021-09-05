@@ -46,7 +46,7 @@ organizations:
      - {{ .Hostname }}.{{ $orgHost }}.{{ $domain }}
     {{- end }}
     certificateAuthorities:
-      - ca.{{ .Hostname }}.org.{{ $domain }}
+      - ca.{{ .Hostname }}.{{ $domain }}
 {{- end }}
 
 orderers:

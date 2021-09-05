@@ -22,7 +22,7 @@ func SecretAdapter(i v1.SecretInterface) *SecretInterface {
 
 // CreateOrUpdate takes the representation of a secret and either creates it or update existing one.
 func (i *SecretInterface) CreateOrUpdate(ctx context.Context, secret corev1.Secret) (*corev1.Secret, error) {
-	if s, _ := i.Get(ctx, secret.Name, metav1.GetOptions{}); s == nil {
+	if s, err := i.Get(ctx, secret.Name, metav1.GetOptions{}); s == nil || err != nil {
 		return i.Create(ctx, &secret, metav1.CreateOptions{})
 	}
 

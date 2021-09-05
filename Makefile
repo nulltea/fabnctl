@@ -6,10 +6,10 @@ build:
 
 install:
 	sudo cp ./fabnctl $(INSTALL_BIN)
-	sudo mkdir $(INSTALL_DIR) || .
-	sudo cp -ur ./charts $(INSTALL_DIR)
-	sudo cp -ur ./template $(INSTALL_DIR)
-	sudo cp -ur ./.cli-config.yaml $(INSTALL_DIR)/.cli-config.yaml
+	mkdir $(INSTALL_DIR) || echo "-"
+	cp -ur ./charts $(INSTALL_DIR)
+	cp -ur ./template $(INSTALL_DIR)
+	cp -ur ./.cli-config.yaml $(INSTALL_DIR)/.cli-config.yaml
 
 install-dev: build install
 

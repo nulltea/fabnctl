@@ -78,6 +78,14 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 		caPath        = path.Join(tlsDir, "ca.crt")
 		tlsSecretName = fmt.Sprintf("%s.%s.org.%s-tls", peer, org, domain)
 		caSecretName  = fmt.Sprintf("%s.%s.org.%s-ca", peer, org, domain)
+
+		caDir = path.Join(
+			fmt.Sprintf(".crypto-config.%s", domain),
+			"peerOrganizations", fmt.Sprintf("%s.org.%s", org, domain), "ca",
+		)
+		mspCertPath     = path.Join(caDir, fmt.Sprintf("ca.%s.org.%s-cert.pem", org, domain))
+		mspPkPath       = path.Join(caDir, "priv_sk")
+		mspCaSecretName = fmt.Sprintf("ca.%s.org.%s-tls", org, domain)
 	)
 
 	// Retrieve orderer transport TLS private key:
@@ -96,6 +104,16 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 	caPayload, err := ioutil.ReadFile(caPath)
 	if err != nil {
 		return errors.Wrapf(err, "failed to read certificate CA from path: %s", caPath)
+	}
+
+	mspCaCertPayload, err := ioutil.ReadFile(mspCertPath)
+	if err != nil {
+		return errors.Wrapf(err, "failed to read MSP CA certificate from path: %s", mspCertPath)
+	}
+
+	mspCaPkPayload, err := ioutil.ReadFile(mspPkPath)
+	if err != nil {
+		return errors.Wrapf(err, "failed to read MSP CA key from path: %s", mspPkPath)
 	}
 
 	// Create or update peer transport TLS secret:
@@ -144,6 +162,31 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 	cmd.Printf("%s Secret '%s' successfully created\n",
 		viper.GetString("cli.success_emoji"), caSecretName,
 	)
+
+	// Create or update peer transport CA secret:
+	if _, err = util.SecretAdapter(shared.K8s.CoreV1().Secrets(namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
+		Type: corev1.SecretTypeTLS,
+		Data: map[string][]byte{
+			corev1.TLSPrivateKeyKey: mspCaCertPayload,
+			corev1.TLSCertKey:       mspCaPkPayload,
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: mspCaSecretName,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"fabnctl/cid": "ca.secret",
+				"fabnctl/domain": domain,
+				"fabnctl/host": fmt.Sprintf("ca.%s.org", org),
+			},
+		},
+	}); err != nil {
+		return errors.Wrapf(err, "failed to create %s secret", mspCaSecretName)
+	}
+
+	cmd.Printf("%s Secret '%s' successfully created\n",
+		viper.GetString("cli.success_emoji"), mspCaSecretName,
+	)
+
 
 	// Preparing additional values for chart installation:
 	var (

@@ -40,7 +40,7 @@ spec:
       volumes:
         - name: artifacts
           persistentVolumeClaim:
-            claimName: {{ .Release.Name }}.pvc
+            claimName: {{ .Release.Name }}
         - name: config
           projected:
             sources:

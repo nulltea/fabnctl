@@ -56,6 +56,10 @@ function deployPeer() {
   kubectl create secret generic "peer0.$org.org.$DOMAIN-ca" \
     --from-file=".crypto-config.$DOMAIN/peerOrganizations/$org.org.$DOMAIN/peers/peer0.$org.org.$DOMAIN/tls/ca.crt" \
     --dry-run=client -o yaml | kubectl apply -f -
+  kubectl create -n network secret tls "ca.$org.org.$DOMAIN-tls" \
+    --key=".crypto-config.$DOMAIN/peerOrganizations/$org.org.$DOMAIN/peers/peer0.$org.org.$DOMAIN/tls/server.key" \
+    --cert=".crypto-config.$DOMAIN/peerOrganizations/$org.org.$DOMAIN/peers/peer0.$org.org.$DOMAIN/tls/server.crt" \
+    --dry-run=client -o yaml | kubectl apply -f -
   echo "tls secrets created successfully!"
   echo
   if [ $TARGET_ARCH = "ARM64" ]; then
