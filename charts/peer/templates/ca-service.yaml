@@ -12,5 +12,5 @@ spec:
       port: {{ .Values.ca.service.port }}
       targetPort: {{ .Values.ca.service.port }}
   selector:
-    app: ca.{{ .Release.Name }}
+    app: ca.{{ .Values.config.hostname }}
 {{- end -}}

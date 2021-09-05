@@ -31,22 +31,22 @@ spec:
           args:
             - sh
             - -c
-            - fabric-ca-server start -b admin:adminpw --ca.name {{ .Release.Name }}-ca -d
+            - fabric-ca-server start -b admin:adminpw --ca.name ca-{{ .Values.config.hostname | replace "." "-" }} --ca.certfile /etc/hyperledger/fabric-ca-server-config/ca.{{ .Values.config.hostname }}.{{ .Values.config.domain }}-cert.pem --ca.keyfile /etc/hyperledger/fabric-ca-server-config/priv_sk --csr.hosts ca-{{ .Values.config.hostname | replace "." "-" }},localhost -d
           env:
             - name: FABRIC_LOGGING_SPEC
               value: {{ .Values.logging }}
             - name: FABRIC_CA_SERVER_PORT
               value: "{{ .Values.ca.service.port }}"
             - name: FABRIC_CA_HOME
-              value: /etc/hyperledger/fabric-ca-server-config
+              value: /etc/hyperledger/fabric-ca-server
             - name: FABRIC_CA_SERVER_CA_NAME
-              value: {{ .Release.Name }}-ca
+              value: ca-{{ .Values.config.hostname | replace "." "-" }}
             - name: FABRIC_CA_SERVER_TLS_ENABLED
-              value: "{{ .Values.config.tls }}"
+              value: "false"
           volumeMounts:
             - name: artifacts
               mountPath: /etc/hyperledger/fabric-ca-server-config
-              subPath: crypto-config/peerOrganizations/{{.Values.config.hostname}}.{{ .Values.config.domain }}
+              subPath: crypto-config/peerOrganizations/{{.Values.config.hostname}}.{{ .Values.config.domain }}/ca
           workingDir: /opt/gopath/src/github.com/hyperledger/fabric
       restartPolicy: Always
       volumes:
