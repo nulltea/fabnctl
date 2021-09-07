@@ -15,11 +15,11 @@ import (
 )
 
 func sshAgentAuthMethod() (ssh.AuthMethod, error) {
-	sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
+	ag, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
 	if err != nil {
 		return nil, err
 	}
-	return ssh.PublicKeysCallback(agent.NewClient(sshAgent).Signers), nil
+	return ssh.PublicKeysCallback(agent.NewClient(ag).Signers), nil
 }
 
 func publicKeyAuthMethod(path string) (ssh.AuthMethod, context.CancelFunc, error) {
@@ -36,7 +36,7 @@ func publicKeyAuthMethod(path string) (ssh.AuthMethod, context.CancelFunc, error
 			return nil, noopCloseFunc, fmt.Errorf("unable to parse private key: %s", err.Error())
 		}
 
-		agent, close := sshAgent(path + ".pub")
+		agent, close := sshAgent(path)
 		if agent != nil {
 			return agent, close, nil
 		}

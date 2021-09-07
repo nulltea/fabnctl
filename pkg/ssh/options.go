@@ -62,7 +62,7 @@ func WithPublicKeyPath(path string) Option {
 			terminal.Logger.Fatal(err)
 		}
 
-		closers = append(closers, closeFunc)
+		closerFns = append(closerFns, closeFunc)
 		stub.Auth = append(stub.Auth, am)
 	}
 }
