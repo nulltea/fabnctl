@@ -1,4 +1,4 @@
-package core
+package cli
 
 import (
 	"bufio"
@@ -20,7 +20,7 @@ import (
 
 var (
 	// Logger is an instance of the shared logger tool.
-	Logger            *logging.Logger
+	Logger *logging.Logger
 	// ILogger is an instance of the interactive logger.
 	ILogger *wow.Wow
 )
@@ -45,9 +45,9 @@ const (
 		"[%{module}] %{color:bold}%{shortfunc}%{color:reset} -> %{message}"
 )
 
-func initLogger() {
+func Init() {
 	var (
-		envLevel = viper.GetString("logging")
+		envLevel      = viper.GetString("logging")
 		chaincodeName = viper.GetString("name")
 	)
 
@@ -58,7 +58,8 @@ func initLogger() {
 		logging.MustStringFormatter(format),
 	)
 
-	level, err := logging.LogLevel(envLevel); if err != nil {
+	level, err := logging.LogLevel(envLevel)
+	if err != nil {
 		level = logging.DEBUG
 	}
 
@@ -85,11 +86,11 @@ func DecorateWithInteractiveLog(fn func() error, start, complete string) error {
 
 	ILogger.Text(start)
 	if err := fn(); err != nil {
-		ILogger.PersistWith(ILogPrefixes[ILogError], " " + err.Error())
+		ILogger.PersistWith(ILogPrefixes[ILogError], " "+err.Error())
 		return err
 	}
 
-	ILogger.PersistWith(ILogPrefixes[ILogSuccess], " " + complete)
+	ILogger.PersistWith(ILogPrefixes[ILogSuccess], " "+complete)
 
 	return nil
 }
@@ -102,26 +103,23 @@ func DecorateWithInteractiveLogWithPersist(fn func() (level ILogLevel, msg strin
 
 	ILogger.Text(start)
 	level, msg := fn()
-	ILogger.PersistWith(ILogPrefixes[level], " " + msg)
+	ILogger.PersistWith(ILogPrefixes[level], " "+msg)
 }
 
 func StartInteractiveConsole(ctx context.Context) console.File {
 	var (
-		r, w = io.Pipe()
+		r, w   = io.Pipe()
 		reader = bufio.NewReader(r)
 	)
-
-
 
 	go func() {
 		t := time.NewTicker(time.Second)
 		for {
 			select {
-			case <- ctx.Done():
+			case <-ctx.Done():
 				return
-			case <- t.C:
+			case <-t.C:
 				str, _ := reader.ReadString('\n')
-
 
 				if len(str) == 0 {
 					continue
@@ -133,8 +131,6 @@ func StartInteractiveConsole(ctx context.Context) console.File {
 			}
 		}
 	}()
-
-
 
 	return &fakeConsoleFile{
 		Writer: w,

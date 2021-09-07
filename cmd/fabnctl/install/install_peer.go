@@ -11,8 +11,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/timoth-y/chainmetric-network/cmd"
-	"github.com/timoth-y/chainmetric-network/pkg/core"
-	util2 "github.com/timoth-y/chainmetric-network/pkg/util"
+	"github.com/timoth-y/chainmetric-network/pkg/cli"
+	util2 "github.com/timoth-y/chainmetric-network/pkg/helm"
+	"github.com/timoth-y/chainmetric-network/pkg/kube"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
@@ -100,7 +101,7 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create or update peer transport TLS secret:
-	if _, err = util2.SecretAdapter(core.K8s.CoreV1().Secrets(cmd.namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
+	if _, err = kube.SecretAdapter(kube.Client.CoreV1().Secrets(cmd.namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
 		Type: corev1.SecretTypeTLS,
 		Data: map[string][]byte{
 			corev1.TLSPrivateKeyKey: pkPayload,
@@ -124,7 +125,7 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 	)
 
 	// Create or update peer transport CA secret:
-	if _, err = util2.SecretAdapter(core.K8s.CoreV1().Secrets(cmd.namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
+	if _, err = kube.SecretAdapter(kube.Client.CoreV1().Secrets(cmd.namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
 			"ca.crt": caPayload,
@@ -205,8 +206,8 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 	ctx, cancel := context.WithTimeout(cmd.Context(), viper.GetDuration("helm.install_timeout"))
 	defer cancel()
 
-	if err = core.DecorateWithInteractiveLog(func() error {
-		if err = core.Helm.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
+	if err = cli.DecorateWithInteractiveLog(func() error {
+		if err = util2.Client.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
 			return errors.Wrap(err, "failed to install peer helm chart")
 		}
 		return nil

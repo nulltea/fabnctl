@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/viper"
 	cmd2 "github.com/timoth-y/chainmetric-network/cmd"
 	"github.com/timoth-y/chainmetric-network/cmd/fabnctl"
-	"github.com/timoth-y/chainmetric-network/pkg/core"
-	util2 "github.com/timoth-y/chainmetric-network/pkg/util"
+	util2 "github.com/timoth-y/chainmetric-network/pkg/cli"
+	"github.com/timoth-y/chainmetric-network/pkg/kube"
 )
 
 // channelCmd represents the channel command
@@ -89,7 +89,7 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 		)
 
 		// Waiting for 'org.peer' pod readiness:
-		if ok, err := util2.WaitForPodReady(
+		if ok, err := kube.WaitForPodReady(
 			cmd.Context(),
 			&peerPodName,
 			fmt.Sprintf("fabnctl/app=%s.%s.org", peer, org), cmd2.namespace,
@@ -100,7 +100,7 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 		}
 
 		// Waiting for 'org.peer.cli' pod readiness:
-		if ok, err := util2.WaitForPodReady(
+		if ok, err := kube.WaitForPodReady(
 			cmd.Context(),
 			&cliPodName,
 			fmt.Sprintf("fabnctl/app=cli.%s.%s.org", peer, org),
@@ -112,19 +112,19 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 		}
 
 		var (
-			joinCmd = util2.FormShellCommand(
+			joinCmd = kube.FormShellCommand(
 				"peer channel join",
 				"-b", fmt.Sprintf("%s.block", channel),
 			)
 
-			fetchCmd = util2.FormShellCommand(
+			fetchCmd = kube.FormShellCommand(
 				"peer channel fetch config", fmt.Sprintf("%s.block", channel),
 				"-c", channel,
 				"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), cmd2.domain),
 				"--tls", "--cafile", "$ORDERER_CA",
 			)
 
-			createCmd = util2.FormShellCommand(
+			createCmd = kube.FormShellCommand(
 				"peer channel create",
 				"-c", channel,
 				"-f", fmt.Sprintf("./channel-artifacts/%s.tx", channel),
@@ -136,7 +136,7 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 		if !channelExists {
 			// Checking whether specified channel is already created or not,
 			// by trying to fetch in genesis block:
-			if _, _, err = util2.ExecShellInPod(cmd.Context(), cliPodName, cmd2.namespace, fetchCmd); err == nil {
+			if _, _, err = kube.ExecShellInPod(cmd.Context(), cliPodName, cmd2.namespace, fetchCmd); err == nil {
 				channelExists = true
 				cmd.Println(viper.GetString("cli.info_emoji"),
 					fmt.Sprintf("Channel '%s' already created, fetched its genesis block", channel),
@@ -150,8 +150,8 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 
 		// Creating channel in case it wasn't yet:
 		if !channelExists {
-			if err = core.DecorateWithInteractiveLog(func() error {
-				if _, stderr, err = util2.ExecShellInPod(cmd.Context(), cliPodName, cmd2.namespace, createCmd); err != nil {
+			if err = util2.DecorateWithInteractiveLog(func() error {
+				if _, stderr, err = kube.ExecShellInPod(cmd.Context(), cliPodName, cmd2.namespace, createCmd); err != nil {
 					if errors.Cause(err) == util2.ErrRemoteCmdFailed {
 						return errors.New("Failed to create channel")
 					}
@@ -167,8 +167,8 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 		}
 
 		// Joining peer to channel:
-		if err = core.DecorateWithInteractiveLog(func() error {
-			if _, stderr, err = util2.ExecShellInPod(cmd.Context(), cliPodName, cmd2.namespace, joinCmd); err != nil {
+		if err = util2.DecorateWithInteractiveLog(func() error {
+			if _, stderr, err = kube.ExecShellInPod(cmd.Context(), cliPodName, cmd2.namespace, joinCmd); err != nil {
 				if errors.Cause(err) == util2.ErrRemoteCmdFailed {
 					return errors.Wrap(err, "Failed to join channel")
 				}

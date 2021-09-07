@@ -1,4 +1,4 @@
-package util
+package kube
 
 import (
 	"archive/tar"
@@ -13,7 +13,8 @@ import (
 	_ "unsafe"
 
 	"github.com/pkg/errors"
-	"github.com/timoth-y/chainmetric-network/pkg/core"
+	"github.com/timoth-y/chainmetric-network/pkg/cli"
+	"github.com/timoth-y/chainmetric-network/pkg/util"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -38,14 +39,14 @@ func CopyToPod(
 		cmd = append(cmd, "-C", destDir)
 	}
 
-	pod, err := core.K8s.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
+	pod, err := Client.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
 	if err != nil {
 		return errors.Wrapf(err, "faield to determine container for '%s' pod", podName)
 	}
 
 	var (
 		stdout, stderr bytes.Buffer
-		req = core.K8s.CoreV1().RESTClient().Post().
+		req = Client.CoreV1().RESTClient().Post().
 			Resource("pods").
 			Name(podName).
 			Namespace(namespace).
@@ -62,16 +63,16 @@ func CopyToPod(
 
 	go func() {
 		defer pipeWriter.Close()
-		if err = WriteBytesToTar(destPath, buffer, pipeWriter); err != nil {
-			core.Logger.Error(
+		if err = util.WriteBytesToTar(destPath, buffer, pipeWriter); err != nil {
+			cli.Logger.Error(
 				errors.Wrapf(err, "failed to write '%s' into pod writer", destPath),
 			)
 		}
 	}()
 
-	err = execute(ctx, "POST", req.URL(), core.K8sConfig, pipeReader, &stdout, &stderr)
+	err = execute(ctx, "POST", req.URL(), Config, pipeReader, &stdout, &stderr)
 	if err != nil {
-		if stdErr := ErrFromStderr(stderr); stdErr != nil {
+		if stdErr := cli.ErrFromStderr(stderr); stdErr != nil {
 			err = stdErr
 		}
 
@@ -91,14 +92,14 @@ func copyFromPod(
 		cmd            = []string{"tar", "cf", "-", srcPath}
 	)
 
-	pod, err := core.K8s.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
+	pod, err := Client.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
 	if err != nil {
 		return errors.Wrapf(err, "faield to determine container for '%s' pod", podName)
 	}
 
 	var (
 		stderr bytes.Buffer
-		req = core.K8s.CoreV1().RESTClient().Get().
+		req = Client.CoreV1().RESTClient().Get().
 			Resource("pods").
 			Name(podName).
 			Namespace(namespace).
@@ -115,8 +116,8 @@ func copyFromPod(
 
 	go func() {
 		defer writer.Close()
-		if err = execute(ctx, "POST", req.URL(), core.K8sConfig, nil, writer, &stderr); err != nil {
-			if stdErr := ErrFromStderr(stderr); stdErr != nil {
+		if err = execute(ctx, "POST", req.URL(), Config, nil, writer, &stderr); err != nil {
+			if stdErr := cli.ErrFromStderr(stderr); stdErr != nil {
 				err = stdErr
 			}
 		}

@@ -1,4 +1,4 @@
-package util
+package helm
 
 import (
 	"io/ioutil"
@@ -12,6 +12,7 @@ func ValuesFromFile(path string) (map[string]interface{}, error) {
 	var (
 		values map[string]interface{}
 	)
+
 	armValYaml, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, errors.Wrapf(err,

@@ -13,8 +13,9 @@ import (
 	"github.com/spf13/viper"
 	"github.com/timoth-y/chainmetric-core/utils"
 	"github.com/timoth-y/chainmetric-network/cmd"
-	"github.com/timoth-y/chainmetric-network/pkg/core"
-	util2 "github.com/timoth-y/chainmetric-network/pkg/util"
+	"github.com/timoth-y/chainmetric-network/pkg/cli"
+	util2 "github.com/timoth-y/chainmetric-network/pkg/helm"
+	"github.com/timoth-y/chainmetric-network/pkg/kube"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
@@ -85,8 +86,8 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 	ctx, cancel := context.WithTimeout(cmd.Context(), viper.GetDuration("helm.install_timeout"))
 	defer cancel()
 
-	if err = core.DecorateWithInteractiveLog(func() error {
-		if err = core.Helm.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
+	if err = cli.DecorateWithInteractiveLog(func() error {
+		if err = util2.Client.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
 			return errors.Wrap(err, "failed to install artifacts helm chart")
 		}
 		return nil
@@ -99,7 +100,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 	cancel()
 
 	// Waiting for 'artifacts.generate' job completion:
-	if ok, err := util2.WaitForJobComplete(
+	if ok, err := kube.WaitForJobComplete(
 		cmd.Context(),
 		utils.StringPointer("artifacts.generate"),
 		"fabnctl/cid=artifacts.generate",
@@ -121,14 +122,14 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 
 	// Cleaning 'artifacts.wait' job and pod:
 	defer func(cmd *cobra.Command) {
-		if err = core.K8s.BatchV1().Jobs(cmd.namespace).DeleteCollection(cmd.Context(),
+		if err = kube.Client.BatchV1().Jobs(cmd.namespace).DeleteCollection(cmd.Context(),
 			metav1.DeleteOptions{}, metav1.ListOptions{
 				LabelSelector: "fabnctl/cid=artifacts.wait",
 			}); err != nil {
 			cmd.PrintErrln(errors.Wrap(err, "failed to delete artifacts.wait job"))
 		}
 
-		if err = core.K8s.CoreV1().Pods(cmd.namespace).DeleteCollection(cmd.Context(),
+		if err = kube.Client.CoreV1().Pods(cmd.namespace).DeleteCollection(cmd.Context(),
 			metav1.DeleteOptions{GracePeriodSeconds: utils.Int64Pointer(0)}, metav1.ListOptions{
 				LabelSelector: "job-name=artifacts.wait",
 			}); err != nil {
@@ -137,7 +138,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 	}(cmd)
 
 	// Waiting for 'artifacts.wait' pod readiness:
-	if ok, err := util2.WaitForPodReady(
+	if ok, err := kube.WaitForPodReady(
 		cmd.Context(),
 		&waitPodName,
 		"job-name=artifacts.wait",

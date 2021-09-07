@@ -1,4 +1,4 @@
-package util
+package kube
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/timoth-y/chainmetric-network/pkg/core"
+	"github.com/timoth-y/chainmetric-network/pkg/cli"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -24,7 +24,7 @@ func ExecCommandInContainer(
 ) (io.Reader, io.Reader, error) {
 	var (
 		stdout, stderr bytes.Buffer
-		req = core.K8s.CoreV1().RESTClient().Post().
+		req = Client.CoreV1().RESTClient().Post().
 			Resource("pods").
 			Name(pod).
 			Namespace(namespace).
@@ -39,9 +39,9 @@ func ExecCommandInContainer(
 			}, scheme.ParameterCodec)
 	)
 
-	err := execute(ctx, "POST", req.URL(), core.K8sConfig, nil, &stdout, &stderr)
+	err := execute(ctx, "POST", req.URL(), Config, nil, &stdout, &stderr)
 	if err != nil {
-		if stdErr := ErrFromStderr(stderr); stdErr != nil {
+		if stdErr := cli.ErrFromStderr(stderr); stdErr != nil {
 			err = stdErr
 		}
 	}
@@ -61,7 +61,7 @@ func ExecShellInContainer(
 
 // ExecCommandInPod executes a command in the default container of the given `pod` and return stdout, stderr and error.
 func ExecCommandInPod(ctx context.Context, podName, namespace string, cmd ...string) (io.Reader, io.Reader, error) {
-	pod, err := core.K8s.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
+	pod, err := Client.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "faield to determine container for '%s' pod", podName)
 	}

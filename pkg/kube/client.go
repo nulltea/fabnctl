@@ -1,4 +1,4 @@
-package core
+package kube
 
 import (
 	"flag"
@@ -10,15 +10,15 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-// K8s defines shared client interface for Kubernetes cli.
+// Client defines shared client interface for Kubernetes cli.
 var (
-	K8s *kubernetes.Clientset
-	K8sConfig *rest.Config
+	Client *kubernetes.Clientset
+	Config *rest.Config
 )
 
-func initK8s() {
+func Init() {
 	var (
-		err error
+		err        error
 		kubeconfig *string
 	)
 
@@ -30,12 +30,12 @@ func initK8s() {
 	flag.Parse()
 
 	// use the current context in kubeconfig
-	K8sConfig, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	Config, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
 	if err != nil {
 		panic(err.Error())
 	}
 
-	if K8s, err = kubernetes.NewForConfig(K8sConfig); err != nil {
+	if Client, err = kubernetes.NewForConfig(Config); err != nil {
 		panic(err.Error())
 	}
 }

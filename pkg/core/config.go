@@ -10,8 +10,8 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-// initConfig configures viper from environment variables and configuration files.
-func initConfig() {
+// init configures viper from environment variables and configuration files.
+func init() {
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 

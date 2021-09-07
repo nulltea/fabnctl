@@ -1,4 +1,4 @@
-package util
+package kube
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
-	"github.com/timoth-y/chainmetric-network/pkg/core"
+	"github.com/timoth-y/chainmetric-network/pkg/cli"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,7 +24,7 @@ func WaitForJobComplete(
 	ctx, cancel := context.WithTimeout(ctx, viper.GetDuration("k8s.wait_timeout"))
 	defer cancel()
 
-	watcher, err := core.K8s.BatchV1().Jobs(namespace).Watch(ctx, metav1.ListOptions{
+	watcher, err := Client.BatchV1().Jobs(namespace).Watch(ctx, metav1.ListOptions{
 		LabelSelector: selector,
 	})
 	if err != nil {
@@ -66,7 +66,7 @@ func WaitForPodReady(
 	ctx, cancel := context.WithTimeout(ctx, viper.GetDuration("k8s.wait_timeout"))
 	defer cancel()
 
-	watcher, err := core.K8s.CoreV1().Pods(namespace).Watch(ctx, metav1.ListOptions{
+	watcher, err := Client.CoreV1().Pods(namespace).Watch(ctx, metav1.ListOptions{
 		LabelSelector: selector,
 	})
 	if err != nil {
@@ -110,25 +110,25 @@ func WaitForEvent(
 	var (
 		timer = time.NewTimer(15 * time.Second)
 	)
-	core.ILogger.Text(msgStart())
-	core.ILogger.Start()
+	cli.ILogger.Text(msgStart())
+	cli.ILogger.Start()
 
 	LOOP: for {
 		select {
 		case event := <- watcher.ResultChan():
 			if onEvent(event) {
-				core.ILogger.PersistWith(core.ILogPrefixes[core.ILogOk], " " + msgSuccess())
-				core.ILogger.Stop()
+				cli.ILogger.PersistWith(cli.ILogPrefixes[cli.ILogOk], " " + msgSuccess())
+				cli.ILogger.Stop()
 				cancel()
 				break LOOP
 			}
 		case <- timer.C:
-			core.ILogger.Spinner(core.ILogPrefixes[core.ILogError])
-			core.ILogger.Text(" " + msgWarning())
+			cli.ILogger.Spinner(cli.ILogPrefixes[cli.ILogError])
+			cli.ILogger.Text(" " + msgWarning())
 		case <- ctx.Done():
 			if ctx.Err() == context.DeadlineExceeded {
-				core.ILogger.PersistWith(core.ILogPrefixes[core.ILogError], msgTimeout())
-				core.ILogger.Stop()
+				cli.ILogger.PersistWith(cli.ILogPrefixes[cli.ILogError], msgTimeout())
+				cli.ILogger.Stop()
 				return false, nil
 			}
 			break LOOP

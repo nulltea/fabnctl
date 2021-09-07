@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/timoth-y/chainmetric-network/pkg/core"
+	"github.com/timoth-y/chainmetric-network/pkg/cli"
 )
 
 // WriteBytesToTarGzip puts bytes from `reader` into the `targetPath` file in tar.gz archive,
@@ -16,7 +16,7 @@ func WriteBytesToTarGzip(targetPath string, reader SizedReader, writer io.Writer
 	gzipWriter := gzip.NewWriter(writer)
 	defer func() {
 		if err := gzipWriter.Close(); err != nil {
-			core.Logger.Error(
+			cli.Logger.Error(
 				errors.Wrapf(err, "failed to close gzip writer containing '%s' file", targetPath),
 			)
 		}
@@ -32,7 +32,7 @@ func WriteBytesToTar(targetPath string, reader SizedReader, writer io.Writer) er
 		tarWriter = tar.NewWriter(writer)
 		defer func() {
 			if err := tarWriter.Close(); err != nil {
-				core.Logger.Error(
+				cli.Logger.Error(
 					errors.Wrapf(err, "failed to close tar writer containing '%s' file", targetPath),
 				)
 			}
