@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/timoth-y/chainmetric-network/cmd"
+	"github.com/timoth-y/chainmetric-network/cmd/fabnctl"
 )
 
 func main() {
-	cmd.Execute()
+	fabnctl.Execute()
 }

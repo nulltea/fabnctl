@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/timoth-y/chainmetric-network/shared/core"
+	"github.com/timoth-y/chainmetric-network/pkg/core"
 )
 
 // WriteBytesToTarGzip puts bytes from `reader` into the `targetPath` file in tar.gz archive,

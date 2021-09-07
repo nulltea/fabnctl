@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
-	core2 "github.com/timoth-y/chainmetric-network/shared/core"
+	"github.com/timoth-y/chainmetric-network/pkg/core"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,7 +24,7 @@ func WaitForJobComplete(
 	ctx, cancel := context.WithTimeout(ctx, viper.GetDuration("k8s.wait_timeout"))
 	defer cancel()
 
-	watcher, err := core2.K8s.BatchV1().Jobs(namespace).Watch(ctx, metav1.ListOptions{
+	watcher, err := core.K8s.BatchV1().Jobs(namespace).Watch(ctx, metav1.ListOptions{
 		LabelSelector: selector,
 	})
 	if err != nil {
@@ -66,7 +66,7 @@ func WaitForPodReady(
 	ctx, cancel := context.WithTimeout(ctx, viper.GetDuration("k8s.wait_timeout"))
 	defer cancel()
 
-	watcher, err := core2.K8s.CoreV1().Pods(namespace).Watch(ctx, metav1.ListOptions{
+	watcher, err := core.K8s.CoreV1().Pods(namespace).Watch(ctx, metav1.ListOptions{
 		LabelSelector: selector,
 	})
 	if err != nil {
@@ -110,25 +110,25 @@ func WaitForEvent(
 	var (
 		timer = time.NewTimer(15 * time.Second)
 	)
-	core2.ILogger.Text(msgStart())
-	core2.ILogger.Start()
+	core.ILogger.Text(msgStart())
+	core.ILogger.Start()
 
 	LOOP: for {
 		select {
 		case event := <- watcher.ResultChan():
 			if onEvent(event) {
-				core2.ILogger.PersistWith(core2.ILogPrefixes[core2.ILogOk], " " + msgSuccess())
-				core2.ILogger.Stop()
+				core.ILogger.PersistWith(core.ILogPrefixes[core.ILogOk], " " + msgSuccess())
+				core.ILogger.Stop()
 				cancel()
 				break LOOP
 			}
 		case <- timer.C:
-			core2.ILogger.Spinner(core2.ILogPrefixes[core2.ILogError])
-			core2.ILogger.Text(" " + msgWarning())
+			core.ILogger.Spinner(core.ILogPrefixes[core.ILogError])
+			core.ILogger.Text(" " + msgWarning())
 		case <- ctx.Done():
 			if ctx.Err() == context.DeadlineExceeded {
-				core2.ILogger.PersistWith(core2.ILogPrefixes[core2.ILogError], msgTimeout())
-				core2.ILogger.Stop()
+				core.ILogger.PersistWith(core.ILogPrefixes[core.ILogError], msgTimeout())
+				core.ILogger.Stop()
 				return false, nil
 			}
 			break LOOP
