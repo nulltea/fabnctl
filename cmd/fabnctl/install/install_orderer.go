@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/timoth-y/chainmetric-network/cmd"
-	"github.com/timoth-y/chainmetric-network/pkg/cli"
+	"github.com/timoth-y/chainmetric-network/pkg/terminal"
 	util2 "github.com/timoth-y/chainmetric-network/pkg/helm"
 	"github.com/timoth-y/chainmetric-network/pkg/kube"
 	corev1 "k8s.io/api/core/v1"
@@ -150,7 +150,7 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 	ctx, cancel := context.WithTimeout(cmd.Context(), viper.GetDuration("helm.install_timeout"))
 	defer cancel()
 
-	if err = cli.DecorateWithInteractiveLog(func() error {
+	if err = terminal.DecorateWithInteractiveLog(func() error {
 		if err = util2.Client.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
 			return errors.Wrap(err, "failed to install orderer helm chart")
 		}

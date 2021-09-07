@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/timoth-y/chainmetric-network/cmd"
-	util2 "github.com/timoth-y/chainmetric-network/pkg/cli"
+	util2 "github.com/timoth-y/chainmetric-network/pkg/terminal"
 	"github.com/timoth-y/chainmetric-network/pkg/kube"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

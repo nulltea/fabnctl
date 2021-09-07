@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/timoth-y/chainmetric-core/utils"
 	"github.com/timoth-y/chainmetric-network/cmd"
-	"github.com/timoth-y/chainmetric-network/pkg/cli"
+	"github.com/timoth-y/chainmetric-network/pkg/terminal"
 	util2 "github.com/timoth-y/chainmetric-network/pkg/helm"
 	"github.com/timoth-y/chainmetric-network/pkg/kube"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -86,7 +86,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 	ctx, cancel := context.WithTimeout(cmd.Context(), viper.GetDuration("helm.install_timeout"))
 	defer cancel()
 
-	if err = cli.DecorateWithInteractiveLog(func() error {
+	if err = terminal.DecorateWithInteractiveLog(func() error {
 		if err = util2.Client.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
 			return errors.Wrap(err, "failed to install artifacts helm chart")
 		}

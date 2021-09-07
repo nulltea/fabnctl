@@ -13,7 +13,7 @@ import (
 	_ "unsafe"
 
 	"github.com/pkg/errors"
-	"github.com/timoth-y/chainmetric-network/pkg/cli"
+	"github.com/timoth-y/chainmetric-network/pkg/terminal"
 	"github.com/timoth-y/chainmetric-network/pkg/util"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,7 +64,7 @@ func CopyToPod(
 	go func() {
 		defer pipeWriter.Close()
 		if err = util.WriteBytesToTar(destPath, buffer, pipeWriter); err != nil {
-			cli.Logger.Error(
+			terminal.Logger.Error(
 				errors.Wrapf(err, "failed to write '%s' into pod writer", destPath),
 			)
 		}
@@ -72,7 +72,7 @@ func CopyToPod(
 
 	err = execute(ctx, "POST", req.URL(), Config, pipeReader, &stdout, &stderr)
 	if err != nil {
-		if stdErr := cli.ErrFromStderr(stderr); stdErr != nil {
+		if stdErr := terminal.ErrFromStderr(stderr); stdErr != nil {
 			err = stdErr
 		}
 
@@ -117,7 +117,7 @@ func copyFromPod(
 	go func() {
 		defer writer.Close()
 		if err = execute(ctx, "POST", req.URL(), Config, nil, writer, &stderr); err != nil {
-			if stdErr := cli.ErrFromStderr(stderr); stdErr != nil {
+			if stdErr := terminal.ErrFromStderr(stderr); stdErr != nil {
 				err = stdErr
 			}
 		}

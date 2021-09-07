@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/viper"
 	cmd2 "github.com/timoth-y/chainmetric-network/cmd"
 	"github.com/timoth-y/chainmetric-network/cmd/fabnctl"
-	util2 "github.com/timoth-y/chainmetric-network/pkg/cli"
+	util2 "github.com/timoth-y/chainmetric-network/pkg/terminal"
 	"github.com/timoth-y/chainmetric-network/pkg/kube"
 )
 

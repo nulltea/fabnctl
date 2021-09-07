@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/timoth-y/chainmetric-network/pkg/cli"
+	"github.com/timoth-y/chainmetric-network/pkg/terminal"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -41,7 +41,7 @@ func ExecCommandInContainer(
 
 	err := execute(ctx, "POST", req.URL(), Config, nil, &stdout, &stderr)
 	if err != nil {
-		if stdErr := cli.ErrFromStderr(stderr); stdErr != nil {
+		if stdErr := terminal.ErrFromStderr(stderr); stdErr != nil {
 			err = stdErr
 		}
 	}

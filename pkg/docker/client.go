@@ -1,10 +1,6 @@
 package docker
 
 import (
-	"context"
-
-	"github.com/docker/buildx/build"
-	"github.com/docker/buildx/driver"
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/flags"
 	"github.com/docker/docker/client"
@@ -27,9 +23,12 @@ func Init() {
 		panic(err)
 	}
 
-	if err := CLI.Initialize(flags.NewClientOptions(), command.WithInitializeClient(func(dockerCli *command.DockerCli) (client.APIClient, error) {
-		return Client, err
-	})); err != nil {
+	if err = CLI.Initialize(
+		flags.NewClientOptions(),
+		command.WithInitializeClient(func(dockerCli *command.DockerCli) (client.APIClient, error) {
+			return Client, err
+		},
+	)); err != nil {
 		panic(err)
 	}
 }

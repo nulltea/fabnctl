@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
-	"github.com/timoth-y/chainmetric-network/pkg/cli"
+	"github.com/timoth-y/chainmetric-network/pkg/terminal"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -110,25 +110,25 @@ func WaitForEvent(
 	var (
 		timer = time.NewTimer(15 * time.Second)
 	)
-	cli.ILogger.Text(msgStart())
-	cli.ILogger.Start()
+	terminal.ILogger.Text(msgStart())
+	terminal.ILogger.Start()
 
 	LOOP: for {
 		select {
 		case event := <- watcher.ResultChan():
 			if onEvent(event) {
-				cli.ILogger.PersistWith(cli.ILogPrefixes[cli.ILogOk], " " + msgSuccess())
-				cli.ILogger.Stop()
+				terminal.ILogger.PersistWith(terminal.ILogPrefixes[terminal.ILogOk], " " + msgSuccess())
+				terminal.ILogger.Stop()
 				cancel()
 				break LOOP
 			}
 		case <- timer.C:
-			cli.ILogger.Spinner(cli.ILogPrefixes[cli.ILogError])
-			cli.ILogger.Text(" " + msgWarning())
+			terminal.ILogger.Spinner(terminal.ILogPrefixes[terminal.ILogError])
+			terminal.ILogger.Text(" " + msgWarning())
 		case <- ctx.Done():
 			if ctx.Err() == context.DeadlineExceeded {
-				cli.ILogger.PersistWith(cli.ILogPrefixes[cli.ILogError], msgTimeout())
-				cli.ILogger.Stop()
+				terminal.ILogger.PersistWith(terminal.ILogPrefixes[terminal.ILogError], msgTimeout())
+				terminal.ILogger.Stop()
 				return false, nil
 			}
 			break LOOP

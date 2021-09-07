@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mittwald/go-helm-client"
-	"github.com/timoth-y/chainmetric-network/pkg/cli"
+	"github.com/timoth-y/chainmetric-network/pkg/terminal"
 )
 
 // Client defines shared client interface for Client cli.
@@ -17,7 +17,7 @@ func Init() {
 			Debug:   true,
 			Linting: true,
 			DebugLog: func(format string, v ...interface{}) {
-				cli.ILogger.Text("Client: " + fmt.Sprintf(format, v...))
+				terminal.ILogger.Text("Client: " + fmt.Sprintf(format, v...))
 			},
 		}
 	)
