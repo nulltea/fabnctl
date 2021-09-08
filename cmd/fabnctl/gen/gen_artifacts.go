@@ -12,10 +12,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/timoth-y/chainmetric-core/utils"
-	"github.com/timoth-y/chainmetric-network/cmd"
-	"github.com/timoth-y/chainmetric-network/pkg/terminal"
-	util2 "github.com/timoth-y/chainmetric-network/pkg/helm"
-	"github.com/timoth-y/chainmetric-network/pkg/kube"
+	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
+	"github.com/timoth-y/fabnctl/pkg/helm"
+	"github.com/timoth-y/fabnctl/pkg/kube"
+	"github.com/timoth-y/fabnctl/pkg/terminal"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
@@ -30,7 +30,7 @@ Examples:
   # Generate:
   fabnctl gen artifacts -f ./network-config.yaml`,
 
-	RunE: cmd.handleErrors(genArtifacts),
+	RunE: shared.WithHandleErrors(genArtifacts),
 }
 
 func init() {
@@ -44,37 +44,37 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 		values = make(map[string]interface{})
 		chartSpec = &helmclient.ChartSpec{
 			ReleaseName:   "artifacts",
-			ChartName:     path.Join(cmd.chartsPath, "artifacts"),
-			Namespace:     cmd.namespace,
+			ChartName:     path.Join(shared.ChartsPath, "artifacts"),
+			Namespace:     shared.Namespace,
 			Wait:          true,
 			CleanupOnFail: true,
 		}
 		waitPodName = "artifacts.wait"
-		cryptoConfigDir = fmt.Sprintf(".crypto-config.%s", cmd.domain)
-		channelArtifactsDir = fmt.Sprintf(".channel-artifacts.%s", cmd.domain)
+		cryptoConfigDir = fmt.Sprintf(".crypto-config.%s", shared.Domain)
+		channelArtifactsDir = fmt.Sprintf(".channel-artifacts.%s", shared.Domain)
 	)
 
 	// Parsing flags:
 	if configPath, err = cmd.Flags().GetString("config"); err != nil {
-		return errors.WithMessage(cmd.ErrInvalidArgs, "failed to parse 'config' parameter")
+		return errors.WithMessage(shared.ErrInvalidArgs, "failed to parse 'config' parameter")
 	}
 
 	// Preparing additional values for chart installation:
-	if cmd.targetArch == "arm64" {
-		armValues, err := util2.ValuesFromFile(path.Join(cmd.chartsPath, "artifacts", "values.arm64.yaml"))
+	if shared.TargetArch == "arm64" {
+		armValues, err := helm.ValuesFromFile(path.Join(shared.ChartsPath, "artifacts", "values.arm64.yaml"))
 		if err != nil {
 			return err
 		}
 		values = armValues
 	}
 
-	configValues, err := util2.ValuesFromFile(configPath)
+	configValues, err := helm.ValuesFromFile(configPath)
 	if err != nil {
 		return err
 	}
 	values["config"] = configValues
 
-	values["domain"] = cmd.domain
+	values["domain"] = shared.Domain
 
 	valuesYaml, err := yaml.Marshal(values)
 	if err != nil {
@@ -87,7 +87,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 	defer cancel()
 
 	if err = terminal.DecorateWithInteractiveLog(func() error {
-		if err = util2.Client.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
+		if err = helm.Client.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
 			return errors.Wrap(err, "failed to install artifacts helm chart")
 		}
 		return nil
@@ -104,7 +104,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 		cmd.Context(),
 		utils.StringPointer("artifacts.generate"),
 		"fabnctl/cid=artifacts.generate",
-		cmd.namespace,
+		shared.Namespace,
 	); err != nil {
 		return err
 	} else if !ok {
@@ -114,22 +114,22 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 	// Deploying 'artifacts.wait' job,
 	// that will span pod for hooking to PV with generated earlier artifacts:
 	if err = exec.Command("kubectl", "apply",
-		"-n", cmd.namespace,
-		"-f", path.Join(cmd.chartsPath, "artifacts", "artifacts-wait-job.yaml"),
+		"-n", shared.Namespace,
+		"-f", path.Join(shared.ChartsPath, "artifacts", "artifacts-wait-job.yaml"),
 	).Run(); err != nil {
 		return errors.Wrap(err, "failed to deploy 'artifacts.wait' pod")
 	}
 
 	// Cleaning 'artifacts.wait' job and pod:
 	defer func(cmd *cobra.Command) {
-		if err = kube.Client.BatchV1().Jobs(cmd.namespace).DeleteCollection(cmd.Context(),
+		if err = kube.Client.BatchV1().Jobs(shared.Namespace).DeleteCollection(cmd.Context(),
 			metav1.DeleteOptions{}, metav1.ListOptions{
 				LabelSelector: "fabnctl/cid=artifacts.wait",
 			}); err != nil {
 			cmd.PrintErrln(errors.Wrap(err, "failed to delete artifacts.wait job"))
 		}
 
-		if err = kube.Client.CoreV1().Pods(cmd.namespace).DeleteCollection(cmd.Context(),
+		if err = kube.Client.CoreV1().Pods(shared.Namespace).DeleteCollection(cmd.Context(),
 			metav1.DeleteOptions{GracePeriodSeconds: utils.Int64Pointer(0)}, metav1.ListOptions{
 				LabelSelector: "job-name=artifacts.wait",
 			}); err != nil {
@@ -142,7 +142,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 		cmd.Context(),
 		&waitPodName,
 		"job-name=artifacts.wait",
-		cmd.namespace,
+		shared.Namespace,
 	); err != nil {
 		return err
 	} else if !ok {

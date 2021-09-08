@@ -10,10 +10,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/timoth-y/chainmetric-network/cmd"
-	"github.com/timoth-y/chainmetric-network/pkg/terminal"
-	util2 "github.com/timoth-y/chainmetric-network/pkg/helm"
-	"github.com/timoth-y/chainmetric-network/pkg/kube"
+	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
+	"github.com/timoth-y/fabnctl/pkg/helm"
+	"github.com/timoth-y/fabnctl/pkg/kube"
+	"github.com/timoth-y/fabnctl/pkg/terminal"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
@@ -29,7 +29,7 @@ Examples:
   # Deploy orderer:
   fabnctl deploy orderer -d example.com`,
 
-	RunE: cmd.handleErrors(deployOrderer),
+	RunE: shared.WithHandleErrors(deployOrderer),
 }
 
 func init() {
@@ -40,16 +40,16 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 	var (
 		hostname = viper.GetString("fabric.orderer_hostname_name")
 		tlsDir   = path.Join(
-			fmt.Sprintf(".crypto-config.%s", cmd.domain),
-			"ordererOrganizations", cmd.domain,
-			"orderers", fmt.Sprintf("%s.%s", hostname, cmd.domain),
+			fmt.Sprintf(".crypto-config.%s", shared.Domain),
+			"ordererOrganizations", shared.Domain,
+			"orderers", fmt.Sprintf("%s.%s", hostname, shared.Domain),
 			"tls",
 		)
 		pkPath        = path.Join(tlsDir, "server.key")
 		certPath      = path.Join(tlsDir, "server.crt")
 		caPath        = path.Join(tlsDir, "ca.crt")
-		tlsSecretName = fmt.Sprintf("%s.%s-tls", hostname, cmd.domain)
-		caSecretName  = fmt.Sprintf("%s.%s-ca", hostname, cmd.domain)
+		tlsSecretName = fmt.Sprintf("%s.%s-tls", hostname, shared.Domain)
+		caSecretName  = fmt.Sprintf("%s.%s-ca", hostname, shared.Domain)
 	)
 
 	// Retrieve orderer transport TLS private key:
@@ -71,7 +71,7 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Create or update orderer transport TLS secret:
-	if _, err = kube.SecretAdapter(kube.Client.CoreV1().Secrets(cmd.namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
+	if _, err = kube.SecretAdapter(kube.Client.CoreV1().Secrets(shared.Namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
 		Type: corev1.SecretTypeTLS,
 		Data: map[string][]byte{
 			corev1.TLSPrivateKeyKey: pkPayload,
@@ -79,10 +79,10 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      tlsSecretName,
-			Namespace: cmd.namespace,
+			Namespace: shared.Namespace,
 			Labels: map[string]string{
 				"fabnctl/cid":    "orderer.tls.secret",
-				"fabnctl/domain": cmd.domain,
+				"fabnctl/domain": shared.Domain,
 				"fabnctl/host":   hostname,
 			},
 		},
@@ -95,17 +95,17 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 	)
 
 	// Create or update orderer transport CA secret:
-	if _, err = kube.SecretAdapter(kube.Client.CoreV1().Secrets(cmd.namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
+	if _, err = kube.SecretAdapter(kube.Client.CoreV1().Secrets(shared.Namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
 			"ca.crt": caPayload,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      caSecretName,
-			Namespace: cmd.namespace,
+			Namespace: shared.Namespace,
 			Labels: map[string]string{
 				"fabnctl/cid":    "orderer.ca.secret",
-				"fabnctl/domain": cmd.domain,
+				"fabnctl/domain": shared.Domain,
 				"fabnctl/host":   hostname,
 			},
 		},
@@ -123,21 +123,21 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 		values = make(map[string]interface{})
 		chartSpec = &helmclient.ChartSpec{
 			ReleaseName: "orderer",
-			ChartName:   path.Join(cmd.chartsPath, "orderer"),
-			Namespace:   cmd.namespace,
+			ChartName:   path.Join(shared.ChartsPath, "orderer"),
+			Namespace:   shared.Namespace,
 			Wait:        true,
 		}
 	)
 
-	if cmd.targetArch == "arm64" {
-		armValues, err := util2.ValuesFromFile(path.Join(cmd.chartsPath, "orderer", "values.arm64.yaml"))
+	if shared.TargetArch == "arm64" {
+		armValues, err := helm.ValuesFromFile(path.Join(shared.ChartsPath, "orderer", "values.arm64.yaml"))
 		if err != nil {
 			return err
 		}
 		values = armValues
 	}
 
-	values["domain"] = cmd.domain
+	values["domain"] = shared.Domain
 
 	valuesYaml, err := yaml.Marshal(values)
 	if err != nil {
@@ -151,7 +151,7 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 	defer cancel()
 
 	if err = terminal.DecorateWithInteractiveLog(func() error {
-		if err = util2.Client.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
+		if err = helm.Client.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
 			return errors.Wrap(err, "failed to install orderer helm chart")
 		}
 		return nil
@@ -159,6 +159,6 @@ func deployOrderer(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	cmd.Printf("🎉 Orderer service successfully deployed on %s.%s!\n", hostname, cmd.domain)
+	cmd.Printf("🎉 Orderer service successfully deployed on %s.%s!\n", hostname, shared.Domain)
 	return nil
 }

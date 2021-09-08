@@ -10,10 +10,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/timoth-y/chainmetric-network/cmd"
-	"github.com/timoth-y/chainmetric-network/pkg/terminal"
-	util2 "github.com/timoth-y/chainmetric-network/pkg/helm"
-	"github.com/timoth-y/chainmetric-network/pkg/kube"
+	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
+	util2 "github.com/timoth-y/fabnctl/pkg/helm"
+	"github.com/timoth-y/fabnctl/pkg/kube"
+	"github.com/timoth-y/fabnctl/pkg/terminal"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
@@ -32,7 +32,7 @@ Examples:
   # Deploy peer but skip CA service installation:
   fabnctl deploy peer -d example.com -o org1 -p peer0 --withCA=false`,
 
-	RunE: cmd.handleErrors(deployPeer),
+	RunE: shared.WithHandleErrors(deployPeer),
 }
 
 func init() {
@@ -57,29 +57,29 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 
 	// Parse flags
 	if org, err = cmd.Flags().GetString("org"); err != nil {
-		return errors.WithMessagef(cmd.ErrInvalidArgs, "failed to parse required parameter 'org' (organization): %s", err)
+		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse required parameter 'org' (organization): %s", err)
 	}
 
 	if peer, err = cmd.Flags().GetString("peer"); err != nil {
-		return errors.WithMessagef(cmd.ErrInvalidArgs, "failed to parse 'peer' parameter: %s", err)
+		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse 'peer' parameter: %s", err)
 	}
 
 	if withCA, err = cmd.Flags().GetBool("withCA"); err != nil {
-		return errors.WithMessagef(cmd.ErrInvalidArgs, "failed to parse 'withCA' parameter: %s", err)
+		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse 'withCA' parameter: %s", err)
 	}
 
 	var (
 		tlsDir = path.Join(
-			fmt.Sprintf(".crypto-config.%s", cmd.domain),
-			"peerOrganizations", fmt.Sprintf("%s.org.%s", org, cmd.domain),
-			"peers", fmt.Sprintf("%s.%s.org.%s", peer, org, cmd.domain),
+			fmt.Sprintf(".crypto-config.%s", shared.Domain),
+			"peerOrganizations", fmt.Sprintf("%s.org.%s", org, shared.Domain),
+			"peers", fmt.Sprintf("%s.%s.org.%s", peer, org, shared.Domain),
 			"tls",
 		)
 		pkPath        = path.Join(tlsDir, "server.key")
 		certPath      = path.Join(tlsDir, "server.crt")
 		caPath        = path.Join(tlsDir, "ca.crt")
-		tlsSecretName = fmt.Sprintf("%s.%s.org.%s-tls", peer, org, cmd.domain)
-		caSecretName  = fmt.Sprintf("%s.%s.org.%s-ca", peer, org, cmd.domain)
+		tlsSecretName = fmt.Sprintf("%s.%s.org.%s-tls", peer, org, shared.Domain)
+		caSecretName  = fmt.Sprintf("%s.%s.org.%s-ca", peer, org, shared.Domain)
 	)
 
 	// Retrieve orderer transport TLS private key:
@@ -101,7 +101,7 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create or update peer transport TLS secret:
-	if _, err = kube.SecretAdapter(kube.Client.CoreV1().Secrets(cmd.namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
+	if _, err = kube.SecretAdapter(kube.Client.CoreV1().Secrets(shared.Namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
 		Type: corev1.SecretTypeTLS,
 		Data: map[string][]byte{
 			corev1.TLSPrivateKeyKey: pkPayload,
@@ -109,10 +109,10 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      tlsSecretName,
-			Namespace: cmd.namespace,
+			Namespace: shared.Namespace,
 			Labels: map[string]string{
 				"fabnctl/cid":    "peer.tls.secret",
-				"fabnctl/domain": cmd.domain,
+				"fabnctl/domain": shared.Domain,
 				"fabnctl/host":   fmt.Sprintf("%s.%s.org", peer, org),
 			},
 		},
@@ -125,17 +125,17 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 	)
 
 	// Create or update peer transport CA secret:
-	if _, err = kube.SecretAdapter(kube.Client.CoreV1().Secrets(cmd.namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
+	if _, err = kube.SecretAdapter(kube.Client.CoreV1().Secrets(shared.Namespace)).CreateOrUpdate(cmd.Context(), corev1.Secret{
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
 			"ca.crt": caPayload,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      caSecretName,
-			Namespace: cmd.namespace,
+			Namespace: shared.Namespace,
 			Labels: map[string]string{
 				"fabnctl/cid":    "peer.ca.secret",
-				"fabnctl/domain": cmd.domain,
+				"fabnctl/domain": shared.Domain,
 				"fabnctl/host":   fmt.Sprintf("%s.%s.org", peer, org),
 			},
 		},
@@ -152,21 +152,21 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 		values = make(map[string]interface{})
 		chartSpec = &helmclient.ChartSpec{
 			ReleaseName: fmt.Sprintf("%s-%s", peer, org),
-			ChartName:   path.Join(cmd.chartsPath, "peer"),
-			Namespace:   cmd.namespace,
+			ChartName:   path.Join(shared.ChartsPath, "peer"),
+			Namespace:   shared.Namespace,
 			Wait:        true,
 		}
 	)
 
-	if cmd.targetArch == "arm64" {
-		armValues, err := util2.ValuesFromFile(path.Join(cmd.chartsPath, "peer", "values.arm64.yaml"))
+	if shared.TargetArch == "arm64" {
+		armValues, err := util2.ValuesFromFile(path.Join(shared.ChartsPath, "peer", "values.arm64.yaml"))
 		if err != nil {
 			return err
 		}
 		values = armValues
 	}
 
-	values["domain"] = cmd.domain
+	values["domain"] = shared.Domain
 	if caValues, ok := values["ca"].(map[string]interface{}); ok {
 		caValues["enabled"] = withCA
 	} else {
@@ -177,21 +177,21 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 
 	if configValues, ok := values["config"].(map[string]interface{}); ok {
 		configValues["mspID"] = org
-		configValues["domain"] = cmd.domain
+		configValues["domain"] = shared.Domain
 		configValues["hostname"] = fmt.Sprintf("%s.org", org)
 	} else {
 		values["config"] = map[string]interface{}{
 			"mspID":    org,
-			"domain":   cmd.domain,
+			"domain":   shared.Domain,
 			"hostname": fmt.Sprintf("%s.org", org),
 		}
 	}
 
 	if ordererValues, ok := values["orderer"].(map[string]interface{}); ok {
-		ordererValues["domain"] = cmd.domain
+		ordererValues["domain"] = shared.Domain
 	} else {
 		values["orderer"] = map[string]interface{}{
-			"domain": cmd.domain,
+			"domain": shared.Domain,
 		}
 	}
 
@@ -217,6 +217,6 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	cmd.Printf("🎉 Peer successfully deployed on %s.%s.org.%s!\n", peer, org, cmd.domain)
+	cmd.Printf("🎉 Peer successfully deployed on %s.%s.org.%s!\n", peer, org, shared.Domain)
 	return nil
 }

@@ -252,4 +252,4 @@ Licensed under the [Apache 2.0][license file].
 
 [minikube]:  https://minikube.sigs.k8s.io/docs/
 
-[license file]: https://github.com/timoth-y/chainmetric-network/blob/main/LICENSE
+[license file]: https://github.com/timoth-y/fabnctl/blob/main/LICENSE

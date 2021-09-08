@@ -1,7 +1,7 @@
 package ssh
 
 import (
-	"github.com/timoth-y/chainmetric-network/pkg/terminal"
+	"github.com/timoth-y/fabnctl/pkg/terminal"
 	"golang.org/x/crypto/ssh"
 )
 

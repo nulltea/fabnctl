@@ -13,8 +13,8 @@ import (
 	_ "unsafe"
 
 	"github.com/pkg/errors"
-	"github.com/timoth-y/chainmetric-network/pkg/terminal"
-	"github.com/timoth-y/chainmetric-network/pkg/util"
+	"github.com/timoth-y/fabnctl/pkg/terminal"
+	"github.com/timoth-y/fabnctl/pkg/util"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"

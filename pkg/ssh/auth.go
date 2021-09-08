@@ -8,7 +8,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/timoth-y/chainmetric-network/pkg/terminal"
+	"github.com/timoth-y/fabnctl/pkg/terminal"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	sshTerminal "golang.org/x/crypto/ssh/terminal"

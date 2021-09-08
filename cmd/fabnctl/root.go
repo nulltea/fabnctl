@@ -1,22 +1,8 @@
 package fabnctl
 
 import (
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"github.com/timoth-y/chainmetric-network/cmd/fabnctl/gen"
-	"github.com/timoth-y/chainmetric-network/cmd/fabnctl/install"
-	"github.com/timoth-y/chainmetric-network/cmd/fabnctl/update"
-)
-
-var (
-	targetArch string
-	domain     string
-	chartsPath string
-)
-
-var (
-	ErrInvalidArgs = errors.New("invalid command arguments")
+	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
 )
 
 // rootCmd represents the base command when called without any subcommands.
@@ -32,35 +18,7 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(
-		&targetArch,
-		"arch", "a",
-		"amd64",
-		`Deployment target architecture.
-Supported are:
- - ARM64: -a=arm64
- - AMD64 (x86) -a=amd64`,
- 	)
-
-	 rootCmd.PersistentFlags().StringVarP(
-	 	&domain,
-	 	"domain", "d",
-	 	"",
-	 	"Deployment target domain",
-	 )
-
-	rootCmd.PersistentFlags().StringVar(
-		&chartsPath,
-		"charts",
-		viper.GetString("helm.charts_path"),
-		"Helm deployment charts path",
-	)
-
-	rootCmd.MarkFlagRequired("domain")
-
-	rootCmd.AddCommand(gen.Cmd)
-	rootCmd.AddCommand(install.Cmd)
-	rootCmd.AddCommand(update.Cmd)
+	shared.AddGlobalFlags(rootCmd)
 }
 
 

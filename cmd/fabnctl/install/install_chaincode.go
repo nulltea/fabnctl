@@ -29,14 +29,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/timoth-y/chainmetric-network/cmd"
-	"github.com/timoth-y/chainmetric-network/cmd/fabnctl"
-	"github.com/timoth-y/chainmetric-network/pkg/terminal"
-	"github.com/timoth-y/chainmetric-network/pkg/docker"
-	"github.com/timoth-y/chainmetric-network/pkg/helm"
-	"github.com/timoth-y/chainmetric-network/pkg/kube"
-	"github.com/timoth-y/chainmetric-network/pkg/model"
-	util2 "github.com/timoth-y/chainmetric-network/pkg/util"
+	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
+	"github.com/timoth-y/fabnctl/pkg/docker"
+	"github.com/timoth-y/fabnctl/pkg/helm"
+	"github.com/timoth-y/fabnctl/pkg/kube"
+	"github.com/timoth-y/fabnctl/pkg/model"
+	"github.com/timoth-y/fabnctl/pkg/terminal"
+	"github.com/timoth-y/fabnctl/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
@@ -71,7 +70,7 @@ Examples:
 		}
 		return nil
 	},
-	RunE: cmd.handleErrors(func(cmd *cobra.Command, args []string) error {
+	RunE: shared.WithHandleErrors(func(cmd *cobra.Command, args []string) error {
 		return deployChaincode(cmd, args[0])
 	}),
 }
@@ -125,48 +124,48 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 
 	// Parse flags
 	if orgs, err = cmd.Flags().GetStringArray("org"); err != nil {
-		return errors.WithMessagef(cmd.ErrInvalidArgs, "failed to parse required parameter 'org' (organization): %s", err)
+		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse required parameter 'org' (organization): %s", err)
 	}
 
 	if peers, err = cmd.Flags().GetStringArray("peer"); err != nil {
-		return errors.WithMessagef(cmd.ErrInvalidArgs, "failed to parse required 'peer' parameter: %s", err)
+		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse required 'peer' parameter: %s", err)
 	}
 
 	if channel, err = cmd.Flags().GetString("channel"); err != nil {
-		return errors.WithMessagef(cmd.ErrInvalidArgs, "failed to parse required 'channel' parameter: %s", err)
+		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse required 'channel' parameter: %s", err)
 	}
 
 	if chaincode, err = cmd.Flags().GetString("chaincode"); err != nil {
-		return errors.WithMessagef(cmd.ErrInvalidArgs, "failed to parse required 'chaincode' parameter: %s", err)
+		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse required 'chaincode' parameter: %s", err)
 	}
 
 	if registry, err = cmd.Flags().GetString("registry"); err != nil {
-		return errors.WithMessagef(cmd.ErrInvalidArgs, "failed to parse 'registry' parameter: %s", err)
+		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse 'registry' parameter: %s", err)
 	}
 
 	if regAuth, err = cmd.Flags().GetString("registry-auth"); err != nil {
-		return errors.WithMessagef(cmd.ErrInvalidArgs, "failed to parse 'registry-auth' parameter: %s", err)
+		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse 'registry-auth' parameter: %s", err)
 	}
 
 	if buildImage, err = cmd.Flags().GetBool("rebuild"); err != nil {
-		return errors.WithMessagef(cmd.ErrInvalidArgs, "failed to parse 'rebuild' parameter: %s", err)
+		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse 'rebuild' parameter: %s", err)
 	}
 
 	if dockerfile, err = cmd.Flags().GetString("dockerfile"); err != nil {
-		return errors.WithMessagef(cmd.ErrInvalidArgs, "failed to parse 'imageReg' parameter: %s", err)
+		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse 'imageReg' parameter: %s", err)
 	}
 	dockerfile = strings.ReplaceAll(dockerfile, "{chaincode}", chaincode)
 
 	if update, err = cmd.Flags().GetBool("update"); err != nil {
-		return errors.WithMessagef(cmd.ErrInvalidArgs, "failed to parse 'update' parameter: %s", err)
+		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse 'update' parameter: %s", err)
 	}
 
 	if update, err = cmd.Flags().GetBool("update"); err != nil {
-		return errors.WithMessagef(cmd.ErrInvalidArgs, "failed to parse 'update' parameter: %s", err)
+		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse 'update' parameter: %s", err)
 	}
 
 	if version, err = cmd.Flags().GetFloat64("version"); err != nil {
-		return errors.WithMessagef(cmd.ErrInvalidArgs, "failed to parse 'version' parameter: %s", err)
+		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse 'version' parameter: %s", err)
 	}
 
 	var (
@@ -177,7 +176,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 	// Bind organizations arguments along with peers:
 	for i, org := range orgs {
 		if len(peers) < i + 1 {
-			return errors.WithMessagef(cmd.ErrInvalidArgs, "some passed organizations missing corresponding peer parameter: %s", org)
+			return errors.WithMessagef(shared.ErrInvalidArgs, "some passed organizations missing corresponding peer parameter: %s", org)
 		}
 		orgPeers[org] = peers[i]
 	}
@@ -185,7 +184,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 	// Building chaincode image:
 	if buildImage {
 		var (
-			platform   = fmt.Sprintf("linux/%s", cmd.targetArch)
+			platform   = fmt.Sprintf("linux/%s", shared.TargetArch)
 			srcPathAbs = srcPath
 			printer    = progress.NewPrinter(cmd.Context(), os.Stdout, "auto")
 		)
@@ -200,7 +199,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		if _, err = build.Build(cmd.Context(), dis, map[string]build.Options{
 			"default": {
 				Platforms: []v1.Platform{{
-					Architecture: cmd.targetArch,
+					Architecture: shared.TargetArch,
 					OS:           "linux",
 				}},
 				Tags: []string{imageTag},
@@ -274,7 +273,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			"-v", vtoa(version),
 			"--sequence", stoa(sequence),
 			"-C", channel,
-			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), cmd.domain),
+			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), shared.Domain),
 			"--tls", "--cafile", "$ORDERER_CA",
 		)
 
@@ -300,7 +299,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		if ok, err := kube.WaitForPodReady(
 			cmd.Context(),
 			&peerPodName,
-			fmt.Sprintf("fabnctl/app=%s.%s.org", peer, org), cmd.namespace,
+			fmt.Sprintf("fabnctl/app=%s.%s.org", peer, org), shared.Namespace,
 		); err != nil {
 			return err
 		} else if !ok {
@@ -312,7 +311,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			cmd.Context(),
 			&cliPodName,
 			fmt.Sprintf("fabnctl/app=cli.%s.%s.org", peer, org),
-			cmd.namespace,
+			shared.Namespace,
 		); err != nil {
 			return err
 		} else if !ok {
@@ -343,7 +342,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 
 		// Copping chaincode package to cli pod:
 		if err = terminal.DecorateWithInteractiveLog(func() error {
-			if err = kube.CopyToPod(cmd.Context(), cliPodName, cmd.namespace, &packageBuffer, packageTarGzip); err != nil {
+			if err = kube.CopyToPod(cmd.Context(), cliPodName, shared.Namespace, &packageBuffer, packageTarGzip); err != nil {
 				return err
 			}
 			return nil
@@ -355,7 +354,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 
 		// Installing chaincode package:
 		if err = terminal.DecorateWithInteractiveLog(func() error {
-			if _, stderr, err = kube.ExecCommandInPod(cmd.Context(), cliPodName, cmd.namespace,
+			if _, stderr, err = kube.ExecCommandInPod(cmd.Context(), cliPodName, shared.Namespace,
 				"peer", "lifecycle", "chaincode", "install", packageTarGzip,
 			); err != nil {
 				if errors.Cause(err) == terminal.ErrRemoteCmdFailed {
@@ -379,8 +378,8 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			values    = make(map[string]interface{})
 			chartSpec = &helmclient.ChartSpec{
 				ReleaseName: fmt.Sprintf("%s-cc-%s-%s", chaincode, peer, org),
-				ChartName:   path.Join(cmd.chartsPath, "chaincode"),
-				Namespace:   cmd.namespace,
+				ChartName:   path.Join(shared.ChartsPath, "chaincode"),
+				Namespace:   shared.Namespace,
 				Wait:        true,
 			}
 		)
@@ -419,7 +418,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		// Checking whether the chaincode was already approved by organization:
 		if stdout, stderr, err = kube.ExecShellInPod(
 			cmd.Context(),
-			cliPodName, cmd.namespace,
+			cliPodName, shared.Namespace,
 			checkCommitReadinessCmd,
 		); err != nil {
 			if errors.Cause(err) == terminal.ErrRemoteCmdFailed {
@@ -440,7 +439,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			"--package-id", packageID,
 			"--init-required=false",
 			"-C", channel,
-			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), cmd.domain),
+			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), shared.Domain),
 			"--tls", "--cafile", "$ORDERER_CA",
 		)
 
@@ -449,7 +448,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			if err = terminal.DecorateWithInteractiveLog(func() error {
 				if _, stderr, err = kube.ExecShellInPod(
 					cmd.Context(),
-					cliPodName, cmd.namespace,
+					cliPodName, shared.Namespace,
 					approveCmd,
 				); err != nil {
 					if errors.Cause(err) == terminal.ErrRemoteCmdFailed {
@@ -481,7 +480,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 	// by checking that all organizations on channel approved chaincode:
 	if stdout, stderr, err := kube.ExecShellInPod(
 		cmd.Context(),
-		availableCliPod, cmd.namespace,
+		availableCliPod, shared.Namespace,
 		checkCommitReadinessCmd,
 	); err != nil {
 		if errors.Cause(err) == terminal.ErrRemoteCmdFailed {
@@ -512,14 +511,14 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		"--sequence", stoa(sequence),
 		"--init-required=false",
 		"-C", channel,
-		"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), cmd.domain),
+		"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), shared.Domain),
 		"--tls", "--cafile", "$ORDERER_CA",
 	)
 
 	// Committing chaincode on peers of all given organizations:
 	for org, peer := range orgPeers {
 		var (
-			orgHost = fmt.Sprintf("%s.org.%s", org, cmd.domain)
+			orgHost = fmt.Sprintf("%s.org.%s", org, shared.Domain)
 			peerHost = fmt.Sprintf("%s.%s", peer, orgHost)
 			cryptoConfigPathBase = "/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto-config"
 			commitCmdEnding = kube.FormShellCommand(
@@ -542,7 +541,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 	if err = terminal.DecorateWithInteractiveLog(func() error {
 		if _, stderr, err = kube.ExecShellInPod(
 			cmd.Context(),
-			availableCliPod, cmd.namespace,
+			availableCliPod, shared.Namespace,
 			commitCmd,
 		); err != nil {
 			if errors.Cause(err) == terminal.ErrRemoteCmdFailed {
@@ -604,7 +603,7 @@ func packageExternalChaincodeInTarGzip(chaincode, peer, org, sourcePath string, 
 		return errors.Wrap(err, "failed to encode to 'connection.json'")
 	}
 
-	if err := util2.WriteBytesToTar("connection.json", &connBuffer, codeTar); err != nil {
+	if err := util.WriteBytesToTar("connection.json", &connBuffer, codeTar); err != nil {
 		return errors.Wrap(err, "failed to write 'connection.json' into 'code.tar.gz' archive")
 	}
 
@@ -617,7 +616,7 @@ func packageExternalChaincodeInTarGzip(chaincode, peer, org, sourcePath string, 
 			}
 
 			metaIndexPath := path.Join("META-INF", "statedb", "couchdb", "indexes", index.Name())
-			if err := util2.WriteBytesToTar(metaIndexPath, bytes.NewBuffer(indexBytes), codeTar); err != nil {
+			if err := util.WriteBytesToTar(metaIndexPath, bytes.NewBuffer(indexBytes), codeTar); err != nil {
 				return errors.Wrapf(err, "failed to write '%s' into code tar archive", metaIndexPath)
 			}
 		}
@@ -631,7 +630,7 @@ func packageExternalChaincodeInTarGzip(chaincode, peer, org, sourcePath string, 
 		terminal.Logger.Error(errors.Wrapf(err, "failed to close code gzip writer"))
 	}
 
-	if err := util2.WriteBytesToTar("code.tar.gz", &codeBuffer, packageTar); err != nil {
+	if err := util.WriteBytesToTar("code.tar.gz", &codeBuffer, packageTar); err != nil {
 		return errors.Wrap(err, "failed to write 'code.tar.gz' into package tar archive")
 	}
 
@@ -639,7 +638,7 @@ func packageExternalChaincodeInTarGzip(chaincode, peer, org, sourcePath string, 
 		return errors.Wrap(err, "failed to encode to 'metadata.json'")
 	}
 
-	if err := util2.WriteBytesToTar("metadata.json", &mdBuffer, packageTar); err != nil {
+	if err := util.WriteBytesToTar("metadata.json", &mdBuffer, packageTar); err != nil {
 		return errors.Wrap(err, "failed to write 'metadata.json' into package tar archive")
 	}
 
@@ -679,7 +678,7 @@ func determineDockerCredentials(registry *string, regAuth *string) error {
 
 	identity, ok := dockerCredentials[hostname]; if !ok {
 		return errors.Wrapf(
-			fabnctl.ErrInvalidArgs,
+			shared.ErrInvalidArgs,
 			"credentials for '%s' not found in docker config and missing in args", *registry,
 		)
 	}
@@ -702,21 +701,6 @@ func parseInstalledPackageID(reader io.Reader) string {
 		FindStringSubmatch(terminal.GetLastLine(reader))
 	if len(res) == 2 {
 		return strings.TrimSpace(res[1])
-	}
-
-	return ""
-}
-
-func parseQueriedPackageID(reader io.Reader, cc string) string {
-	var buffer bytes.Buffer
-	if n, err := io.Copy(&buffer, reader); err != nil || n == 0 {
-		return ""
-	}
-
-	res := regexp.MustCompile(fmt.Sprintf("Package ID: (.+?), Label: %s", cc)).
-		FindSubmatch(buffer.Bytes())
-	if len(res) == 2 {
-		return strings.TrimSpace(string(res[1]))
 	}
 
 	return ""
@@ -766,7 +750,7 @@ func checkChaincodeCommitStatus(ctx context.Context, chaincode, channel string) 
 	// Checking whether the chaincode was already committed:
 	stdout, stderr, err := kube.ExecCommandInPod(
 		ctx,
-		availableCliPod, cmd.namespace,
+		availableCliPod, shared.Namespace,
 		"peer", "lifecycle", "chaincode", "querycommitted", "-C", channel,
 	)
 

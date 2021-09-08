@@ -11,9 +11,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/timoth-y/chainmetric-network/cmd"
-	"github.com/timoth-y/chainmetric-network/cmd/fabnctl/install"
-	"github.com/timoth-y/chainmetric-network/pkg/model"
+	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
+	"github.com/timoth-y/fabnctl/pkg/model"
+	"github.com/timoth-y/fabnctl/pkg/util"
 	"sigs.k8s.io/yaml"
 )
 
@@ -39,7 +39,7 @@ Examples:
 		}
 		return nil
 	},
-	RunE: cmd.handleErrors(func(cmd *cobra.Command, args []string) error {
+	RunE: shared.WithHandleErrors(func(cmd *cobra.Command, args []string) error {
 		return genConnection(cmd, args[0])
 	}),
 }
@@ -77,31 +77,31 @@ func genConnection(cmd *cobra.Command, artifactsPath string) error {
 
 	// Parsing flags:
 	if configPath, err = cmd.Flags().GetString("config"); err != nil {
-		return errors.WithMessage(cmd.ErrInvalidArgs, "failed to parse 'config' parameter")
+		return errors.WithMessage(shared.ErrInvalidArgs, "failed to parse 'config' parameter")
 	}
 
 	if ownerOrg, err = cmd.Flags().GetString("org"); err != nil {
-		return errors.WithMessage(cmd.ErrInvalidArgs, "failed to parse required 'org' parameter")
+		return errors.WithMessage(shared.ErrInvalidArgs, "failed to parse required 'org' parameter")
 	}
 
 	if channel, err = cmd.Flags().GetString("channel"); err != nil {
-		return errors.WithMessage(cmd.ErrInvalidArgs, "failed to parse required 'channel' parameter")
+		return errors.WithMessage(shared.ErrInvalidArgs, "failed to parse required 'channel' parameter")
 	}
 
 	if name, err = cmd.Flags().GetString("name"); err != nil {
-		return errors.WithMessage(cmd.ErrInvalidArgs, "failed to parse 'name' parameter")
+		return errors.WithMessage(shared.ErrInvalidArgs, "failed to parse 'name' parameter")
 	}
 
 	if desc, err = cmd.Flags().GetString("description"); err != nil {
-		return errors.WithMessage(cmd.ErrInvalidArgs, "failed to parse 'description' parameter")
+		return errors.WithMessage(shared.ErrInvalidArgs, "failed to parse 'description' parameter")
 	}
 
 	if version, err = cmd.Flags().GetFloat64("version"); err != nil {
-		return errors.WithMessage(cmd.ErrInvalidArgs, "failed to parse 'version' parameter")
+		return errors.WithMessage(shared.ErrInvalidArgs, "failed to parse 'version' parameter")
 	}
 
 	if xProperties, err = cmd.Flags().GetStringToString("x-properties"); err != nil {
-		return errors.WithMessage(cmd.ErrInvalidArgs, "failed to parse 'version' parameter")
+		return errors.WithMessage(shared.ErrInvalidArgs, "failed to parse 'version' parameter")
 	}
 
 	if len(name) == 0 {
@@ -207,7 +207,7 @@ func genConnection(cmd *cobra.Command, artifactsPath string) error {
 	values := ConnectionValues{
 		Name:          name,
 		Description:   desc,
-		Version:       install.vtoa(version),
+		Version:       util.Vtoa(version),
 		OwnerOrg:      ownerOrg,
 		Channel:       channel,
 		NetworkConfig: netConfig,

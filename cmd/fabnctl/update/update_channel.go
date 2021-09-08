@@ -7,9 +7,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/timoth-y/chainmetric-network/cmd"
-	util2 "github.com/timoth-y/chainmetric-network/pkg/terminal"
-	"github.com/timoth-y/chainmetric-network/pkg/kube"
+	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
+	"github.com/timoth-y/fabnctl/pkg/kube"
+	"github.com/timoth-y/fabnctl/pkg/terminal"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -22,7 +22,7 @@ var updateChannelCmd = &cobra.Command{
 Examples:
   # Add anchor peers to channel definition:
 	fabnctl update channel -c supply-channel --setAnchors -o org1 -o org2`,
-	RunE: cmd.handleErrors(updateChannel),
+	RunE: shared.WithHandleErrors(updateChannel),
 }
 
 func init() {
@@ -45,11 +45,11 @@ func updateChannel(cmd *cobra.Command, _ []string) error {
 
 	// Parse flags
 	if orgs, err = cmd.Flags().GetStringArray("org"); err != nil {
-		return errors.WithMessagef(cmd.ErrInvalidArgs, "failed to parse required parameter 'org' (organization): %s", err)
+		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse required parameter 'org' (organization): %s", err)
 	}
 
 	if channel, err = cmd.Flags().GetString("channel"); err != nil {
-		return errors.WithMessagef(cmd.ErrInvalidArgs, "failed to parse required 'channel' parameter: %s", err)
+		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse required 'channel' parameter: %s", err)
 	}
 
 	for _, org := range orgs {
@@ -60,7 +60,7 @@ func updateChannel(cmd *cobra.Command, _ []string) error {
 			viper.GetString("cli.info_emoji"), org,
 		)
 
-		if pods, err := kube.Client.CoreV1().Pods(cmd.namespace).List(cmd.Context(), metav1.ListOptions{
+		if pods, err := kube.Client.CoreV1().Pods(shared.Namespace).List(cmd.Context(), metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("fabnctl/cid=org-peer-cli,fabnctl/org=%s", org),
 		}); err != nil {
 			return errors.Wrapf(err, "failed to find CLI pod for '%s' organization", org)
@@ -74,15 +74,15 @@ func updateChannel(cmd *cobra.Command, _ []string) error {
 			"peer channel update",
 			"-c", channel,
 			"-f", fmt.Sprintf("./channel-artifacts/%s-anchors.tx", org),
-			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), cmd.domain),
+			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), shared.Domain),
 			"--tls", "--cafile", "$ORDERER_CA",
 		)
 
 		// Update channel with org's anchor peers:
 		var stderr io.Reader
-		if err = util2.DecorateWithInteractiveLog(func() error {
-			if _, stderr, err = kube.ExecShellInPod(cmd.Context(), cliPodName, cmd.namespace, updateCmd); err != nil {
-				if errors.Cause(err) == util2.ErrRemoteCmdFailed {
+		if err = terminal.DecorateWithInteractiveLog(func() error {
+			if _, stderr, err = kube.ExecShellInPod(cmd.Context(), cliPodName, shared.Namespace, updateCmd); err != nil {
+				if errors.Cause(err) == terminal.ErrRemoteCmdFailed {
 					return errors.Wrap(err, "Failed to update channel")
 				}
 
@@ -92,7 +92,7 @@ func updateChannel(cmd *cobra.Command, _ []string) error {
 		}, "Updating channel",
 			fmt.Sprintf("Channel '%s' successfully updated", channel),
 		); err != nil {
-			return util2.WrapWithStderrViewPrompt(err, stderr, false)
+			return terminal.WrapWithStderrViewPrompt(err, stderr, false)
 		}
 
 		cmd.Println()

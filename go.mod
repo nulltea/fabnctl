@@ -1,6 +1,6 @@
-module github.com/timoth-y/chainmetric-network
+module github.com/timoth-y/fabnctl
 
-go 1.15
+go 1.16
 
 require (
 	github.com/Masterminds/sprig v2.22.0+incompatible

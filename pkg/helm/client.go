@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mittwald/go-helm-client"
-	"github.com/timoth-y/chainmetric-network/pkg/terminal"
+	"github.com/timoth-y/fabnctl/pkg/terminal"
 )
 
 // Client defines shared client interface for Client cli.

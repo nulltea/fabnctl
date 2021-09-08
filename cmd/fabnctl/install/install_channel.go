@@ -7,10 +7,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	cmd2 "github.com/timoth-y/chainmetric-network/cmd"
-	"github.com/timoth-y/chainmetric-network/cmd/fabnctl"
-	util2 "github.com/timoth-y/chainmetric-network/pkg/terminal"
-	"github.com/timoth-y/chainmetric-network/pkg/kube"
+	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
+	"github.com/timoth-y/fabnctl/pkg/kube"
+	"github.com/timoth-y/fabnctl/pkg/terminal"
 )
 
 // channelCmd represents the channel command
@@ -45,7 +44,7 @@ func init() {
 	_ = channelCmd.MarkFlagRequired("channel")
 }
 
-func deployChannel(cmd *cobra.Command, args []string) error {
+func deployChannel(cmd *cobra.Command, _ []string) error {
 	var (
 		err           error
 		orgs          []string
@@ -57,21 +56,21 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 
 	// Parse flags
 	if orgs, err = cmd.Flags().GetStringArray("org"); err != nil {
-		return errors.WithMessagef(fabnctl.ErrInvalidArgs, "failed to parse required parameter 'org' (organization): %s", err)
+		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse required parameter 'org' (organization): %s", err)
 	}
 
 	if peers, err = cmd.Flags().GetStringArray("peer"); err != nil {
-		return errors.WithMessagef(fabnctl.ErrInvalidArgs, "failed to parse 'peer' parameter: %s", err)
+		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse 'peer' parameter: %s", err)
 	}
 
 	if channel, err = cmd.Flags().GetString("channel"); err != nil {
-		return errors.WithMessagef(fabnctl.ErrInvalidArgs, "failed to parse required 'channel' parameter: %s", err)
+		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse required 'channel' parameter: %s", err)
 	}
 
 	// Bind organizations arguments along with peers:
 	for i, org := range orgs {
 		if len(peers) < i + 1 {
-			return errors.WithMessagef(fabnctl.ErrInvalidArgs, "some passed organizations missing corresponding peer parameter: %s", org)
+			return errors.WithMessagef(shared.ErrInvalidArgs, "some passed organizations missing corresponding peer parameter: %s", org)
 		}
 		orgPeers[org] = peers[i]
 	}
@@ -92,7 +91,7 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 		if ok, err := kube.WaitForPodReady(
 			cmd.Context(),
 			&peerPodName,
-			fmt.Sprintf("fabnctl/app=%s.%s.org", peer, org), cmd2.namespace,
+			fmt.Sprintf("fabnctl/app=%s.%s.org", peer, org), shared.Namespace,
 		); err != nil {
 			return err
 		} else if !ok {
@@ -104,7 +103,7 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 			cmd.Context(),
 			&cliPodName,
 			fmt.Sprintf("fabnctl/app=cli.%s.%s.org", peer, org),
-			cmd2.namespace,
+			shared.Namespace,
 		); err != nil {
 			return err
 		} else if !ok {
@@ -120,7 +119,7 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 			fetchCmd = kube.FormShellCommand(
 				"peer channel fetch config", fmt.Sprintf("%s.block", channel),
 				"-c", channel,
-				"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), cmd2.domain),
+				"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), shared.Domain),
 				"--tls", "--cafile", "$ORDERER_CA",
 			)
 
@@ -128,7 +127,7 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 				"peer channel create",
 				"-c", channel,
 				"-f", fmt.Sprintf("./channel-artifacts/%s.tx", channel),
-				"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), cmd2.domain),
+				"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), shared.Domain),
 				"--tls", "--cafile", "$ORDERER_CA",
 			)
 		)
@@ -136,12 +135,12 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 		if !channelExists {
 			// Checking whether specified channel is already created or not,
 			// by trying to fetch in genesis block:
-			if _, _, err = kube.ExecShellInPod(cmd.Context(), cliPodName, cmd2.namespace, fetchCmd); err == nil {
+			if _, _, err = kube.ExecShellInPod(cmd.Context(), cliPodName, shared.Namespace, fetchCmd); err == nil {
 				channelExists = true
 				cmd.Println(viper.GetString("cli.info_emoji"),
 					fmt.Sprintf("Channel '%s' already created, fetched its genesis block", channel),
 				)
-			} else if errors.Cause(err) != util2.ErrRemoteCmdFailed {
+			} else if errors.Cause(err) != terminal.ErrRemoteCmdFailed {
 				return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName)
 			}
 		}
@@ -150,9 +149,9 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 
 		// Creating channel in case it wasn't yet:
 		if !channelExists {
-			if err = util2.DecorateWithInteractiveLog(func() error {
-				if _, stderr, err = kube.ExecShellInPod(cmd.Context(), cliPodName, cmd2.namespace, createCmd); err != nil {
-					if errors.Cause(err) == util2.ErrRemoteCmdFailed {
+			if err = terminal.DecorateWithInteractiveLog(func() error {
+				if _, stderr, err = kube.ExecShellInPod(cmd.Context(), cliPodName, shared.Namespace, createCmd); err != nil {
+					if errors.Cause(err) == terminal.ErrRemoteCmdFailed {
 						return errors.New("Failed to create channel")
 					}
 
@@ -162,14 +161,14 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 			}, "Creating channel",
 				fmt.Sprintf("Channel '%s' successfully created", channel),
 			); err != nil {
-				return util2.WrapWithStderrViewPrompt(err, stderr, false)
+				return terminal.WrapWithStderrViewPrompt(err, stderr, false)
 			}
 		}
 
 		// Joining peer to channel:
-		if err = util2.DecorateWithInteractiveLog(func() error {
-			if _, stderr, err = kube.ExecShellInPod(cmd.Context(), cliPodName, cmd2.namespace, joinCmd); err != nil {
-				if errors.Cause(err) == util2.ErrRemoteCmdFailed {
+		if err = terminal.DecorateWithInteractiveLog(func() error {
+			if _, stderr, err = kube.ExecShellInPod(cmd.Context(), cliPodName, shared.Namespace, joinCmd); err != nil {
+				if errors.Cause(err) == terminal.ErrRemoteCmdFailed {
 					return errors.Wrap(err, "Failed to join channel")
 				}
 
@@ -179,7 +178,7 @@ func deployChannel(cmd *cobra.Command, args []string) error {
 		}, fmt.Sprintf("Joinging '%s' organization to '%s' channel", org, channel),
 			fmt.Sprintf("Organization '%s' successfully joined '%s' channel", org, channel),
 		); err != nil {
-			return util2.WrapWithStderrViewPrompt(err, stderr, false)
+			return terminal.WrapWithStderrViewPrompt(err, stderr, false)
 		}
 
 		cmd.Println()
