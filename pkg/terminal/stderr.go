@@ -76,7 +76,7 @@ func WrapWithStderrViewPrompt(err error, stderr io.Reader, printErrPriorPrompt b
 // ErrFromStderr parses stderr to find last error message, which would be returned as error or <nil> otherwise.
 func ErrFromStderr(stderr bytes.Buffer) error {
 	if errMsg := strings.Replace(GetLastLine(&stderr), "Error: ", "", 1); len(errMsg) != 0 {
-		return errors.Wrapf(ErrRemoteCmdFailed, errMsg)
+		return fmt.Errorf("%s: %w", errMsg, ErrRemoteCmdFailed)
 	}
 
 	return nil

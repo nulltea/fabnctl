@@ -1,12 +1,14 @@
 package ssh
 
 import (
+	"io"
+
 	"github.com/timoth-y/fabnctl/pkg/terminal"
 	"golang.org/x/crypto/ssh"
 )
 
 type (
-	// Option configures SSH operator package
+	// Option configures SSH operator package.
 	Option func(*argsStub)
 
 	argsStub struct {
@@ -67,5 +69,37 @@ func WithPublicKeyPath(path string) Option {
 	}
 }
 
+type (
+	// ExecuteOption allows passing options for command execution over SSH.
+	ExecuteOption func(*execArgsStub)
 
+	execArgsStub struct {
+		stream bool
+		stdout io.Writer
+		stderr io.Writer
+	}
+)
 
+// WithStream can be used to redirect command output to local stdout and stderr.
+// Default is false.
+func WithStream(stream bool) ExecuteOption {
+	return func(stub *execArgsStub) {
+		stub.stream = stream
+	}
+}
+
+// WithStdout can be specified where to stream cmd output.
+// Default is local os.Stdout.
+func WithStdout(stdout io.Writer) ExecuteOption {
+	return func(stub *execArgsStub) {
+		stub.stdout = stdout
+	}
+}
+
+// WithStderr can be specified where to stream cmd error output.
+// Default is local os.Stderr.
+func WithStderr(stderr io.Writer) ExecuteOption {
+	return func(stub *execArgsStub) {
+		stub.stderr = stderr
+	}
+}

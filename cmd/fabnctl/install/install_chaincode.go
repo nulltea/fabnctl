@@ -26,6 +26,7 @@ import (
 	"github.com/docker/docker/pkg/jsonmessage"
 	helmclient "github.com/mittwald/go-helm-client"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
@@ -33,6 +34,7 @@ import (
 	"github.com/timoth-y/fabnctl/pkg/helm"
 	"github.com/timoth-y/fabnctl/pkg/kube"
 	"github.com/timoth-y/fabnctl/pkg/model"
+	"github.com/timoth-y/fabnctl/pkg/ssh"
 	"github.com/timoth-y/fabnctl/pkg/terminal"
 	"github.com/timoth-y/fabnctl/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -792,9 +794,12 @@ func atos(str string) int {
 	return sequence
 }
 
-// func buildOverSSH(options ...ssh.Option) error {
-// 	if err := ssh.Init(options...); err != nil {
-// 		return fmt.Errorf()
-// 	}
-//
-// }
+func buildOverSSH(options ...ssh.Option) error {
+	if err := ssh.Init(options...); err != nil {
+		return err
+	}
+
+	ssh.Execute("bazel build ")
+
+	return nil
+}
