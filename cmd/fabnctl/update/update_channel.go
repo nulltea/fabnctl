@@ -26,7 +26,7 @@ Examples:
 }
 
 func init() {
-	Cmd.AddCommand(updateChannelCmd)
+	cmd.AddCommand(updateChannelCmd)
 
 	updateChannelCmd.Flags().StringArrayP("org", "o", nil, "Owner organization names (required)")
 	updateChannelCmd.Flags().StringP("channel", "c", "", "Channel name (required)")

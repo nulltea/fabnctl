@@ -6,8 +6,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Cmd represents the update command
-var Cmd = &cobra.Command{
+// cmd represents the update command
+var cmd = &cobra.Command{
 	Use:   "update",
 	Short: "Provides methods for updating network component",
 	Long: `Provides methods for updating network component:
@@ -20,3 +20,7 @@ Examples:
 	},
 }
 
+// AddTo adds update commands to `root` cobra.Command.
+func AddTo(root *cobra.Command) {
+	root.AddCommand(cmd)
+}

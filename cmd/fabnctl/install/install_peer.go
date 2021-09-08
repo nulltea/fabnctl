@@ -36,7 +36,7 @@ Examples:
 }
 
 func init() {
-	Cmd.AddCommand(peerCmd)
+	cmd.AddCommand(peerCmd)
 
 	peerCmd.Flags().StringP("org", "o", "", "Organization owning peer (required)")
 	peerCmd.Flags().StringP("peer", "p", "peer0", "Peer hostname")

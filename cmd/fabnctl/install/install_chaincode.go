@@ -76,7 +76,7 @@ Examples:
 }
 
 func init() {
-	Cmd.AddCommand(chaincodeCmd)
+	cmd.AddCommand(chaincodeCmd)
 
 	chaincodeCmd.Flags().StringArrayP("org", "o", nil,
 		"Organization owning chaincode. Can be used multiply time to pass list of organizations (required)")

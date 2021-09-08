@@ -4,8 +4,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Cmd represents the gen command.
-var Cmd = &cobra.Command{
+// cmd represents the gen command.
+var cmd = &cobra.Command{
 	Use:   "gen",
 	Short: "Provides method for generation network related configuration and artifacts",
 	Long: `Provides method for generation network related configuration and artifacts
@@ -20,7 +20,12 @@ Examples:
 }
 
 func init() {
-	Cmd.PersistentFlags().StringP("config", "f", "./network-config.yaml",
+	cmd.PersistentFlags().StringP("config", "f", "./network-config.yaml",
 		"Network structure config file path required for deployment",
 	)
+}
+
+// AddTo adds generate commands to `root` cobra.Command.
+func AddTo(root *cobra.Command) {
+	root.AddCommand(cmd)
 }

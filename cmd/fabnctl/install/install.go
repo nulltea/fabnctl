@@ -5,8 +5,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Cmd represents the deployment command.
-var Cmd = &cobra.Command{
+// cmd represents the deployment command.
+var cmd = &cobra.Command{
 	Use:   "install",
 	Short: "Provides method for installing network components",
 	Long: `Provides method for installing network components.
@@ -40,3 +40,7 @@ func deploy(cmd *cobra.Command, args []string) error {
 	return cmd.Help()
 }
 
+// AddTo adds install commands to `root` cobra.Command.
+func AddTo(root *cobra.Command) {
+	root.AddCommand(cmd)
+}

@@ -33,7 +33,7 @@ Examples:
 }
 
 func init() {
-	Cmd.AddCommand(ordererCmd)
+	cmd.AddCommand(ordererCmd)
 }
 
 func deployOrderer(cmd *cobra.Command, _ []string) error {

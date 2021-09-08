@@ -45,7 +45,7 @@ Examples:
 }
 
 func init() {
-	Cmd.AddCommand(connectionCmd)
+	cmd.AddCommand(connectionCmd)
 
 	connectionCmd.Flags().StringP("org", "o", "", "Owner organization name (required)")
 	connectionCmd.Flags().StringP("channel", "c", "", "Channel name (required)")

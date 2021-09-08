@@ -23,9 +23,9 @@ func Execute() {
 func init() {
 	shared.AddGlobalFlags(rootCmd)
 
-	rootCmd.AddCommand(gen.Cmd)
-	rootCmd.AddCommand(install.Cmd)
-	rootCmd.AddCommand(update.Cmd)
+	gen.AddTo(rootCmd)
+	install.AddTo(rootCmd)
+	update.AddTo(rootCmd)
 }
 
 

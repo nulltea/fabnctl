@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-// Cmd represents the gen command.
+// cmd represents the gen command.
 var artifactsCmd = &cobra.Command{
 	Use:   "artifacts",
 	Short: "Generates crypto materials and channel artifacts",
@@ -34,7 +34,7 @@ Examples:
 }
 
 func init() {
-	Cmd.AddCommand(artifactsCmd)
+	cmd.AddCommand(artifactsCmd)
 }
 
 func genArtifacts(cmd *cobra.Command, _ []string) error {

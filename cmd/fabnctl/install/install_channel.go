@@ -29,7 +29,7 @@ Examples:
 }
 
 func init() {
-	Cmd.AddCommand(channelCmd)
+	cmd.AddCommand(channelCmd)
 
 	channelCmd.Flags().StringArrayP("org", "o", nil,
 		"Organization names. Can be used multiply time to pass list of organizations (required)",
