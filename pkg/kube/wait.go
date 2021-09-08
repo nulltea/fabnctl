@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"github.com/timoth-y/fabnctl/pkg/terminal"
 	batchv1 "k8s.io/api/batch/v1"
@@ -28,7 +27,7 @@ func WaitForJobComplete(
 		LabelSelector: selector,
 	})
 	if err != nil {
-		return false, errors.Wrap(err, "failed to wait for job completion")
+		return false, fmt.Errorf("failed to wait for job completion: %w", err)
 	}
 
 	return WaitForEvent(ctx, cancel,
@@ -70,7 +69,7 @@ func WaitForPodReady(
 		LabelSelector: selector,
 	})
 	if err != nil {
-		return false, errors.Wrap(err, "failed to wait for pod readiness")
+		return false, fmt.Errorf("failed to wait for pod readiness: %w", err)
 	}
 
 	return WaitForEvent(ctx, cancel,

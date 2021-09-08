@@ -7,7 +7,6 @@ import (
 	"path"
 
 	"github.com/mittwald/go-helm-client"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
@@ -57,15 +56,15 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 
 	// Parse flags
 	if org, err = cmd.Flags().GetString("org"); err != nil {
-		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse required parameter 'org' (organization): %s", err)
+		return fmt.Errorf("%w: failed to parse required parameter 'org' (organization): %s", err, shared.ErrInvalidArgs)
 	}
 
 	if peer, err = cmd.Flags().GetString("peer"); err != nil {
-		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse 'peer' parameter: %s", err)
+		return fmt.Errorf("%w: failed to parse 'peer' parameter: %s", err, shared.ErrInvalidArgs)
 	}
 
 	if withCA, err = cmd.Flags().GetBool("withCA"); err != nil {
-		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse 'withCA' parameter: %s", err)
+		return fmt.Errorf("%w: failed to parse 'withCA' parameter: %s", err, shared.ErrInvalidArgs)
 	}
 
 	var (
@@ -85,19 +84,19 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 	// Retrieve orderer transport TLS private key:
 	pkPayload, err := ioutil.ReadFile(pkPath)
 	if err != nil {
-		return errors.Wrapf(err, "failed to read private key from path: %s", pkPath)
+		return fmt.Errorf("failed to read private key from path: %s: %w", pkPath, err)
 	}
 
 	// Retrieve orderer transport TLS cert:
 	certPayload, err := ioutil.ReadFile(certPath)
 	if err != nil {
-		return errors.Wrapf(err, "failed to read certificate identity from path: %s", certPath)
+		return fmt.Errorf("failed to read certificate identity from path: %s: %w", certPath, err)
 	}
 
 	// Retrieve orderer transport CA cert:
 	caPayload, err := ioutil.ReadFile(caPath)
 	if err != nil {
-		return errors.Wrapf(err, "failed to read certificate CA from path: %s", caPath)
+		return fmt.Errorf("failed to read certificate CA from path: %s: %w", caPath, err)
 	}
 
 	// Create or update peer transport TLS secret:
@@ -117,7 +116,7 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 			},
 		},
 	}); err != nil {
-		return errors.Wrapf(err, "failed to create %s secret", tlsSecretName)
+		return fmt.Errorf("failed to create %s secret: %w", tlsSecretName, err)
 	}
 
 	cmd.Printf("%s Secret '%s' successfully created\n",
@@ -140,7 +139,7 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 			},
 		},
 	}); err != nil {
-		return errors.Wrapf(err, "failed to create %s secret", caSecretName)
+		return fmt.Errorf("failed to create %s secret: %w", caSecretName, err)
 	}
 
 	cmd.Printf("%s Secret '%s' successfully created\n",
@@ -197,7 +196,7 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 
 	valuesYaml, err := yaml.Marshal(values)
 	if err != nil {
-		return errors.Wrap(err, "failed to encode additional values")
+		return fmt.Errorf("failed to encode additional values: %w", err)
 	}
 
 	chartSpec.ValuesYaml = string(valuesYaml)
@@ -208,7 +207,7 @@ func deployPeer(cmd *cobra.Command, args []string) error {
 
 	if err = terminal.DecorateWithInteractiveLog(func() error {
 		if err = util2.Client.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
-			return errors.Wrap(err, "failed to install peer helm chart")
+			return fmt.Errorf("failed to install peer helm chart: %w", err)
 		}
 		return nil
 	}, fmt.Sprintf("Installing 'peer/%s-%s' chart", peer, org),

@@ -1,7 +1,8 @@
 package install
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
@@ -28,13 +29,13 @@ Examples:
 
 func deploy(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return errors.New("You must specify which component to deploy. See help:\n")
+		return fmt.Errorf("You must specify which component to deploy. See help:\n")
 	}
 
 	if _, ok := map[string]bool {
 		ordererCmd.Use: true,
 	}[args[0]]; !ok {
-		return  errors.Errorf("Component '%s' is unknown and can't be deploy. See help:\n\n", args[0])
+		return  fmt.Errorf("Component '%s' is unknown and can't be deploy. See help:\n\n", args[0])
 	}
 
 	return cmd.Help()

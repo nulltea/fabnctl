@@ -45,11 +45,11 @@ func updateChannel(cmd *cobra.Command, _ []string) error {
 
 	// Parse flags
 	if orgs, err = cmd.Flags().GetStringArray("org"); err != nil {
-		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse required parameter 'org' (organization): %s", err)
+		return fmt.Errorf("%w: failed to parse required parameter 'org' (organization): %s", err, shared.ErrInvalidArgs)
 	}
 
 	if channel, err = cmd.Flags().GetString("channel"); err != nil {
-		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse required 'channel' parameter: %s", err)
+		return fmt.Errorf("%w: failed to parse required 'channel' parameter: %s", err, shared.ErrInvalidArgs)
 	}
 
 	for _, org := range orgs {
@@ -63,9 +63,9 @@ func updateChannel(cmd *cobra.Command, _ []string) error {
 		if pods, err := kube.Client.CoreV1().Pods(shared.Namespace).List(cmd.Context(), metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("fabnctl/cid=org-peer-cli,fabnctl/org=%s", org),
 		}); err != nil {
-			return errors.Wrapf(err, "failed to find CLI pod for '%s' organization", org)
+			return fmt.Errorf("failed to find CLI pod for '%s' organization: %w", org, err)
 		} else if pods == nil || pods.Size() == 0 {
-			return errors.Errorf("failed to find CLI pod for '%s' organization", org)
+			return fmt.Errorf("failed to find CLI pod for '%s' organization", org)
 		} else {
 			cliPodName = pods.Items[0].Name
 		}
@@ -82,11 +82,11 @@ func updateChannel(cmd *cobra.Command, _ []string) error {
 		var stderr io.Reader
 		if err = terminal.DecorateWithInteractiveLog(func() error {
 			if _, stderr, err = kube.ExecShellInPod(cmd.Context(), cliPodName, shared.Namespace, updateCmd); err != nil {
-				if errors.Cause(err) == terminal.ErrRemoteCmdFailed {
-					return errors.Wrap(err, "Failed to update channel")
+				if errors.Is(err, terminal.ErrRemoteCmdFailed){
+					return fmt.Errorf("Failed to update channel: %w", err)
 				}
 
-				return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName)
+				return fmt.Errorf("Failed to execute command on '%s' pod: %w", cliPodName, err)
 			}
 			return nil
 		}, "Updating channel",

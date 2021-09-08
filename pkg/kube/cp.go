@@ -41,7 +41,7 @@ func CopyToPod(
 
 	pod, err := Client.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
 	if err != nil {
-		return errors.Wrapf(err, "faield to determine container for '%s' pod", podName)
+		return fmt.Errorf("faield to determine container for '%s' pod: %w", podName, err)
 	}
 
 	var (
@@ -65,7 +65,7 @@ func CopyToPod(
 		defer pipeWriter.Close()
 		if err = util.WriteBytesToTar(destPath, buffer, pipeWriter); err != nil {
 			terminal.Logger.Error(
-				errors.Wrapf(err, "failed to write '%s' into pod writer", destPath),
+				fmt.Errorf("failed to write '%s' into pod writer: %w", destPath, err),
 			)
 		}
 	}()
@@ -94,7 +94,7 @@ func copyFromPod(
 
 	pod, err := Client.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
 	if err != nil {
-		return errors.Wrapf(err, "faield to determine container for '%s' pod", podName)
+		return fmt.Errorf("faield to determine container for '%s' pod: %w", podName, err)
 	}
 
 	var (

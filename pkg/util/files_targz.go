@@ -3,10 +3,10 @@ package util
 import (
 	"archive/tar"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/timoth-y/fabnctl/pkg/terminal"
 )
 
@@ -17,7 +17,7 @@ func WriteBytesToTarGzip(targetPath string, reader SizedReader, writer io.Writer
 	defer func() {
 		if err := gzipWriter.Close(); err != nil {
 			terminal.Logger.Error(
-				errors.Wrapf(err, "failed to close gzip writer containing '%s' file", targetPath),
+				fmt.Errorf("failed to close gzip writer containing '%s' file: %w", targetPath, err),
 			)
 		}
 	}()
@@ -33,7 +33,7 @@ func WriteBytesToTar(targetPath string, reader SizedReader, writer io.Writer) er
 		defer func() {
 			if err := tarWriter.Close(); err != nil {
 				terminal.Logger.Error(
-					errors.Wrapf(err, "failed to close tar writer containing '%s' file", targetPath),
+					fmt.Errorf("failed to close tar writer containing '%s' file: %w", targetPath, err),
 				)
 			}
 		}()
@@ -45,11 +45,11 @@ func WriteBytesToTar(targetPath string, reader SizedReader, writer io.Writer) er
 		Mode:    int64(0755),
 		ModTime: time.Now(),
 	}); err != nil {
-		return errors.Wrapf(err, "failed to write header for file '%s'", targetPath)
+		return fmt.Errorf("failed to write header for file '%s': %w", targetPath, err)
 	}
 
 	_, err := io.Copy(tarWriter, reader); if err != nil {
-		return errors.Wrapf(err, "failed to copy the file '%s' data to the tar", targetPath)
+		return fmt.Errorf("failed to copy the file '%s' data to the tar: %w", targetPath, err)
 	}
 
 	return nil

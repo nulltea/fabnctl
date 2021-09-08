@@ -56,21 +56,21 @@ func deployChannel(cmd *cobra.Command, _ []string) error {
 
 	// Parse flags
 	if orgs, err = cmd.Flags().GetStringArray("org"); err != nil {
-		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse required parameter 'org' (organization): %s", err)
+		return fmt.Errorf("%w: failed to parse required parameter 'org' (organization): %s", err, shared.ErrInvalidArgs)
 	}
 
 	if peers, err = cmd.Flags().GetStringArray("peer"); err != nil {
-		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse 'peer' parameter: %s", err)
+		return fmt.Errorf("%w: failed to parse 'peer' parameter: %s", err, shared.ErrInvalidArgs)
 	}
 
 	if channel, err = cmd.Flags().GetString("channel"); err != nil {
-		return errors.WithMessagef(shared.ErrInvalidArgs, "failed to parse required 'channel' parameter: %s", err)
+		return fmt.Errorf("%w: failed to parse required 'channel' parameter: %s", err, shared.ErrInvalidArgs)
 	}
 
 	// Bind organizations arguments along with peers:
 	for i, org := range orgs {
 		if len(peers) < i + 1 {
-			return errors.WithMessagef(shared.ErrInvalidArgs, "some passed organizations missing corresponding peer parameter: %s", org)
+			return fmt.Errorf("%w: some passed organizations missing corresponding peer parameter: %s", org, shared.ErrInvalidArgs)
 		}
 		orgPeers[org] = peers[i]
 	}
@@ -141,7 +141,7 @@ func deployChannel(cmd *cobra.Command, _ []string) error {
 					fmt.Sprintf("Channel '%s' already created, fetched its genesis block", channel),
 				)
 			} else if errors.Cause(err) != terminal.ErrRemoteCmdFailed {
-				return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName)
+				return fmt.Errorf("Failed to execute command on '%s' pod: %w", cliPodName, err)
 			}
 		}
 
@@ -151,11 +151,11 @@ func deployChannel(cmd *cobra.Command, _ []string) error {
 		if !channelExists {
 			if err = terminal.DecorateWithInteractiveLog(func() error {
 				if _, stderr, err = kube.ExecShellInPod(cmd.Context(), cliPodName, shared.Namespace, createCmd); err != nil {
-					if errors.Cause(err) == terminal.ErrRemoteCmdFailed {
-						return errors.New("Failed to create channel")
+					if errors.Is(err, terminal.ErrRemoteCmdFailed){
+						return fmt.Errorf("Failed to create channel")
 					}
 
-					return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName)
+					return fmt.Errorf("Failed to execute command on '%s' pod: %w", cliPodName, err)
 				}
 				return nil
 			}, "Creating channel",
@@ -168,11 +168,11 @@ func deployChannel(cmd *cobra.Command, _ []string) error {
 		// Joining peer to channel:
 		if err = terminal.DecorateWithInteractiveLog(func() error {
 			if _, stderr, err = kube.ExecShellInPod(cmd.Context(), cliPodName, shared.Namespace, joinCmd); err != nil {
-				if errors.Cause(err) == terminal.ErrRemoteCmdFailed {
-					return errors.Wrap(err, "Failed to join channel")
+				if errors.Is(err, terminal.ErrRemoteCmdFailed){
+					return fmt.Errorf("Failed to join channel: %w", err)
 				}
 
-				return errors.Wrapf(err, "Failed to execute command on '%s' pod", cliPodName)
+				return fmt.Errorf("Failed to execute command on '%s' pod: %w", cliPodName, err)
 			}
 			return nil
 		}, fmt.Sprintf("Joinging '%s' organization to '%s' channel", org, channel),

@@ -77,31 +77,31 @@ func genConnection(cmd *cobra.Command, artifactsPath string) error {
 
 	// Parsing flags:
 	if configPath, err = cmd.Flags().GetString("config"); err != nil {
-		return errors.WithMessage(shared.ErrInvalidArgs, "failed to parse 'config' parameter")
+		return fmt.Errorf("%w: failed to parse 'config' parameter", shared.ErrInvalidArgs)
 	}
 
 	if ownerOrg, err = cmd.Flags().GetString("org"); err != nil {
-		return errors.WithMessage(shared.ErrInvalidArgs, "failed to parse required 'org' parameter")
+		return fmt.Errorf("%w: failed to parse required 'org' parameter", shared.ErrInvalidArgs)
 	}
 
 	if channel, err = cmd.Flags().GetString("channel"); err != nil {
-		return errors.WithMessage(shared.ErrInvalidArgs, "failed to parse required 'channel' parameter")
+		return fmt.Errorf("%w: failed to parse required 'channel' parameter", shared.ErrInvalidArgs)
 	}
 
 	if name, err = cmd.Flags().GetString("name"); err != nil {
-		return errors.WithMessage(shared.ErrInvalidArgs, "failed to parse 'name' parameter")
+		return fmt.Errorf("%w: failed to parse 'name' parameter", shared.ErrInvalidArgs)
 	}
 
 	if desc, err = cmd.Flags().GetString("description"); err != nil {
-		return errors.WithMessage(shared.ErrInvalidArgs, "failed to parse 'description' parameter")
+		return fmt.Errorf("%w: failed to parse 'description' parameter", shared.ErrInvalidArgs)
 	}
 
 	if version, err = cmd.Flags().GetFloat64("version"); err != nil {
-		return errors.WithMessage(shared.ErrInvalidArgs, "failed to parse 'version' parameter")
+		return fmt.Errorf("%w: failed to parse 'version' parameter", shared.ErrInvalidArgs)
 	}
 
 	if xProperties, err = cmd.Flags().GetStringToString("x-properties"); err != nil {
-		return errors.WithMessage(shared.ErrInvalidArgs, "failed to parse 'version' parameter")
+		return fmt.Errorf("%w: failed to parse 'version' parameter", shared.ErrInvalidArgs)
 	}
 
 	if len(name) == 0 {
@@ -115,11 +115,11 @@ func genConnection(cmd *cobra.Command, artifactsPath string) error {
 	// Decoding network config file:
 	configYaml, err := ioutil.ReadFile(configPath)
 	if err != nil {
-		return errors.Wrapf(err, "missing configuration values on path %s", configPath)
+		return fmt.Errorf("missing configuration values on path %s: %w", configPath, err)
 	}
 
 	if err = yaml.Unmarshal(configYaml, &netConfig); err != nil {
-		return errors.Wrapf(err, "failed to decode config found on path: %s", configPath)
+		return fmt.Errorf("failed to decode config found on path: %s: %w", configPath, err)
 	}
 
 	// Enrich network config with TLS CA certificates:
@@ -141,7 +141,7 @@ func genConnection(cmd *cobra.Command, artifactsPath string) error {
 
 	// Filter channel and organization based on given channel ID:
 	if ch := netConfig.GetChannel(channel); ch == nil {
-		return errors.Errorf("Channel with ID '%s' isn't defined in given config '%s'", channel, configPath)
+		return fmt.Errorf("Channel with ID '%s' isn't defined in given config '%s'", channel, configPath)
 	} else {
 		netConfig.Channels = []model.Channel{*ch}
 	}
@@ -156,7 +156,7 @@ func genConnection(cmd *cobra.Command, artifactsPath string) error {
 	netConfig.Organizations = channelOrgs
 
 	if org := netConfig.GetOrganization(ownerOrg); org == nil {
-		return errors.Errorf("Organization with ID '%s' isn't a part of '%s' channel consortium", org, channel)
+		return fmt.Errorf("Organization with ID '%s' isn't a part of '%s' channel consortium", org, channel)
 	}
 
 	for i, org := range netConfig.Organizations {
@@ -227,14 +227,14 @@ func genConnection(cmd *cobra.Command, artifactsPath string) error {
 	// Render template in connection.yaml file
 	file, err := os.Create("connection.yaml")
 	if err != nil {
-		return errors.Wrap(err, "failed to create file 'connection.yaml'")
+		return fmt.Errorf("failed to create file 'connection.yaml': %w", err)
 	}
 	defer func() {
 		_ = file.Close()
 	}()
 
 	if err = tpl.ExecuteTemplate(file, "connection.goyaml", values); err != nil {
-		return errors.Wrap(err, "failed to render connection config")
+		return fmt.Errorf("failed to render connection config: %w", err)
 	}
 
 	cmd.Println("🎉 Connection config generation done!")

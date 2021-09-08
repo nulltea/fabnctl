@@ -8,7 +8,6 @@ import (
 	"path"
 
 	"github.com/mittwald/go-helm-client"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
@@ -56,7 +55,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 
 	// Parsing flags:
 	if configPath, err = cmd.Flags().GetString("config"); err != nil {
-		return errors.WithMessage(shared.ErrInvalidArgs, "failed to parse 'config' parameter")
+		return fmt.Errorf("%w: failed to parse 'config' parameter", shared.ErrInvalidArgs)
 	}
 
 	// Preparing additional values for chart installation:
@@ -78,7 +77,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 
 	valuesYaml, err := yaml.Marshal(values)
 	if err != nil {
-		return errors.Wrap(err, "failed to encode additional values")
+		return fmt.Errorf("failed to encode additional values: %w", err)
 	}
 	chartSpec.ValuesYaml = string(valuesYaml)
 
@@ -88,7 +87,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 
 	if err = terminal.DecorateWithInteractiveLog(func() error {
 		if err = helm.Client.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
-			return errors.Wrap(err, "failed to install artifacts helm chart")
+			return fmt.Errorf("failed to install artifacts helm chart: %w", err)
 		}
 		return nil
 	}, "Installing 'artifacts/artifacts' chart",
@@ -119,7 +118,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 		"-n", shared.Namespace,
 		"-f", path.Join(shared.ChartsPath, "artifacts", "artifacts-wait-job.yaml"),
 	).Run(); err != nil {
-		return errors.Wrap(err, "failed to deploy 'artifacts.wait' pod")
+		return fmt.Errorf("failed to deploy 'artifacts.wait' pod: %w", err)
 	}
 
 	// Cleaning 'artifacts.wait' job and pod:
@@ -128,7 +127,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 			metav1.DeleteOptions{}, metav1.ListOptions{
 				LabelSelector: "fabnctl/cid=artifacts.wait",
 			}); err != nil {
-			cmd.PrintErrln(errors.Wrap(err, "failed to delete artifacts.wait job"))
+			cmd.PrintErrln(fmt.Errorf("failed to delete artifacts.wait job: %w", err))
 		}
 
 		var zero int64 = 0
@@ -137,7 +136,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 			metav1.DeleteOptions{GracePeriodSeconds: &zero}, metav1.ListOptions{
 				LabelSelector: "job-name=artifacts.wait",
 			}); err != nil {
-			cmd.PrintErrln(errors.Wrap(err, "failed to delete artifacts.wait pod"))
+			cmd.PrintErrln(fmt.Errorf("failed to delete artifacts.wait pod: %w", err))
 		}
 	}(cmd)
 
@@ -162,7 +161,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 		fmt.Sprintf("%s:crypto-config", waitPodName),
 		cryptoConfigDir,
 	).Run(); err != nil {
-		return errors.Wrap(err, "failed to copy crypto-config")
+		return fmt.Errorf("failed to copy crypto-config: %w", err)
 	}
 
 	cmd.Println(
@@ -180,7 +179,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 		fmt.Sprintf("%s:channel-artifacts", waitPodName),
 		channelArtifactsDir,
 	).Run(); err != nil {
-		return errors.Wrap(err, "failed to copy channel-artifacts")
+		return fmt.Errorf("failed to copy channel-artifacts: %w", err)
 	}
 
 	cmd.Println(

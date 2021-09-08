@@ -3,11 +3,11 @@ package kube
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/url"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/timoth-y/fabnctl/pkg/terminal"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -63,7 +63,7 @@ func ExecShellInContainer(
 func ExecCommandInPod(ctx context.Context, podName, namespace string, cmd ...string) (io.Reader, io.Reader, error) {
 	pod, err := Client.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "faield to determine container for '%s' pod", podName)
+		return nil, nil, fmt.Errorf("faield to determine container for '%s' pod: %w", podName, err)
 	}
 
 	return ExecCommandInContainer(ctx, podName, pod.Spec.Containers[0].Name, namespace, cmd...)
