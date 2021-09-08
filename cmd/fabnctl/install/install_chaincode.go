@@ -40,8 +40,8 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-// ccCmd represents the cc command
-var ccCmd = &cobra.Command{
+// chaincodeCmd represents the cc command
+var chaincodeCmd = &cobra.Command{
 	Use:   "cc [path]",
 	Short: "Performs deployment sequence of the Fabric chaincode package",
 	Long: `Performs deployment sequence of the Fabric chaincode package
@@ -76,34 +76,34 @@ Examples:
 }
 
 func init() {
-	Cmd.AddCommand(ccCmd)
+	Cmd.AddCommand(chaincodeCmd)
 
-	ccCmd.Flags().StringArrayP("org", "o", nil,
+	chaincodeCmd.Flags().StringArrayP("org", "o", nil,
 		"Organization owning chaincode. Can be used multiply time to pass list of organizations (required)")
-	ccCmd.Flags().StringArrayP("peer", "p", nil,
+	chaincodeCmd.Flags().StringArrayP("peer", "p", nil,
 		"Peer hostname. Can be used multiply time to pass list of peers by (required)")
-	ccCmd.Flags().StringP("channel", "C", "", "Channel name (required)")
-	ccCmd.Flags().StringP("chaincode", "c", "", "Chaincode name (required)")
-	ccCmd.Flags().StringP("registry", "r", "",
+	chaincodeCmd.Flags().StringP("channel", "C", "", "Channel name (required)")
+	chaincodeCmd.Flags().StringP("chaincode", "c", "", "Chaincode name (required)")
+	chaincodeCmd.Flags().StringP("registry", "r", "",
 		"Image registry that would be used to tag and push chaincode image (default: search in docker config)")
-	ccCmd.Flags().String("registry-auth", "", `Registry auth credentials formatted as 'username:password'.
+	chaincodeCmd.Flags().String("registry-auth", "", `Registry auth credentials formatted as 'username:password'.
 If nothing passed docker auth config would be searched for credentials by given domain. (default: search in docker config)"`)
-	ccCmd.Flags().StringP("dockerfile", "f", "docker/{chaincode}.Dockerfile",
+	chaincodeCmd.Flags().StringP("dockerfile", "f", "docker/{chaincode}.Dockerfile",
 		"Dockerfile path relative to working path",
 	)
-	ccCmd.Flags().Bool("rebuild", true, "Require chaincode image rebuild")
-	ccCmd.Flags().Bool("update", true,
+	chaincodeCmd.Flags().Bool("rebuild", true, "Require chaincode image rebuild")
+	chaincodeCmd.Flags().Bool("update", true,
 		`In case chaincode which given name was already installed it will be updated, otherwise will be installed as a new one`,
 	)
-	ccCmd.Flags().Float64P("version", "v", 1.0,
+	chaincodeCmd.Flags().Float64P("version", "v", 1.0,
 		"Version for chaincode commit. If not set and update will be required it will be automatically incremented",
 	)
 
-	ccCmd.MarkFlagRequired("org")
-	ccCmd.MarkFlagRequired("peers")
-	ccCmd.MarkFlagRequired("channel")
-	ccCmd.MarkFlagRequired("chaincode")
-	ccCmd.MarkFlagFilename("dockerfile")
+	_ = chaincodeCmd.MarkFlagRequired("org")
+	_ = chaincodeCmd.MarkFlagRequired("peers")
+	_ = chaincodeCmd.MarkFlagRequired("channel")
+	_ = chaincodeCmd.MarkFlagRequired("chaincode")
+	_ = chaincodeCmd.MarkFlagFilename("dockerfile")
 }
 
 func deployChaincode(cmd *cobra.Command, srcPath string) error {
@@ -270,7 +270,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		checkCommitReadinessCmd = kube.FormShellCommand(
 			"peer", "lifecycle", "chaincode", "checkcommitreadiness",
 			"-n", chaincode,
-			"-v", vtoa(version),
+			"-v", util.Vtoa(version),
 			"--sequence", stoa(sequence),
 			"-C", channel,
 			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), shared.Domain),
@@ -434,7 +434,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		var approveCmd = kube.FormShellCommand(
 			"peer", "lifecycle", "chaincode", "approveformyorg",
 			"-n", chaincode,
-			"-v", vtoa(version),
+			"-v", util.Vtoa(version),
 			"--sequence", stoa(sequence),
 			"--package-id", packageID,
 			"--init-required=false",
@@ -507,7 +507,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 	var commitCmd = kube.FormShellCommand(
 		"peer", "lifecycle", "chaincode", "commit",
 		"-n", chaincode,
-		"-v", vtoa(version),
+		"-v", util.Vtoa(version),
 		"--sequence", stoa(sequence),
 		"--init-required=false",
 		"-C", channel,
@@ -777,20 +777,7 @@ func checkChaincodeCommitStatus(ctx context.Context, chaincode, channel string) 
 		return false, 0, 0, nil
 	}
 
-	return true, atov(match[1]), atos(match[2]), nil
-}
-
-func vtoa(version float64) string {
-	return fmt.Sprintf("%.1f", version)
-}
-
-func atov(str string) float64 {
-	version, err := strconv.ParseFloat(str, 32)
-	if err != nil {
-		return 1.0
-	}
-
-	return version
+	return true, util.Atov(match[1]), atos(match[2]), nil
 }
 
 func stoa(sequence int) string {

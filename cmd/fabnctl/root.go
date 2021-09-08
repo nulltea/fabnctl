@@ -2,7 +2,10 @@ package fabnctl
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/timoth-y/fabnctl/cmd/fabnctl/gen"
+	"github.com/timoth-y/fabnctl/cmd/fabnctl/install"
 	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
+	"github.com/timoth-y/fabnctl/cmd/fabnctl/update"
 )
 
 // rootCmd represents the base command when called without any subcommands.
@@ -19,6 +22,10 @@ func Execute() {
 
 func init() {
 	shared.AddGlobalFlags(rootCmd)
+
+	rootCmd.AddCommand(gen.Cmd)
+	rootCmd.AddCommand(install.Cmd)
+	rootCmd.AddCommand(update.Cmd)
 }
 
 

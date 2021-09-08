@@ -3,9 +3,6 @@ package shared
 import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/timoth-y/fabnctl/cmd/fabnctl/gen"
-	"github.com/timoth-y/fabnctl/cmd/fabnctl/install"
-	"github.com/timoth-y/fabnctl/cmd/fabnctl/update"
 )
 
 var (
@@ -48,8 +45,4 @@ Supported are:
 	)
 
 	cmd.MarkFlagRequired("domain")
-
-	cmd.AddCommand(gen.Cmd)
-	cmd.AddCommand(install.Cmd)
-	cmd.AddCommand(update.Cmd)
 }
