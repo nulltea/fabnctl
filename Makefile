@@ -2,7 +2,7 @@ INSTALL_BIN=/usr/local/bin/fabnctl
 INSTALL_DIR=$(HOME)/fabnctl
 
 build:
-	go build -v  -o ./fabnctl ./cli
+	go build -v  -o ./fabnctl .
 
 install:
 	sudo cp ./fabnctl $(INSTALL_BIN)

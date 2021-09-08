@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/timoth-y/chainmetric-core/utils"
 	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
 	"github.com/timoth-y/fabnctl/pkg/helm"
 	"github.com/timoth-y/fabnctl/pkg/kube"
@@ -50,6 +49,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 			CleanupOnFail: true,
 		}
 		waitPodName = "artifacts.wait"
+		genJobName = "artifacts.generate"
 		cryptoConfigDir = fmt.Sprintf(".crypto-config.%s", shared.Domain)
 		channelArtifactsDir = fmt.Sprintf(".channel-artifacts.%s", shared.Domain)
 	)
@@ -99,10 +99,12 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 
 	cancel()
 
+
+
 	// Waiting for 'artifacts.generate' job completion:
 	if ok, err := kube.WaitForJobComplete(
 		cmd.Context(),
-		utils.StringPointer("artifacts.generate"),
+		&genJobName,
 		"fabnctl/cid=artifacts.generate",
 		shared.Namespace,
 	); err != nil {
@@ -129,8 +131,10 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 			cmd.PrintErrln(errors.Wrap(err, "failed to delete artifacts.wait job"))
 		}
 
+		var zero int64 = 0
+
 		if err = kube.Client.CoreV1().Pods(shared.Namespace).DeleteCollection(cmd.Context(),
-			metav1.DeleteOptions{GracePeriodSeconds: utils.Int64Pointer(0)}, metav1.ListOptions{
+			metav1.DeleteOptions{GracePeriodSeconds: &zero}, metav1.ListOptions{
 				LabelSelector: "job-name=artifacts.wait",
 			}); err != nil {
 			cmd.PrintErrln(errors.Wrap(err, "failed to delete artifacts.wait pod"))

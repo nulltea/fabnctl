@@ -1,17 +1,10 @@
 package terminal
 
 import (
-	"bufio"
-	"context"
-	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
-	"strings"
-	"time"
 
-	"github.com/containerd/console"
 	"github.com/gernest/wow"
 	"github.com/gernest/wow/spin"
 	"github.com/op/go-logging"
@@ -104,53 +97,4 @@ func DecorateWithInteractiveLogWithPersist(fn func() (level ILogLevel, msg strin
 	ILogger.Text(start)
 	level, msg := fn()
 	ILogger.PersistWith(ILogPrefixes[level], " "+msg)
-}
-
-func StartInteractiveConsole(ctx context.Context) console.File {
-	var (
-		r, w   = io.Pipe()
-		reader = bufio.NewReader(r)
-	)
-
-	go func() {
-		t := time.NewTicker(time.Second)
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-t.C:
-				str, _ := reader.ReadString('\n')
-
-				if len(str) == 0 {
-					continue
-				}
-
-				if str != "\n" {
-					fmt.Println(strings.Trim(str, "\n"))
-				}
-			}
-		}
-	}()
-
-	return &fakeConsoleFile{
-		Writer: w,
-		Reader: nil,
-	}
-}
-
-type fakeConsoleFile struct {
-	io.Reader
-	io.Writer
-}
-
-func (f *fakeConsoleFile) Close() error {
-	return nil
-}
-
-func (f *fakeConsoleFile) Fd() uintptr {
-	return os.Stdout.Fd()
-}
-
-func (f *fakeConsoleFile) Name() string {
-	return ""
 }

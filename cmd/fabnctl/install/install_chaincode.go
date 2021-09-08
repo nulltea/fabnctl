@@ -792,3 +792,10 @@ func atos(str string) int {
 
 	return sequence
 }
+
+// func buildOverSSH(options ...ssh.Option) error {
+// 	if err := ssh.Init(options...); err != nil {
+// 		return fmt.Errorf()
+// 	}
+//
+// }
