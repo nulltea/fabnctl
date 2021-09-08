@@ -26,7 +26,6 @@ import (
 	"github.com/docker/docker/pkg/jsonmessage"
 	helmclient "github.com/mittwald/go-helm-client"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"

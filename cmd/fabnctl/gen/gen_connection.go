@@ -8,7 +8,6 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"

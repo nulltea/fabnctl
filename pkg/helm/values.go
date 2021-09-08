@@ -3,7 +3,6 @@ package helm
 import (
 	"io/ioutil"
 
-	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 )
 

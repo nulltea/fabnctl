@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/manifoldco/promptui"
-	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
 
