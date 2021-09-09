@@ -11,7 +11,6 @@ import (
 
 func Execute(command string, options ...ExecuteOption) (io.Reader, io.Reader, error) {
 	var args = &execArgsStub{
-		stream: false,
 		stdout: os.Stdout,
 		stderr: os.Stderr,
 	}

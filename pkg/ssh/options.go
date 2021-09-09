@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"context"
 	"io"
 
 	"github.com/timoth-y/fabnctl/pkg/terminal"
@@ -74,9 +75,11 @@ type (
 	ExecuteOption func(*execArgsStub)
 
 	execArgsStub struct {
-		stream bool
+		ctx context.Context
 		stdout io.Writer
 		stderr io.Writer
+		stream bool
+		concurrency int
 	}
 )
 
@@ -101,5 +104,21 @@ func WithStdout(stdout io.Writer) ExecuteOption {
 func WithStderr(stderr io.Writer) ExecuteOption {
 	return func(stub *execArgsStub) {
 		stub.stderr = stderr
+	}
+}
+
+// WithConcurrency can be used to allow concurrency while transferring multiply files from directory.
+// Synchronous by default.
+func WithConcurrency(concurrency int) ExecuteOption {
+	return func(stub *execArgsStub) {
+		stub.concurrency = concurrency
+	}
+}
+
+// WithContext can be used to pass context for the remote command execution.
+// Default is background context.
+func WithContext(ctx context.Context) ExecuteOption {
+	return func(stub *execArgsStub) {
+		stub.ctx = ctx
 	}
 }

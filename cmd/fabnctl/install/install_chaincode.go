@@ -184,62 +184,81 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 
 	// Building chaincode image:
 	if buildImage {
-		var (
-			platform   = fmt.Sprintf("linux/%s", shared.TargetArch)
-			srcPathAbs = srcPath
-			printer    = progress.NewPrinter(cmd.Context(), os.Stdout, "auto")
-		)
-		srcPathAbs, _ = filepath.Abs(srcPath)
-		cmd.Printf("🚀 Builder for chaincode image started\n\n")
+		viaSSH := false
+		if viaSSH {
+			if err = ssh.Init(); err != nil {
+				return err
+			}
 
-		dis, err := docker.BuildDrivers(srcPathAbs)
-		if err != nil {
-			return err
-		}
+			if err = ssh.Transfer(srcPath, filepath.Join("/tmp", srcPath),
+				ssh.WithStream(true),
+				ssh.WithContext(cmd.Context()),
+				ssh.WithConcurrency(2),
+			); err != nil {
+				return err
+			}
 
-		if _, err = build.Build(cmd.Context(), dis, map[string]build.Options{
-			"default": {
-				Platforms: []v1.Platform{{
-					Architecture: shared.TargetArch,
-					OS:           "linux",
-				}},
-				Tags: []string{imageTag},
-				Inputs: build.Inputs{
-					ContextPath:    srcPathAbs,
-					DockerfilePath: path.Join(srcPathAbs, dockerfile),
+			if _, _, err = ssh.Execute("bazel build"); err != nil {
+				return err
+			}
+		} else {
+			var (
+				platform   = fmt.Sprintf("linux/%s", shared.TargetArch)
+				srcPathAbs = srcPath
+				printer    = progress.NewPrinter(cmd.Context(), os.Stdout, "auto")
+			)
+			srcPathAbs, _ = filepath.Abs(srcPath)
+			cmd.Printf("🚀 Builder for chaincode image started\n\n")
+
+			dis, err := docker.BuildDrivers(srcPathAbs)
+			if err != nil {
+				return err
+			}
+
+			if _, err = build.Build(cmd.Context(), dis, map[string]build.Options{
+				"default": {
+					Platforms: []v1.Platform{{
+						Architecture: shared.TargetArch,
+						OS:           "linux",
+					}},
+					Tags: []string{imageTag},
+					Inputs: build.Inputs{
+						ContextPath:    srcPathAbs,
+						DockerfilePath: path.Join(srcPathAbs, dockerfile),
+					},
 				},
-			},
-		}, docker.API(), docker.CLI.ConfigFile(), printer); err != nil {
-			return fmt.Errorf("failed to build chaincode image from source path: %w", err)
+			}, docker.API(), docker.CLI.ConfigFile(), printer); err != nil {
+				return fmt.Errorf("failed to build chaincode image from source path: %w", err)
+			}
+
+			_ = printer.Wait()
+
+			cmd.Printf("\n%s Successfully built chaincode image and tagged it '%s'\n",
+				viper.GetString("cli.success_emoji"), imageTag,
+			)
+
+			// Pushing chaincode image to registry
+			if err = determineDockerCredentials(&registry, &regAuth); err != nil {
+				return err
+			}
+
+			cmd.Printf("\n🚀 Pushing chaincode image to '%s' registry\n\n", registry)
+
+			resp, err := docker.Client.ImagePush(cmd.Context(), imageTag, types.ImagePushOptions{
+				Platform:     platform,
+				RegistryAuth: regAuth,
+				All: true,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to push chaincode image to '%s' registry: %w", registry, err)
+			}
+
+			_ = jsonmessage.DisplayJSONMessagesToStream(resp, docker.CLI.Out(), nil)
+
+			cmd.Printf("\n%s Chaincode image '%s' has been pushed to registry\n",
+				viper.GetString("cli.success_emoji"), imageTag,
+			)
 		}
-
-		_ = printer.Wait()
-
-		cmd.Printf("\n%s Successfully built chaincode image and tagged it '%s'\n",
-			viper.GetString("cli.success_emoji"), imageTag,
-		)
-
-		// Pushing chaincode image to registry
-		if err = determineDockerCredentials(&registry, &regAuth); err != nil {
-			return err
-		}
-
-		cmd.Printf("\n🚀 Pushing chaincode image to '%s' registry\n\n", registry)
-
-		resp, err := docker.Client.ImagePush(cmd.Context(), imageTag, types.ImagePushOptions{
-			Platform:     platform,
-			RegistryAuth: regAuth,
-			All: true,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to push chaincode image to '%s' registry: %w", registry, err)
-		}
-
-		_ = jsonmessage.DisplayJSONMessagesToStream(resp, docker.CLI.Out(), nil)
-
-		cmd.Printf("\n%s Chaincode image '%s' has been pushed to registry\n",
-			viper.GetString("cli.success_emoji"), imageTag,
-		)
 	}
 
 	if committed, ver, seq, err := checkChaincodeCommitStatus(cmd.Context(), chaincode, channel); err != nil {
@@ -792,14 +811,4 @@ func atos(str string) int {
 	}
 
 	return sequence
-}
-
-func buildOverSSH(options ...ssh.Option) error {
-	if err := ssh.Init(options...); err != nil {
-		return err
-	}
-
-	ssh.Execute("bazel build ")
-
-	return nil
 }
