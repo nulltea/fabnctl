@@ -56,15 +56,15 @@ func deployChannel(cmd *cobra.Command, _ []string) error {
 
 	// Parse flags
 	if orgs, err = cmd.Flags().GetStringArray("org"); err != nil {
-		return fmt.Errorf("%w: failed to parse required parameter 'org' (organization): %s", err, shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse required parameter 'org' (organization): %s", shared.ErrInvalidArgs, err)
 	}
 
 	if peers, err = cmd.Flags().GetStringArray("peer"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'peer' parameter: %s", err, shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse 'peer' parameter: %s", shared.ErrInvalidArgs, err)
 	}
 
 	if channel, err = cmd.Flags().GetString("channel"); err != nil {
-		return fmt.Errorf("%w: failed to parse required 'channel' parameter: %s", err, shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse required 'channel' parameter: %s", shared.ErrInvalidArgs, err)
 	}
 
 	// Bind organizations arguments along with peers:
@@ -111,19 +111,19 @@ func deployChannel(cmd *cobra.Command, _ []string) error {
 		}
 
 		var (
-			joinCmd = kube.FormShellCommand(
+			joinCmd = kube.FormCommand(
 				"peer channel join",
 				"-b", fmt.Sprintf("%s.block", channel),
 			)
 
-			fetchCmd = kube.FormShellCommand(
+			fetchCmd = kube.FormCommand(
 				"peer channel fetch config", fmt.Sprintf("%s.block", channel),
 				"-c", channel,
 				"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), shared.Domain),
 				"--tls", "--cafile", "$ORDERER_CA",
 			)
 
-			createCmd = kube.FormShellCommand(
+			createCmd = kube.FormCommand(
 				"peer channel create",
 				"-c", channel,
 				"-f", fmt.Sprintf("./channel-artifacts/%s.tx", channel),

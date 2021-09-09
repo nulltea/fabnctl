@@ -14,17 +14,17 @@ type (
 
 	argsStub struct {
 		ssh.ClientConfig
-		address string
-		port    int
+		host string
+		port int
 	}
 )
 
-// WithAddress can be used to specify SSH address of device on which commands would be executed.
+// WithHost can be used to specify SSH host of device on which commands would be executed.
 //
 // Default is: 127.0.0.1.
-func WithAddress(addr string) Option {
+func WithHost(addr string) Option {
 	return func(stub *argsStub) {
-		stub.address = addr
+		stub.host = addr
 	}
 }
 

@@ -81,3 +81,4 @@ func Execute(command string, options ...ExecuteOption) (io.Reader, io.Reader, er
 
 	return &outputBuffer, &errorBuffer, nil
 }
+

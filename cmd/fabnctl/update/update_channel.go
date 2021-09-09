@@ -45,11 +45,11 @@ func updateChannel(cmd *cobra.Command, _ []string) error {
 
 	// Parse flags
 	if orgs, err = cmd.Flags().GetStringArray("org"); err != nil {
-		return fmt.Errorf("%w: failed to parse required parameter 'org' (organization): %s", err, shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse required parameter 'org' (organization): %s", shared.ErrInvalidArgs, err)
 	}
 
 	if channel, err = cmd.Flags().GetString("channel"); err != nil {
-		return fmt.Errorf("%w: failed to parse required 'channel' parameter: %s", err, shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse required 'channel' parameter: %s", shared.ErrInvalidArgs, err)
 	}
 
 	for _, org := range orgs {
@@ -70,7 +70,7 @@ func updateChannel(cmd *cobra.Command, _ []string) error {
 			cliPodName = pods.Items[0].Name
 		}
 
-		var updateCmd = kube.FormShellCommand(
+		var updateCmd = kube.FormCommand(
 			"peer channel update",
 			"-c", channel,
 			"-f", fmt.Sprintf("./channel-artifacts/%s-anchors.tx", org),

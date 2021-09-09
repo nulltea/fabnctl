@@ -92,6 +92,10 @@ If nothing passed docker auth config would be searched for credentials by given 
 	chaincodeCmd.Flags().StringP("dockerfile", "f", "docker/{chaincode}.Dockerfile",
 		"Dockerfile path relative to working path",
 	)
+	chaincodeCmd.Flags().Bool("ssh", true, "Build over SSH")
+	chaincodeCmd.Flags().StringP("host", "h", "", "Remote host for SSH connection (default: get from .kube config)")
+	chaincodeCmd.Flags().Int("port", 22, "Remote port for SSH connection")
+	chaincodeCmd.Flags().StringP("user", "u", os.Getenv("USER"), "User from remote host for SSH connection")
 	chaincodeCmd.Flags().Bool("rebuild", true, "Require chaincode image rebuild")
 	chaincodeCmd.Flags().Bool("update", true,
 		`In case chaincode which given name was already installed it will be updated, otherwise will be installed as a new one`,
@@ -109,64 +113,88 @@ If nothing passed docker auth config would be searched for credentials by given 
 
 func deployChaincode(cmd *cobra.Command, srcPath string) error {
 	var (
-		err        error
-		orgs       []string
-		peers      []string
-		channel    string
-		chaincode  string
-		registry   string
-		regAuth    string
-		dockerfile string
-		buildImage bool
-		update     bool
-		version    float64
-		sequence   = 1
+		err          error
+		orgs         []string
+		peers        []string
+		channel      string
+		chaincode    string
+		registry     string
+		regAuth      string
+		dockerfile   string
+		buildImage   bool
+		buildOverSSH bool
+		sshHost      string
+		sshPort      int
+		sshUser      string
+		update       bool
+		version      float64
+		sequence     = 1
 	)
 
 	// Parse flags
 	if orgs, err = cmd.Flags().GetStringArray("org"); err != nil {
-		return fmt.Errorf("%w: failed to parse required parameter 'org' (organization): %s", err, shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse required parameter 'org' (organization): %s", shared.ErrInvalidArgs, err)
 	}
 
 	if peers, err = cmd.Flags().GetStringArray("peer"); err != nil {
-		return fmt.Errorf("%w: failed to parse required 'peer' parameter: %s", err, shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse required 'peer' parameter: %s", shared.ErrInvalidArgs, err)
 	}
 
 	if channel, err = cmd.Flags().GetString("channel"); err != nil {
-		return fmt.Errorf("%w: failed to parse required 'channel' parameter: %s", err, shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse required 'channel' parameter: %s", shared.ErrInvalidArgs, err)
 	}
 
 	if chaincode, err = cmd.Flags().GetString("chaincode"); err != nil {
-		return fmt.Errorf("%w: failed to parse required 'chaincode' parameter: %s", err, shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse required 'chaincode' parameter: %s", shared.ErrInvalidArgs, err)
 	}
 
 	if registry, err = cmd.Flags().GetString("registry"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'registry' parameter: %s", err, shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse 'registry' parameter: %s", shared.ErrInvalidArgs, err)
 	}
 
 	if regAuth, err = cmd.Flags().GetString("registry-auth"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'registry-auth' parameter: %s", err, shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse 'registry-auth' parameter: %s", shared.ErrInvalidArgs, err)
 	}
 
 	if buildImage, err = cmd.Flags().GetBool("rebuild"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'rebuild' parameter: %s", err, shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse 'rebuild' parameter: %s", shared.ErrInvalidArgs, err)
 	}
 
 	if dockerfile, err = cmd.Flags().GetString("dockerfile"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'imageReg' parameter: %s", err, shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse 'imageReg' parameter: %s", shared.ErrInvalidArgs, err)
 	}
 	dockerfile = strings.ReplaceAll(dockerfile, "{chaincode}", chaincode)
 
-	if update, err = cmd.Flags().GetBool("update"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'update' parameter: %s", err, shared.ErrInvalidArgs)
+	if buildOverSSH, err = cmd.Flags().GetBool("ssh"); err != nil {
+		return fmt.Errorf("%w: failed to parse 'ssh' parameter: %s", shared.ErrInvalidArgs, err)
+	}
+
+	if sshHost, err = cmd.Flags().GetString("host"); err != nil {
+		return fmt.Errorf("%w: failed to parse 'host' parameter: %s", shared.ErrInvalidArgs, err)
+	}
+
+	if len(sshHost) == 0 {
+		sshHost = kube.Config.Host
+	}
+
+	if sshPort, err = cmd.Flags().GetInt("port"); err != nil {
+		return fmt.Errorf("%w: failed to parse 'port' parameter: %s", shared.ErrInvalidArgs, err)
+	}
+
+	if sshUser, err = cmd.Flags().GetString("user"); err != nil {
+		return fmt.Errorf("%w: failed to parse 'user' parameter: %s", shared.ErrInvalidArgs, err)
 	}
 
 	if update, err = cmd.Flags().GetBool("update"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'update' parameter: %s", err, shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse 'update' parameter: %s", shared.ErrInvalidArgs, err)
+	}
+
+	if update, err = cmd.Flags().GetBool("update"); err != nil {
+		return fmt.Errorf("%w: failed to parse 'update' parameter: %s", shared.ErrInvalidArgs, err)
 	}
 
 	if version, err = cmd.Flags().GetFloat64("version"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'version' parameter: %s", err, shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse 'version' parameter: %s", shared.ErrInvalidArgs, err)
 	}
 
 	var (
@@ -176,7 +204,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 
 	// Bind organizations arguments along with peers:
 	for i, org := range orgs {
-		if len(peers) < i + 1 {
+		if len(peers) < i+1 {
 			return fmt.Errorf("%w: some passed organizations missing corresponding peer parameter: %s", org, shared.ErrInvalidArgs)
 		}
 		orgPeers[org] = peers[i]
@@ -184,13 +212,24 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 
 	// Building chaincode image:
 	if buildImage {
-		viaSSH := false
-		if viaSSH {
-			if err = ssh.Init(); err != nil {
+		if buildOverSSH {
+			var (
+				remotePath = filepath.Join("/tmp", srcPath)
+				command string
+				srcPathAbs = srcPath
+			)
+
+			srcPathAbs, _ = filepath.Abs(srcPath)
+
+			if err = ssh.Init(
+				ssh.WithHost(sshHost),
+				ssh.WithPort(sshPort),
+				ssh.WithUser(sshUser),
+			); err != nil {
 				return err
 			}
 
-			if err = ssh.Transfer(srcPath, filepath.Join("/tmp", srcPath),
+			if err = ssh.Transfer(srcPath, remotePath,
 				ssh.WithStream(true),
 				ssh.WithContext(cmd.Context()),
 				ssh.WithConcurrency(2),
@@ -198,7 +237,24 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 				return err
 			}
 
-			if _, _, err = ssh.Execute("bazel build"); err != nil {
+
+			if _, err = os.Stat(filepath.Join(srcPath, "BUILD")); os.IsNotExist(err)  {
+				command = kube.FormCommand(command,
+					"docker", "build",
+					"-t", imageTag,
+					"-f", filepath.Join(remotePath, dockerfile),
+					"--push",
+					remotePath,
+				)
+			} else {
+				command = kube.FormCommand(
+					"cd", remotePath,
+					"&&",
+					"bazel", "run", fmt.Sprintf("//smartcontracts/%s:image", chaincode),
+				)
+			}
+
+			if _, _, err = ssh.Execute(command, ssh.WithStream(true)); err != nil {
 				return err
 			}
 		} else {
@@ -207,6 +263,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 				srcPathAbs = srcPath
 				printer    = progress.NewPrinter(cmd.Context(), os.Stdout, "auto")
 			)
+
 			srcPathAbs, _ = filepath.Abs(srcPath)
 			cmd.Printf("🚀 Builder for chaincode image started\n\n")
 
@@ -247,7 +304,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			resp, err := docker.Client.ImagePush(cmd.Context(), imageTag, types.ImagePushOptions{
 				Platform:     platform,
 				RegistryAuth: regAuth,
-				All: true,
+				All:          true,
 			})
 			if err != nil {
 				return fmt.Errorf("failed to push chaincode image to '%s' registry: %w", registry, err)
@@ -287,7 +344,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 
 	// Shared commands required for chaincode deployment in the letter steps:
 	var (
-		checkCommitReadinessCmd = kube.FormShellCommand(
+		checkCommitReadinessCmd = kube.FormCommand(
 			"peer", "lifecycle", "chaincode", "checkcommitreadiness",
 			"-n", chaincode,
 			"-v", util.Vtoa(version),
@@ -377,7 +434,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			if _, stderr, err = kube.ExecCommandInPod(cmd.Context(), cliPodName, shared.Namespace,
 				"peer", "lifecycle", "chaincode", "install", packageTarGzip,
 			); err != nil {
-				if errors.Is(err, terminal.ErrRemoteCmdFailed){
+				if errors.Is(err, terminal.ErrRemoteCmdFailed) {
 					return fmt.Errorf("Failed to install chaincode package: %w", err)
 				}
 
@@ -404,7 +461,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			}
 		)
 
-		values["image"] = map[string]interface{} {
+		values["image"] = map[string]interface{}{
 			"repository": imageTag,
 		}
 
@@ -441,7 +498,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			cliPodName, shared.Namespace,
 			checkCommitReadinessCmd,
 		); err != nil {
-			if errors.Is(err, terminal.ErrRemoteCmdFailed){
+			if errors.Is(err, terminal.ErrRemoteCmdFailed) {
 				return terminal.WrapWithStderrViewPrompt(
 					fmt.Errorf("Failed to check chaincode approval by '%s' organization: %w", org, err),
 					stderr, true,
@@ -451,7 +508,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			return fmt.Errorf("Failed to execute command on '%s' pod: %w", cliPodName, err)
 		}
 
-		var approveCmd = kube.FormShellCommand(
+		var approveCmd = kube.FormCommand(
 			"peer", "lifecycle", "chaincode", "approveformyorg",
 			"-n", chaincode,
 			"-v", util.Vtoa(version),
@@ -471,7 +528,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 					cliPodName, shared.Namespace,
 					approveCmd,
 				); err != nil {
-					if errors.Is(err, terminal.ErrRemoteCmdFailed){
+					if errors.Is(err, terminal.ErrRemoteCmdFailed) {
 						return fmt.Errorf("Failed to approve chaincode for '%s' organization: %w", org, err)
 					}
 
@@ -503,7 +560,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		availableCliPod, shared.Namespace,
 		checkCommitReadinessCmd,
 	); err != nil {
-		if errors.Is(err, terminal.ErrRemoteCmdFailed){
+		if errors.Is(err, terminal.ErrRemoteCmdFailed) {
 			return terminal.WrapWithStderrViewPrompt(
 				fmt.Errorf("Failed to check chaincode commit readiness: %w", err),
 				stderr, true,
@@ -524,7 +581,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 		)
 	}
 
-	var commitCmd = kube.FormShellCommand(
+	var commitCmd = kube.FormCommand(
 		"peer", "lifecycle", "chaincode", "commit",
 		"-n", chaincode,
 		"-v", util.Vtoa(version),
@@ -538,10 +595,10 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 	// Committing chaincode on peers of all given organizations:
 	for org, peer := range orgPeers {
 		var (
-			orgHost = fmt.Sprintf("%s.org.%s", org, shared.Domain)
-			peerHost = fmt.Sprintf("%s.%s", peer, orgHost)
+			orgHost              = fmt.Sprintf("%s.org.%s", org, shared.Domain)
+			peerHost             = fmt.Sprintf("%s.%s", peer, orgHost)
 			cryptoConfigPathBase = "/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto-config"
-			commitCmdEnding = kube.FormShellCommand(
+			commitCmdEnding      = kube.FormCommand(
 				"--peerAddresses", fmt.Sprintf("%s:443", peerHost),
 				"--tlsRootCertFiles", path.Join(
 					cryptoConfigPathBase,
@@ -552,7 +609,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			)
 		)
 
-		commitCmd = kube.FormShellCommand(commitCmd, commitCmdEnding)
+		commitCmd = kube.FormCommand(commitCmd, commitCmdEnding)
 	}
 
 	cmd.Printf("\n")
@@ -564,7 +621,7 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 			availableCliPod, shared.Namespace,
 			commitCmd,
 		); err != nil {
-			if errors.Is(err, terminal.ErrRemoteCmdFailed){
+			if errors.Is(err, terminal.ErrRemoteCmdFailed) {
 				return errors.Wrapf(err,
 					"Failed to commit chaincode",
 				)
@@ -587,17 +644,17 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 
 func packageExternalChaincodeInTarGzip(chaincode, peer, org, sourcePath string, writer io.Writer) error {
 	var (
-		codeBuffer    bytes.Buffer
-		mdBuffer      bytes.Buffer
-		connBuffer    bytes.Buffer
+		codeBuffer bytes.Buffer
+		mdBuffer   bytes.Buffer
+		connBuffer bytes.Buffer
 
 		codeGzip = gzip.NewWriter(&codeBuffer)
-		codeTar = tar.NewWriter(codeGzip)
+		codeTar  = tar.NewWriter(codeGzip)
 
 		packageGzip = gzip.NewWriter(writer)
 		packageTar  = tar.NewWriter(packageGzip)
 
-		metadata   = model.ChaincodeMetadata{
+		metadata = model.ChaincodeMetadata{
 			Type:  "external",
 			Label: chaincode,
 		}
@@ -667,7 +724,7 @@ func packageExternalChaincodeInTarGzip(chaincode, peer, org, sourcePath string, 
 
 func determineDockerCredentials(registry *string, regAuth *string) error {
 	var (
-		err error
+		err      error
 		hostname = "https://index.docker.io/v1/"
 	)
 
@@ -696,7 +753,8 @@ func determineDockerCredentials(registry *string, regAuth *string) error {
 		return nil
 	}
 
-	identity, ok := dockerCredentials[hostname]; if !ok {
+	identity, ok := dockerCredentials[hostname]
+	if !ok {
 		return errors.Wrapf(
 			shared.ErrInvalidArgs,
 			"credentials for '%s' not found in docker config and missing in args", *registry,
@@ -754,7 +812,7 @@ func checkChaincodeCommitReadiness(reader io.Reader) (ready bool, notApprovedBy 
 func checkChaincodeCommitStatus(ctx context.Context, chaincode, channel string) (bool, float64, int, error) {
 	var (
 		availableCliPod string
-		buffer bytes.Buffer
+		buffer          bytes.Buffer
 	)
 
 	if pods, err := kube.Client.CoreV1().Pods("").List(ctx, metav1.ListOptions{
@@ -775,7 +833,7 @@ func checkChaincodeCommitStatus(ctx context.Context, chaincode, channel string) 
 	)
 
 	if err != nil {
-		if errors.Is(err, terminal.ErrRemoteCmdFailed){
+		if errors.Is(err, terminal.ErrRemoteCmdFailed) {
 			return false, 0, 0, terminal.WrapWithStderrViewPrompt(
 				fmt.Errorf("Failed to check сommit status for '%s' chaincode: %w", chaincode, err),
 				stderr, true,
@@ -784,7 +842,6 @@ func checkChaincodeCommitStatus(ctx context.Context, chaincode, channel string) 
 
 		return false, 0, 0, fmt.Errorf("Failed to execute command on '%s' pod: %w", availableCliPod, err)
 	}
-
 
 	if n, err := io.Copy(&buffer, stdout); err != nil || n == 0 {
 		return false, 0, 0, nil

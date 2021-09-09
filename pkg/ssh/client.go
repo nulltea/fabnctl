@@ -18,7 +18,7 @@ var (
 func Init(options ...Option) error {
 	var (
 		args = &argsStub{
-			address: "127.0.0.1", port: 22,
+			host: "127.0.0.1", port: 22,
 			ClientConfig: ssh.ClientConfig{
 				User: os.Getenv("USER"),
 				HostKeyCallback: ssh.InsecureIgnoreHostKey(),
@@ -38,7 +38,7 @@ func Init(options ...Option) error {
 	}
 
 	if client, err = ssh.Dial("tcp",
-		fmt.Sprintf("%s:%d", args.address, args.port),
+		fmt.Sprintf("%s:%d", args.host, args.port),
 		&args.ClientConfig,
 	); err != nil {
 		return err

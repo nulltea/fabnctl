@@ -88,7 +88,7 @@ func execute(_ context.Context, method string, url *url.URL, config *restclient.
 	})
 }
 
-// FormShellCommand forms command for shell execution `sh -c "cmd"`.
-func FormShellCommand(cmd ...string) string {
+// FormCommand forms command for shell execution `sh -c "cmd"`.
+func FormCommand(cmd ...string) string {
 	return strings.Join(cmd, " ")
 }
