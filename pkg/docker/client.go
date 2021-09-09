@@ -11,7 +11,7 @@ var (
 	CLI    *command.DockerCli
 )
 
-func Init() {
+func init() {
 	var err error
 
 	Client, err = client.NewClientWithOpts(client.FromEnv)

@@ -16,7 +16,7 @@ var (
 	Config *rest.Config
 )
 
-func Init() {
+func init() {
 	var (
 		err        error
 		kubeconfig *string

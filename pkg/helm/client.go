@@ -10,7 +10,7 @@ import (
 // Client defines shared client interface for Client cli.
 var Client helmclient.Client
 
-func Init() {
+func init() {
 	var (
 		err error
 		opt = &helmclient.Options{

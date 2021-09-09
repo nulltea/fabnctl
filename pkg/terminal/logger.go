@@ -38,7 +38,7 @@ const (
 		"[%{module}] %{color:bold}%{shortfunc}%{color:reset} -> %{message}"
 )
 
-func Init() {
+func init() {
 	var (
 		envLevel      = viper.GetString("logging")
 		chaincodeName = viper.GetString("name")

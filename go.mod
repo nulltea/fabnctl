@@ -4,12 +4,13 @@ go 1.16
 
 require (
 	github.com/Masterminds/sprig v2.22.0+incompatible
+	github.com/bmatcuk/doublestar/v4 v4.0.2
 	github.com/docker/buildx v0.5.1
 	github.com/docker/cli v20.10.5+incompatible
 	github.com/docker/docker v20.10.5+incompatible
 	github.com/docker/libnetwork v0.8.0-dev.2.0.20201215162534-fa125a3512ee // indirect
 	github.com/gernest/wow v0.1.0
-	github.com/kr/fs v0.1.0 // indirect
+	github.com/kr/fs v0.1.0
 	github.com/manifoldco/promptui v0.8.0
 	github.com/mittwald/go-helm-client v0.5.0
 	github.com/moby/buildkit v0.8.3 // indirect

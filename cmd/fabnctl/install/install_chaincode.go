@@ -6,7 +6,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/md5"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -93,7 +95,7 @@ If nothing passed docker auth config would be searched for credentials by given 
 		"Dockerfile path relative to working path",
 	)
 	chaincodeCmd.Flags().Bool("ssh", true, "Build over SSH")
-	chaincodeCmd.Flags().StringP("host", "h", "", "Remote host for SSH connection (default: get from .kube config)")
+	chaincodeCmd.Flags().String("host", kube.Config.Host, "Remote host for SSH connection (default: get from .kube config)")
 	chaincodeCmd.Flags().Int("port", 22, "Remote port for SSH connection")
 	chaincodeCmd.Flags().StringP("user", "u", os.Getenv("USER"), "User from remote host for SSH connection")
 	chaincodeCmd.Flags().Bool("rebuild", true, "Require chaincode image rebuild")
@@ -211,10 +213,14 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 	}
 
 	// Building chaincode image:
+	var srcPathAbs = srcPath
+	srcPathAbs, _ = filepath.Abs(srcPath)
+
 	if buildImage {
 		if buildOverSSH {
+			srcPathHash := md5.Sum([]byte(srcPathAbs))
 			var (
-				remotePath = filepath.Join("/tmp/fabnctl/build", srcPath)
+				remotePath = filepath.Join("/tmp/fabnctl/build", hex.EncodeToString(srcPathHash[:]))
 				command string
 			)
 
@@ -226,10 +232,9 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 				return err
 			}
 
-			if err = ssh.Transfer(srcPath, remotePath,
-				ssh.WithStream(true),
+			if err = ssh.Transfer(srcPathAbs, remotePath,
 				ssh.WithContext(cmd.Context()),
-				ssh.WithConcurrency(2),
+				ssh.WithConcurrency(1),
 			); err != nil {
 				return err
 			}
@@ -259,11 +264,9 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 		} else {
 			var (
 				platform   = fmt.Sprintf("linux/%s", shared.TargetArch)
-				srcPathAbs = srcPath
 				printer    = progress.NewPrinter(cmd.Context(), os.Stdout, "auto")
 			)
 
-			srcPathAbs, _ = filepath.Abs(srcPath)
 			cmd.Printf("🚀 Builder for chaincode image started\n\n")
 
 			dis, err := docker.BuildDrivers(srcPathAbs)

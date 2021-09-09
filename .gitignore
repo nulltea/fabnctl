@@ -13,8 +13,10 @@ bin
 .env
 .lego
 
-./fabnctl
-./fabnctl.exe
+fabnctl
+fabnctl.exe
 
 connection.yaml
 network-config.yaml
+
+
