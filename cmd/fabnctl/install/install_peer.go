@@ -31,7 +31,7 @@ Examples:
   # Deploy peer but skip CA service installation:
   fabnctl deploy peer -d example.com -o org1 -p peer0 --withCA=false`,
 
-	RunE: shared.WithHandleErrors(deployPeer),
+	RunE: shared.WithHandleErrors(installPeer),
 }
 
 func init() {
@@ -46,7 +46,7 @@ func init() {
 	peerCmd.MarkFlagRequired("org")
 }
 
-func deployPeer(cmd *cobra.Command, args []string) error {
+func installPeer(cmd *cobra.Command, args []string) error {
 	var (
 		err error
 		org string

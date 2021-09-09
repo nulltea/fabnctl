@@ -11,6 +11,8 @@ import (
 )
 
 // Transfer sends files from given local `path` to remote `target` path over SFTP protocol.
+//
+// Options allow streaming command output to standard OS output streams or custom ones.
 func Transfer(path string, remote string, options ...ExecuteOption) error {
 	var (
 		args = &execArgsStub{

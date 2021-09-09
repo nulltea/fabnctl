@@ -9,7 +9,10 @@ import (
 	"github.com/timoth-y/fabnctl/pkg/terminal"
 )
 
-func Execute(command string, options ...ExecuteOption) (io.Reader, io.Reader, error) {
+// Execute performs remote execution of the given `command`.
+//
+// Options allow streaming command output to standard OS output streams or custom ones.
+func Execute(command string, options ...ExecuteOption) ([]byte, []byte, error) {
 	var args = &execArgsStub{
 		stdout: os.Stdout,
 		stderr: os.Stderr,
@@ -30,7 +33,7 @@ func Execute(command string, options ...ExecuteOption) (io.Reader, io.Reader, er
 		}
 	}()
 
-	sessStdOut, err := session.StdoutPipe()
+	sessionStdout, err := session.StdoutPipe()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -38,38 +41,38 @@ func Execute(command string, options ...ExecuteOption) (io.Reader, io.Reader, er
 	var (
 		outputBuffer = bytes.Buffer{}
 		errorBuffer  = bytes.Buffer{}
-		stdout       io.Writer
+		stdoutWriter io.Writer
+		stderrWriter io.Writer
 		wg           = sync.WaitGroup{}
 	)
 
 	if args.stream {
-		stdout = io.MultiWriter(args.stdout, &outputBuffer)
+		stdoutWriter = io.MultiWriter(args.stdout, &outputBuffer)
 	} else {
-		stdout = &outputBuffer
+		stdoutWriter = &outputBuffer
 	}
 
 	wg.Add(1)
 	go func() {
-		_, _ = io.Copy(stdout, sessStdOut)
+		_, _ = io.Copy(stdoutWriter, sessionStdout)
 		wg.Done()
 	}()
 
-	sessStderr, err := session.StderrPipe()
+	sessionStderr, err := session.StderrPipe()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var stdErrWriter io.Writer
 	if args.stream {
-		stdErrWriter = io.MultiWriter(args.stderr, &errorBuffer)
+		stderrWriter = io.MultiWriter(args.stderr, &errorBuffer)
 	} else {
-		stdErrWriter = &errorBuffer
+		stderrWriter = &errorBuffer
 	}
 
 	wg.Add(1)
 
 	go func() {
-		_, _ = io.Copy(stdErrWriter, sessStderr)
+		_, _ = io.Copy(stderrWriter, sessionStderr)
 		wg.Done()
 	}()
 
@@ -79,6 +82,6 @@ func Execute(command string, options ...ExecuteOption) (io.Reader, io.Reader, er
 
 	wg.Wait()
 
-	return &outputBuffer, &errorBuffer, nil
+	return outputBuffer.Bytes(), errorBuffer.Bytes(), nil
 }
 

@@ -24,10 +24,10 @@ Examples:
 
   # Deploy chaincode (Smart Contracts package)
   fabnctl deploy cc -d example.com -C supply-channel --cc_name assets -o org1 -p peer0 -o org2 -p peer0 /contracts`,
-	RunE: deploy,
+	RunE: install,
 }
 
-func deploy(cmd *cobra.Command, args []string) error {
+func install(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("You must specify which component to deploy. See help:\n")
 	}

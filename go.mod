@@ -9,6 +9,7 @@ require (
 	github.com/docker/docker v20.10.5+incompatible
 	github.com/docker/libnetwork v0.8.0-dev.2.0.20201215162534-fa125a3512ee // indirect
 	github.com/gernest/wow v0.1.0
+	github.com/kr/fs v0.1.0 // indirect
 	github.com/manifoldco/promptui v0.8.0
 	github.com/mittwald/go-helm-client v0.5.0
 	github.com/moby/buildkit v0.8.3 // indirect

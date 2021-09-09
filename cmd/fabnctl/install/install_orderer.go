@@ -28,14 +28,14 @@ Examples:
   # Deploy orderer:
   fabnctl deploy orderer -d example.com`,
 
-	RunE: shared.WithHandleErrors(deployOrderer),
+	RunE: shared.WithHandleErrors(installOrderer),
 }
 
 func init() {
 	cmd.AddCommand(ordererCmd)
 }
 
-func deployOrderer(cmd *cobra.Command, _ []string) error {
+func installOrderer(cmd *cobra.Command, _ []string) error {
 	var (
 		hostname = viper.GetString("fabric.orderer_hostname_name")
 		tlsDir   = path.Join(

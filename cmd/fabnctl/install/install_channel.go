@@ -25,7 +25,7 @@ Examples:
   # Deploy channel on multiply organization and peers:
   fabnctl deploy channel -d example.com -C supply-channel -o org1 -p peer0 -o org2 -p peer1`,
 
-	RunE: deployChannel,
+	RunE: installChannel,
 }
 
 func init() {
@@ -44,7 +44,7 @@ func init() {
 	_ = channelCmd.MarkFlagRequired("channel")
 }
 
-func deployChannel(cmd *cobra.Command, _ []string) error {
+func installChannel(cmd *cobra.Command, _ []string) error {
 	var (
 		err           error
 		orgs          []string

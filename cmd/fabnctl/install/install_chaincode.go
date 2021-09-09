@@ -72,7 +72,7 @@ Examples:
 		return nil
 	},
 	RunE: shared.WithHandleErrors(func(cmd *cobra.Command, args []string) error {
-		return deployChaincode(cmd, args[0])
+		return installChaincode(cmd, args[0])
 	}),
 }
 
@@ -111,7 +111,7 @@ If nothing passed docker auth config would be searched for credentials by given 
 	_ = chaincodeCmd.MarkFlagFilename("dockerfile")
 }
 
-func deployChaincode(cmd *cobra.Command, srcPath string) error {
+func installChaincode(cmd *cobra.Command, srcPath string) error {
 	var (
 		err          error
 		orgs         []string
@@ -214,12 +214,9 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 	if buildImage {
 		if buildOverSSH {
 			var (
-				remotePath = filepath.Join("/tmp", srcPath)
+				remotePath = filepath.Join("/tmp/fabnctl/build", srcPath)
 				command string
-				srcPathAbs = srcPath
 			)
-
-			srcPathAbs, _ = filepath.Abs(srcPath)
 
 			if err = ssh.Init(
 				ssh.WithHost(sshHost),
@@ -254,8 +251,10 @@ func deployChaincode(cmd *cobra.Command, srcPath string) error {
 				)
 			}
 
-			if _, _, err = ssh.Execute(command, ssh.WithStream(true)); err != nil {
+			if _, stderr, err := ssh.Execute(command, ssh.WithStream(true)); err != nil {
 				return err
+			} else if len(stderr) != 0 {
+				return fmt.Errorf("failed building chaincode: %s", string(stderr))
 			}
 		} else {
 			var (
