@@ -1,6 +1,7 @@
 package helm
 
 import (
+	"fmt"
 	"io/ioutil"
 
 	"sigs.k8s.io/yaml"
@@ -14,16 +15,11 @@ func ValuesFromFile(path string) (map[string]interface{}, error) {
 
 	armValYaml, err := ioutil.ReadFile(path)
 	if err != nil {
-		return nil, errors.Wrapf(err,
-			"missing configuration values on path %s", path,
-		)
+		return nil, fmt.Errorf("missing configuration values on path %s: %w", path, err)
 	}
 
 	if err = yaml.Unmarshal(armValYaml, &values); err != nil {
-		return nil, errors.Wrapf(err,
-			"failed to decode configuration YAMl file on path %s",
-			path,
-		)
+		return nil, fmt.Errorf("failed to decode configuration YAMl file on path %s: %w", path, err)
 	}
 
 	return values, nil

@@ -32,7 +32,7 @@ Examples:
 `,
 	Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
-			return errors.Errorf(
+			return fmt.Errorf(
 				"%q requires exactly 1 argument: [artifacts path]", cmd.CommandPath(),
 			)
 		}

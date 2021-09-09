@@ -1,6 +1,7 @@
 package install
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
@@ -139,7 +140,7 @@ func deployChannel(cmd *cobra.Command, _ []string) error {
 				cmd.Println(viper.GetString("cli.info_emoji"),
 					fmt.Sprintf("Channel '%s' already created, fetched its genesis block", channel),
 				)
-			} else if errors.Cause(err) != terminal.ErrRemoteCmdFailed {
+			} else if errors.Is(err, terminal.ErrRemoteCmdFailed) {
 				return fmt.Errorf("Failed to execute command on '%s' pod: %w", cliPodName, err)
 			}
 		}
@@ -151,7 +152,7 @@ func deployChannel(cmd *cobra.Command, _ []string) error {
 			if err = terminal.DecorateWithInteractiveLog(func() error {
 				if _, stderr, err = kube.ExecShellInPod(cmd.Context(), cliPodName, shared.Namespace, createCmd); err != nil {
 					if errors.Is(err, terminal.ErrRemoteCmdFailed){
-						return fmt.Errorf("Failed to create channel")
+						return fmt.Errorf("failed to create channel")
 					}
 
 					return fmt.Errorf("Failed to execute command on '%s' pod: %w", cliPodName, err)
