@@ -8,48 +8,51 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+type RemoteOperator struct {
+	*ssh.Client
+	*argsStub
 
-var (
-	client    *ssh.Client
-	closerFns []context.CancelFunc
-)
+}
 
-// Init performs initialization of the SSH package.
-func Init(options ...Option) error {
-	var (
-		args = &argsStub{
+// New creates new RemoteOperator instance.
+func New(options ...Option) (*RemoteOperator, error) {
+	var op = &RemoteOperator{
+		argsStub: &argsStub{
 			host: "127.0.0.1", port: 22,
 			ClientConfig: ssh.ClientConfig{
-				User: os.Getenv("USER"),
+				User:            os.Getenv("USER"),
 				HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 			},
-		}
-	)
+		},
+	}
+
 
 	defaultMethod, err := sshAgentAuthMethod()
 	if err != nil {
-		return fmt.Errorf("failed to init default SSH auth method: %w", err)
+		return nil, fmt.Errorf("failed to init default SSH auth method: %w", err)
 	}
 
-	args.Auth = append(args.Auth, defaultMethod)
+	op.Auth = append(op.Auth, defaultMethod)
 
 	for i := range options {
-		options[i](args)
+		options[i](op.argsStub)
 	}
 
-	if client, err = ssh.Dial("tcp",
-		fmt.Sprintf("%s:%d", args.host, args.port),
-		&args.ClientConfig,
+	if op.Client, err = ssh.Dial("tcp",
+		fmt.Sprintf("%s:%d", op.argsStub.host, op.argsStub.port),
+		&op.argsStub.ClientConfig,
 	); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return op, nil
 }
 
-// Close closes SSH auth agents and other allocated resources.
-func Close() {
-	for i := range closerFns {
-		closerFns[i]()
+// Close closes SSH connection and other allocated resources.
+func (o *RemoteOperator) Close() er {
+	for i := range o.closers {
+		o.closers[i]()
 	}
+
+	return  o.Client.Close()
 }

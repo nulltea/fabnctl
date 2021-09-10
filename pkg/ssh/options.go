@@ -14,8 +14,9 @@ type (
 
 	argsStub struct {
 		ssh.ClientConfig
-		host string
-		port int
+		host    string
+		port    int
+		closers []context.CancelFunc
 	}
 )
 
@@ -65,7 +66,7 @@ func WithPublicKeyPath(path string) Option {
 			term.Logger.Fatal(err)
 		}
 
-		closerFns = append(closerFns, closeFunc)
+		stub.closers = append(stub.closers, closeFunc)
 		stub.Auth = append(stub.Auth, am)
 	}
 }

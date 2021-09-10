@@ -18,7 +18,7 @@ import (
 // Transfer sends files from given local `path` to remote `target` path over SFTP protocol.
 //
 // Options allow streaming command output to standard OS output streams or custom ones.
-func Transfer(path string, remoteDir string, options ...TransferOption) error {
+func (o *RemoteOperator) Transfer(path string, remoteDir string, options ...TransferOption) error {
 	var (
 		args = &transferArgsStub{
 			ctx: context.Background(),
@@ -36,7 +36,7 @@ func Transfer(path string, remoteDir string, options ...TransferOption) error {
 
 	var ch = make(chan string, args.concurrency)
 
-	sftpClient, err := sftp.NewClient(client)
+	sftpClient, err := sftp.NewClient(o.Client)
 	if err != nil {
 		return fmt.Errorf("failed create SFTP client: %w", err)
 	}

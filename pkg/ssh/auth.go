@@ -36,9 +36,9 @@ func publicKeyAuthMethod(path string) (ssh.AuthMethod, context.CancelFunc, error
 			return nil, noopCloseFunc, fmt.Errorf("unable to parse private key: %s", err.Error())
 		}
 
-		agent, close := sshAgent(path)
-		if agent != nil {
-			return agent, close, nil
+		a, close := sshAgent(path)
+		if a != nil {
+			return a, close, nil
 		}
 
 		defer close()

@@ -12,7 +12,7 @@ import (
 // Execute performs remote execution of the given `command`.
 //
 // Options allow streaming command output to standard OS output streams or custom ones.
-func Execute(command string, options ...ExecuteOption) ([]byte, []byte, error) {
+func (o *RemoteOperator) Execute(command string, options ...ExecuteOption) ([]byte, []byte, error) {
 	var args = &execArgsStub{
 		stdout: os.Stdout,
 		stderr: os.Stderr,
@@ -22,7 +22,7 @@ func Execute(command string, options ...ExecuteOption) ([]byte, []byte, error) {
 		options[i](args)
 	}
 
-	session, err := client.NewSession()
+	session, err := o.NewSession()
 	if err != nil {
 		return nil, nil, err
 	}
