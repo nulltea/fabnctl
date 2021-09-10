@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/timoth-y/fabnctl/pkg/terminal"
+	"github.com/timoth-y/fabnctl/pkg/term"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -41,7 +41,7 @@ func ExecCommandInContainer(
 
 	err := execute(ctx, "POST", req.URL(), Config, nil, &stdout, &stderr)
 	if err != nil {
-		if stdErr := terminal.ErrFromStderr(stderr); stdErr != nil {
+		if stdErr := term.ErrFromStderr(stderr); stdErr != nil {
 			err = stdErr
 		}
 	}

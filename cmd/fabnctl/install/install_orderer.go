@@ -12,7 +12,7 @@ import (
 	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
 	"github.com/timoth-y/fabnctl/pkg/helm"
 	"github.com/timoth-y/fabnctl/pkg/kube"
-	"github.com/timoth-y/fabnctl/pkg/terminal"
+	"github.com/timoth-y/fabnctl/pkg/term"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
@@ -149,7 +149,7 @@ func installOrderer(cmd *cobra.Command, _ []string) error {
 	ctx, cancel := context.WithTimeout(cmd.Context(), viper.GetDuration("helm.install_timeout"))
 	defer cancel()
 
-	if err = terminal.DecorateWithInteractiveLog(func() error {
+	if err = term.DecorateWithInteractiveLog(func() error {
 		if err = helm.Client.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
 			return fmt.Errorf("failed to install orderer helm chart: %w", err)
 		}

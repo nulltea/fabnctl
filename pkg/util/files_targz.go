@@ -7,7 +7,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/timoth-y/fabnctl/pkg/terminal"
+	"github.com/timoth-y/fabnctl/pkg/term"
 )
 
 // WriteBytesToTarGzip puts bytes from `reader` into the `targetPath` file in tar.gz archive,
@@ -16,7 +16,7 @@ func WriteBytesToTarGzip(targetPath string, reader SizedReader, writer io.Writer
 	gzipWriter := gzip.NewWriter(writer)
 	defer func() {
 		if err := gzipWriter.Close(); err != nil {
-			terminal.Logger.Error(
+			term.Logger.Error(
 				fmt.Errorf("failed to close gzip writer containing '%s' file: %w", targetPath, err),
 			)
 		}
@@ -32,7 +32,7 @@ func WriteBytesToTar(targetPath string, reader SizedReader, writer io.Writer) er
 		tarWriter = tar.NewWriter(writer)
 		defer func() {
 			if err := tarWriter.Close(); err != nil {
-				terminal.Logger.Error(
+				term.Logger.Error(
 					fmt.Errorf("failed to close tar writer containing '%s' file: %w", targetPath, err),
 				)
 			}

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mittwald/go-helm-client"
-	"github.com/timoth-y/fabnctl/pkg/terminal"
+	"github.com/timoth-y/fabnctl/pkg/term"
 )
 
 // Client defines shared client interface for Client cli.
@@ -17,7 +17,7 @@ func init() {
 			Debug:   true,
 			Linting: true,
 			DebugLog: func(format string, v ...interface{}) {
-				terminal.ILogger.Text("Client: " + fmt.Sprintf(format, v...))
+				term.ILogger.Text("Client: " + fmt.Sprintf(format, v...))
 			},
 		}
 	)

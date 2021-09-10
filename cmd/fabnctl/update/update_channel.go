@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
 	"github.com/timoth-y/fabnctl/pkg/kube"
-	"github.com/timoth-y/fabnctl/pkg/terminal"
+	"github.com/timoth-y/fabnctl/pkg/term"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -80,9 +80,9 @@ func updateChannel(cmd *cobra.Command, _ []string) error {
 
 		// Update channel with org's anchor peers:
 		var stderr io.Reader
-		if err = terminal.DecorateWithInteractiveLog(func() error {
+		if err = term.DecorateWithInteractiveLog(func() error {
 			if _, stderr, err = kube.ExecShellInPod(cmd.Context(), cliPodName, shared.Namespace, updateCmd); err != nil {
-				if errors.Is(err, terminal.ErrRemoteCmdFailed){
+				if errors.Is(err, term.ErrRemoteCmdFailed){
 					return fmt.Errorf("Failed to update channel: %w", err)
 				}
 
@@ -92,7 +92,7 @@ func updateChannel(cmd *cobra.Command, _ []string) error {
 		}, "Updating channel",
 			fmt.Sprintf("Channel '%s' successfully updated", channel),
 		); err != nil {
-			return terminal.WrapWithStderrViewPrompt(err, stderr, false)
+			return term.WrapWithStderrViewPrompt(err, stderr, false)
 		}
 
 		cmd.Println()

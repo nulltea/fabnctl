@@ -8,7 +8,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/timoth-y/fabnctl/pkg/terminal"
+	"github.com/timoth-y/fabnctl/pkg/term"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	sshTerminal "golang.org/x/crypto/ssh/terminal"
@@ -63,7 +63,7 @@ func sshAgent(publicKeyPath string) (ssh.AuthMethod, context.CancelFunc) {
 		wrapWithErrLogFunc = func(f func() error) context.CancelFunc {
 			return func() {
 				if err := f(); err != nil {
-					terminal.Logger.Errorf("error during closing SSH agent: %v", err)
+					term.Logger.Errorf("error during closing SSH agent: %v", err)
 				}
 			}
 		}

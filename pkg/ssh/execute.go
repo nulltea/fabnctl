@@ -6,7 +6,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/timoth-y/fabnctl/pkg/terminal"
+	"github.com/timoth-y/fabnctl/pkg/term"
 )
 
 // Execute performs remote execution of the given `command`.
@@ -29,7 +29,7 @@ func Execute(command string, options ...ExecuteOption) ([]byte, []byte, error) {
 
 	defer func() {
 		if err = session.Close(); err != nil {
-			terminal.Logger.Errorf("failed to close SSH session")
+			term.Logger.Errorf("failed to close SSH session")
 		}
 	}()
 

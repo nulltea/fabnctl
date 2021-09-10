@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/timoth-y/fabnctl/pkg/terminal"
+	"github.com/timoth-y/fabnctl/pkg/term"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -62,7 +62,7 @@ func WithPublicKeyPath(path string) Option {
 	return func(stub *argsStub) {
 		am, closeFunc, err := publicKeyAuthMethod(path)
 		if err != nil {
-			terminal.Logger.Fatal(err)
+			term.Logger.Fatal(err)
 		}
 
 		closerFns = append(closerFns, closeFunc)

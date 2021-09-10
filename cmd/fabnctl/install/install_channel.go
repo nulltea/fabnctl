@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
 	"github.com/timoth-y/fabnctl/pkg/kube"
-	"github.com/timoth-y/fabnctl/pkg/terminal"
+	"github.com/timoth-y/fabnctl/pkg/term"
 )
 
 // channelCmd represents the channel command
@@ -140,7 +140,7 @@ func installChannel(cmd *cobra.Command, _ []string) error {
 				cmd.Println(viper.GetString("cli.info_emoji"),
 					fmt.Sprintf("Channel '%s' already created, fetched its genesis block", channel),
 				)
-			} else if errors.Is(err, terminal.ErrRemoteCmdFailed) {
+			} else if errors.Is(err, term.ErrRemoteCmdFailed) {
 				return fmt.Errorf("Failed to execute command on '%s' pod: %w", cliPodName, err)
 			}
 		}
@@ -149,9 +149,9 @@ func installChannel(cmd *cobra.Command, _ []string) error {
 
 		// Creating channel in case it wasn't yet:
 		if !channelExists {
-			if err = terminal.DecorateWithInteractiveLog(func() error {
+			if err = term.DecorateWithInteractiveLog(func() error {
 				if _, stderr, err = kube.ExecShellInPod(cmd.Context(), cliPodName, shared.Namespace, createCmd); err != nil {
-					if errors.Is(err, terminal.ErrRemoteCmdFailed){
+					if errors.Is(err, term.ErrRemoteCmdFailed){
 						return fmt.Errorf("failed to create channel")
 					}
 
@@ -161,14 +161,14 @@ func installChannel(cmd *cobra.Command, _ []string) error {
 			}, "Creating channel",
 				fmt.Sprintf("Channel '%s' successfully created", channel),
 			); err != nil {
-				return terminal.WrapWithStderrViewPrompt(err, stderr, false)
+				return term.WrapWithStderrViewPrompt(err, stderr, false)
 			}
 		}
 
 		// Joining peer to channel:
-		if err = terminal.DecorateWithInteractiveLog(func() error {
+		if err = term.DecorateWithInteractiveLog(func() error {
 			if _, stderr, err = kube.ExecShellInPod(cmd.Context(), cliPodName, shared.Namespace, joinCmd); err != nil {
-				if errors.Is(err, terminal.ErrRemoteCmdFailed){
+				if errors.Is(err, term.ErrRemoteCmdFailed){
 					return fmt.Errorf("Failed to join channel: %w", err)
 				}
 
@@ -178,7 +178,7 @@ func installChannel(cmd *cobra.Command, _ []string) error {
 		}, fmt.Sprintf("Joinging '%s' organization to '%s' channel", org, channel),
 			fmt.Sprintf("Organization '%s' successfully joined '%s' channel", org, channel),
 		); err != nil {
-			return terminal.WrapWithStderrViewPrompt(err, stderr, false)
+			return term.WrapWithStderrViewPrompt(err, stderr, false)
 		}
 
 		cmd.Println()

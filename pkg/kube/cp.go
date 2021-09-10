@@ -12,7 +12,7 @@ import (
 	"strings"
 	_ "unsafe"
 
-	"github.com/timoth-y/fabnctl/pkg/terminal"
+	"github.com/timoth-y/fabnctl/pkg/term"
 	"github.com/timoth-y/fabnctl/pkg/util"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -63,7 +63,7 @@ func CopyToPod(
 	go func() {
 		defer pipeWriter.Close()
 		if err = util.WriteBytesToTar(destPath, buffer, pipeWriter); err != nil {
-			terminal.Logger.Error(
+			term.Logger.Error(
 				fmt.Errorf("failed to write '%s' into pod writer: %w", destPath, err),
 			)
 		}
@@ -71,7 +71,7 @@ func CopyToPod(
 
 	err = execute(ctx, "POST", req.URL(), Config, pipeReader, &stdout, &stderr)
 	if err != nil {
-		if stdErr := terminal.ErrFromStderr(stderr); stdErr != nil {
+		if stdErr := term.ErrFromStderr(stderr); stdErr != nil {
 			err = stdErr
 		}
 
@@ -116,7 +116,7 @@ func copyFromPod(
 	go func() {
 		defer writer.Close()
 		if err = execute(ctx, "POST", req.URL(), Config, nil, writer, &stderr); err != nil {
-			if stdErr := terminal.ErrFromStderr(stderr); stdErr != nil {
+			if stdErr := term.ErrFromStderr(stderr); stdErr != nil {
 				err = stdErr
 			}
 		}

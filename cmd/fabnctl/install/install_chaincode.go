@@ -37,7 +37,7 @@ import (
 	"github.com/timoth-y/fabnctl/pkg/kube"
 	"github.com/timoth-y/fabnctl/pkg/model"
 	"github.com/timoth-y/fabnctl/pkg/ssh"
-	"github.com/timoth-y/fabnctl/pkg/terminal"
+	"github.com/timoth-y/fabnctl/pkg/term"
 	"github.com/timoth-y/fabnctl/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
@@ -98,6 +98,7 @@ If nothing passed docker auth config would be searched for credentials by given 
 	chaincodeCmd.Flags().String("host", kube.Config.Host, "Remote host for SSH connection (default: get from .kube config)")
 	chaincodeCmd.Flags().Int("port", 22, "Remote port for SSH connection")
 	chaincodeCmd.Flags().StringP("user", "u", os.Getenv("USER"), "User from remote host for SSH connection")
+	chaincodeCmd.Flags().StringSliceP("skip", "s", nil, "File patterns to skip during transfer")
 	chaincodeCmd.Flags().Bool("rebuild", true, "Require chaincode image rebuild")
 	chaincodeCmd.Flags().Bool("update", true,
 		`In case chaincode which given name was already installed it will be updated, otherwise will be installed as a new one`,
@@ -128,6 +129,7 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 		sshHost      string
 		sshPort      int
 		sshUser      string
+		sshSkip      []string
 		update       bool
 		version      float64
 		sequence     = 1
@@ -187,6 +189,10 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 		return fmt.Errorf("%w: failed to parse 'user' parameter: %s", shared.ErrInvalidArgs, err)
 	}
 
+	if sshSkip, err = cmd.Flags().GetStringSlice("skip"); err != nil {
+		return fmt.Errorf("%w: failed to parse 'skip' parameter: %s", shared.ErrInvalidArgs, err)
+	}
+
 	if update, err = cmd.Flags().GetBool("update"); err != nil {
 		return fmt.Errorf("%w: failed to parse 'update' parameter: %s", shared.ErrInvalidArgs, err)
 	}
@@ -232,13 +238,14 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 				return err
 			}
 
+
 			if err = ssh.Transfer(srcPathAbs, remotePath,
 				ssh.WithContext(cmd.Context()),
-				ssh.WithConcurrency(1),
+				ssh.WithConcurrency(10),
+				ssh.WithSkip(sshSkip...),
 			); err != nil {
 				return err
 			}
-
 
 			if _, err = os.Stat(filepath.Join(srcPath, "BUILD")); os.IsNotExist(err)  {
 				command = kube.FormCommand(command,
@@ -404,7 +411,7 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 		)
 
 		// Packaging chaincode into tar.gz archive:
-		if err = terminal.DecorateWithInteractiveLog(func() error {
+		if err = term.DecorateWithInteractiveLog(func() error {
 			if err = packageExternalChaincodeInTarGzip(
 				chaincode, peer, org,
 				path.Join(srcPath, "src", chaincode),
@@ -420,7 +427,7 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 		}
 
 		// Copping chaincode package to cli pod:
-		if err = terminal.DecorateWithInteractiveLog(func() error {
+		if err = term.DecorateWithInteractiveLog(func() error {
 			if err = kube.CopyToPod(cmd.Context(), cliPodName, shared.Namespace, &packageBuffer, packageTarGzip); err != nil {
 				return err
 			}
@@ -432,11 +439,11 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 		}
 
 		// Installing chaincode package:
-		if err = terminal.DecorateWithInteractiveLog(func() error {
+		if err = term.DecorateWithInteractiveLog(func() error {
 			if _, stderr, err = kube.ExecCommandInPod(cmd.Context(), cliPodName, shared.Namespace,
 				"peer", "lifecycle", "chaincode", "install", packageTarGzip,
 			); err != nil {
-				if errors.Is(err, terminal.ErrRemoteCmdFailed) {
+				if errors.Is(err, term.ErrRemoteCmdFailed) {
 					return fmt.Errorf("Failed to install chaincode package: %w", err)
 				}
 
@@ -445,7 +452,7 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 
 			return nil
 		}, "Installing chaincode package", "Chaincode package has been installed"); err != nil {
-			return terminal.WrapWithStderrViewPrompt(err, stderr, false)
+			return term.WrapWithStderrViewPrompt(err, stderr, false)
 		}
 
 		packageID = parseInstalledPackageID(stderr)
@@ -482,7 +489,7 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 		// Installing orderer helm chart:
 		ctx, cancel := context.WithTimeout(cmd.Context(), viper.GetDuration("helm.install_timeout"))
 
-		if err = terminal.DecorateWithInteractiveLog(func() error {
+		if err = term.DecorateWithInteractiveLog(func() error {
 			defer cancel()
 			if err = helm.Client.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
 				return fmt.Errorf("failed to install chaincode helm chart: %w", err)
@@ -500,8 +507,8 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 			cliPodName, shared.Namespace,
 			checkCommitReadinessCmd,
 		); err != nil {
-			if errors.Is(err, terminal.ErrRemoteCmdFailed) {
-				return terminal.WrapWithStderrViewPrompt(
+			if errors.Is(err, term.ErrRemoteCmdFailed) {
+				return term.WrapWithStderrViewPrompt(
 					fmt.Errorf("Failed to check chaincode approval by '%s' organization: %w", org, err),
 					stderr, true,
 				)
@@ -524,13 +531,13 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 
 		// Approving chaincode if needed:
 		if !checkChaincodeApprovalByOrg(stdout, org) {
-			if err = terminal.DecorateWithInteractiveLog(func() error {
+			if err = term.DecorateWithInteractiveLog(func() error {
 				if _, stderr, err = kube.ExecShellInPod(
 					cmd.Context(),
 					cliPodName, shared.Namespace,
 					approveCmd,
 				); err != nil {
-					if errors.Is(err, terminal.ErrRemoteCmdFailed) {
+					if errors.Is(err, term.ErrRemoteCmdFailed) {
 						return fmt.Errorf("Failed to approve chaincode for '%s' organization: %w", org, err)
 					}
 
@@ -541,7 +548,7 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 			}, "Approving chaincode",
 				fmt.Sprintf("Chaincode has been approved for '%s' organization", org),
 			); err != nil {
-				return terminal.WrapWithStderrViewPrompt(err, stderr, false)
+				return term.WrapWithStderrViewPrompt(err, stderr, false)
 			}
 		} else {
 			cmd.Printf(
@@ -562,8 +569,8 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 		availableCliPod, shared.Namespace,
 		checkCommitReadinessCmd,
 	); err != nil {
-		if errors.Is(err, terminal.ErrRemoteCmdFailed) {
-			return terminal.WrapWithStderrViewPrompt(
+		if errors.Is(err, term.ErrRemoteCmdFailed) {
+			return term.WrapWithStderrViewPrompt(
 				fmt.Errorf("Failed to check chaincode commit readiness: %w", err),
 				stderr, true,
 			)
@@ -617,13 +624,13 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 	cmd.Printf("\n")
 
 	var stderr io.Reader
-	if err = terminal.DecorateWithInteractiveLog(func() error {
+	if err = term.DecorateWithInteractiveLog(func() error {
 		if _, stderr, err = kube.ExecShellInPod(
 			cmd.Context(),
 			availableCliPod, shared.Namespace,
 			commitCmd,
 		); err != nil {
-			if errors.Is(err, terminal.ErrRemoteCmdFailed) {
+			if errors.Is(err, term.ErrRemoteCmdFailed) {
 				return errors.Wrapf(err,
 					"Failed to commit chaincode",
 				)
@@ -636,7 +643,7 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 	}, "Committing chaincode on organization peers",
 		"Chaincode has been committed on all organization peers",
 	); err != nil {
-		return terminal.WrapWithStderrViewPrompt(err, stderr, false)
+		return term.WrapWithStderrViewPrompt(err, stderr, false)
 	}
 
 	cmd.Printf("\n🎉 Chaincode '%s' v%.1f successfully deployed!\n", chaincode, version)
@@ -668,13 +675,13 @@ func packageExternalChaincodeInTarGzip(chaincode, peer, org, sourcePath string, 
 
 	defer func() {
 		if err := packageGzip.Close(); err != nil {
-			terminal.Logger.Error(errors.Wrapf(err, "failed to close package gzip writer"))
+			term.Logger.Error(errors.Wrapf(err, "failed to close package gzip writer"))
 		}
 	}()
 
 	defer func() {
 		if err := codeTar.Close(); err != nil {
-			terminal.Logger.Error(errors.Wrapf(err, "failed to close code tar writer"))
+			term.Logger.Error(errors.Wrapf(err, "failed to close code tar writer"))
 		}
 	}()
 
@@ -702,11 +709,11 @@ func packageExternalChaincodeInTarGzip(chaincode, peer, org, sourcePath string, 
 	}
 
 	if err := codeTar.Close(); err != nil {
-		terminal.Logger.Error(errors.Wrapf(err, "failed to close code tar writer"))
+		term.Logger.Error(errors.Wrapf(err, "failed to close code tar writer"))
 	}
 
 	if err := codeGzip.Close(); err != nil {
-		terminal.Logger.Error(errors.Wrapf(err, "failed to close code gzip writer"))
+		term.Logger.Error(errors.Wrapf(err, "failed to close code gzip writer"))
 	}
 
 	if err := util.WriteBytesToTar("code.tar.gz", &codeBuffer, packageTar); err != nil {
@@ -778,7 +785,7 @@ func determineDockerCredentials(registry *string, regAuth *string) error {
 
 func parseInstalledPackageID(reader io.Reader) string {
 	res := regexp.MustCompile("Chaincode code package identifier:(.+?)$").
-		FindStringSubmatch(terminal.GetLastLine(reader))
+		FindStringSubmatch(term.GetLastLine(reader))
 	if len(res) == 2 {
 		return strings.TrimSpace(res[1])
 	}
@@ -835,8 +842,8 @@ func checkChaincodeCommitStatus(ctx context.Context, chaincode, channel string) 
 	)
 
 	if err != nil {
-		if errors.Is(err, terminal.ErrRemoteCmdFailed) {
-			return false, 0, 0, terminal.WrapWithStderrViewPrompt(
+		if errors.Is(err, term.ErrRemoteCmdFailed) {
+			return false, 0, 0, term.WrapWithStderrViewPrompt(
 				fmt.Errorf("Failed to check сommit status for '%s' chaincode: %w", chaincode, err),
 				stderr, true,
 			)

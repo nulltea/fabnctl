@@ -3,18 +3,22 @@ package ssh
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/kr/fs"
+	"github.com/morikuni/aec"
 	"github.com/pkg/sftp"
 )
 
 // Transfer sends files from given local `path` to remote `target` path over SFTP protocol.
 //
 // Options allow streaming command output to standard OS output streams or custom ones.
-func Transfer(path string, remote string, options ...TransferOption) error {
+func Transfer(path string, remoteDir string, options ...TransferOption) error {
 	var (
 		args = &transferArgsStub{
 			ctx: context.Background(),
@@ -23,6 +27,7 @@ func Transfer(path string, remote string, options ...TransferOption) error {
 			concurrency: 1,
 			skip: []string{".git/**/*"},
 		}
+		wg sync.WaitGroup
 	)
 
 	for i := range options {
@@ -40,8 +45,8 @@ func Transfer(path string, remote string, options ...TransferOption) error {
 		_ = sftpClient.Close()
 	}()
 
-	if err = sftpClient.MkdirAll(remote); err != nil {
-		return fmt.Errorf("failed to make directory on path %s: %w", remote, err)
+	if err = sftpClient.MkdirAll(remoteDir); err != nil {
+		return fmt.Errorf("failed to make directory on path %s: %w", remoteDir, err)
 	}
 
 	for i := 0; i < args.concurrency; i++ {
@@ -50,10 +55,12 @@ func Transfer(path string, remote string, options ...TransferOption) error {
 				select {
 				case srcPath := <- ch:
 					func (srcPath string) {
+						defer wg.Done()
+
 						pathRel, _ := filepath.Rel(path, srcPath)
 						src, err := os.Open(srcPath)
 						if err != nil {
-							_, _ = fmt.Fprintf(args.stderr, "error opening file %s: %v\n", pathRel, err)
+							printTransferError(args.stderr, err, "Error opening file %s", pathRel)
 							return
 						}
 
@@ -61,13 +68,10 @@ func Transfer(path string, remote string, options ...TransferOption) error {
 							_ = src.Close()
 						}()
 
-						remotePath := filepath.Join(remote, pathRel)
+						remotePath := filepath.Join(remoteDir, pathRel)
 						trg, err := sftpClient.Create(remotePath)
 						if err != nil {
-							_, _ = fmt.Fprintf(args.stderr,
-								"error creating remote file %s: %v\n", remotePath, err,
-							)
-
+							printTransferError(args.stderr, err, "Error creating remoteDir file %s", remotePath)
 							return
 						}
 
@@ -76,12 +80,11 @@ func Transfer(path string, remote string, options ...TransferOption) error {
 						}()
 
 						if _, err = trg.ReadFrom(src); err != nil {
-							_, _ = fmt.Fprintf(args.stderr,
-								"error transfering %s file to %s: %v\n", pathRel, remotePath, err,
-							)
+							printTransferError(args.stderr, err, "Error transferring %s file to %s", pathRel, remotePath)
+							return
 						}
 
-						_, _ = fmt.Fprintf(args.stdout, "filed transfered to %s\n", remotePath)
+						printTransferProgress(args.stdout, "File transferred to", remoteDir, pathRel)
 					}(srcPath)
 				case <- args.ctx.Done():
 					return
@@ -96,7 +99,7 @@ WALKER:
 
 		if err = walker.Err(); err != nil {
 			_, _ = fmt.Fprintf(args.stderr,
-				"error walking though path %s: %v\n", walker.Path(), err,
+				"Error walking though path %s: %v\n", walker.Path(), err,
 			)
 
 			continue
@@ -109,18 +112,52 @@ WALKER:
 		}
 
 		if walker.Stat().IsDir() {
-			dirPath := filepath.Join(remote, pathRel)
+			dirPath := filepath.Join(remoteDir, pathRel)
 			if err = sftpClient.MkdirAll(dirPath); err != nil {
-				_, _ = fmt.Fprintf(args.stderr,
-					"failed to make directory on path %s: %v\n", dirPath, err,
-				)
+				printTransferError(args.stderr, err, "Failed to make directory on path %s", dirPath)
 			}
 
 			continue
 		}
 
+		wg.Add(1)
 		ch <- walker.Path()
 	}
 
+	wg.Wait()
+
+	printTransferFinished(args.stdout, path, remoteDir)
+
 	return nil
+}
+
+func printTransferProgress(out io.Writer, message, basePath, relPath string) {
+	if len(basePath) + len(relPath) > 100 {
+		var (
+			paths = strings.Split(relPath, "/")
+		)
+
+		if len(paths) > 2 {
+			relPath = filepath.Join(paths[0], "**", paths[len(paths) - 1])
+		} else {
+			relPath = fmt.Sprintf("%s...", relPath[0:5])
+		}
+	}
+
+	_, _ = fmt.Fprint(out, aec.EraseLine(aec.EraseModes.Tail),
+		fmt.Sprintf("%s %s", message, filepath.Join(basePath, relPath)),
+		aec.Up(1), "\n",
+	)
+}
+
+func printTransferError(out io.Writer, err error, format string, a ...interface{}) {
+	_, _ = fmt.Fprint(out, aec.LightRedF,
+		fmt.Sprintf("%s: %v", fmt.Sprintf(format, a...), err), aec.DefaultF, "\n",
+	)
+}
+
+func printTransferFinished(out io.Writer, from, to string) {
+	_, _ = fmt.Fprint(out, aec.EraseLine(aec.EraseModes.Tail),
+		fmt.Sprintf("Trasfer of %s to %s complete \n", from, to),
+	)
 }
