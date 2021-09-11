@@ -1,23 +1,22 @@
 package ssh
 
 import (
-	"context"
 	"fmt"
 	"os"
 
 	"golang.org/x/crypto/ssh"
+	"k8s.io/kubectl/pkg/cmd/util"
 )
 
 type RemoteOperator struct {
 	*ssh.Client
-	*argsStub
-
+	*clientArgs
 }
 
 // New creates new RemoteOperator instance.
 func New(options ...Option) (*RemoteOperator, error) {
 	var op = &RemoteOperator{
-		argsStub: &argsStub{
+		clientArgs: &clientArgs{
 			host: "127.0.0.1", port: 22,
 			ClientConfig: ssh.ClientConfig{
 				User:            os.Getenv("USER"),
@@ -25,7 +24,6 @@ func New(options ...Option) (*RemoteOperator, error) {
 			},
 		},
 	}
-
 
 	defaultMethod, err := sshAgentAuthMethod()
 	if err != nil {
@@ -35,12 +33,16 @@ func New(options ...Option) (*RemoteOperator, error) {
 	op.Auth = append(op.Auth, defaultMethod)
 
 	for i := range options {
-		options[i](op.argsStub)
+		options[i](op.clientArgs)
+	}
+
+	if len(op.initErrors) > 0 {
+		return nil, fmt.Errorf(util.MultipleErrors("invalid args", op.clientArgs.initErrors))
 	}
 
 	if op.Client, err = ssh.Dial("tcp",
-		fmt.Sprintf("%s:%d", op.argsStub.host, op.argsStub.port),
-		&op.argsStub.ClientConfig,
+		fmt.Sprintf("%s:%d", op.clientArgs.host, op.clientArgs.port),
+		&op.clientArgs.ClientConfig,
 	); err != nil {
 		return nil, err
 	}
@@ -49,10 +51,10 @@ func New(options ...Option) (*RemoteOperator, error) {
 }
 
 // Close closes SSH connection and other allocated resources.
-func (o *RemoteOperator) Close() er {
+func (o *RemoteOperator) Close() error {
 	for i := range o.closers {
 		o.closers[i]()
 	}
 
-	return  o.Client.Close()
+	return o.Client.Close()
 }

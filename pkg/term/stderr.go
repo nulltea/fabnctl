@@ -17,7 +17,7 @@ var (
 )
 
 // PromptStderrView asks whether the full log output from stderr should be viewed.
-func PromptStderrView(stderr io.Reader) bool {
+func (l *Logger) PromptStderrView(stderr io.Reader) bool {
 	prompt := promptui.Prompt{
 		Label:    "View full error log?",
 		IsConfirm: true,
@@ -51,7 +51,7 @@ func PromptStderrView(stderr io.Reader) bool {
 
 // WrapWithStderrViewPrompt wraps `err` from remote container with `msg`,
 // and asks whether the full log output from stderr should be viewed.
-func WrapWithStderrViewPrompt(err error, stderr io.Reader, printErrPriorPrompt bool) error {
+func (l *Logger) WrapWithStderrViewPrompt(err error, stderr io.Reader, printErrPriorPrompt bool) error {
 	var buffer bytes.Buffer
 
 	if err == nil || stderr == nil {
@@ -66,7 +66,7 @@ func WrapWithStderrViewPrompt(err error, stderr io.Reader, printErrPriorPrompt b
 		fmt.Println(viper.GetString("cli.error_emoji"), "Error:", err)
 	}
 
-	if PromptStderrView(&buffer) {
+	if l.PromptStderrView(&buffer) {
 		return err
 	}
 

@@ -116,17 +116,17 @@ func WaitForEvent(
 		select {
 		case event := <- watcher.ResultChan():
 			if onEvent(event) {
-				term.ILogger.PersistWith(term.ILogPrefixes[term.ILogOk], " " + msgSuccess())
+				term.ILogger.PersistWith(term.ILogPrefixes[term.LogStreamOk], " " + msgSuccess())
 				term.ILogger.Stop()
 				cancel()
 				break LOOP
 			}
 		case <- timer.C:
-			term.ILogger.Spinner(term.ILogPrefixes[term.ILogError])
+			term.ILogger.Spinner(term.ILogPrefixes[term.LogStreamError])
 			term.ILogger.Text(" " + msgWarning())
 		case <- ctx.Done():
 			if ctx.Err() == context.DeadlineExceeded {
-				term.ILogger.PersistWith(term.ILogPrefixes[term.ILogError], msgTimeout())
+				term.ILogger.PersistWith(term.ILogPrefixes[term.LogStreamError], msgTimeout())
 				term.ILogger.Stop()
 				return false, nil
 			}

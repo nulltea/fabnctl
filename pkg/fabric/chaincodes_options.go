@@ -2,10 +2,12 @@ package fabric
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/docker/buildx/build"
 	"github.com/timoth-y/fabnctl/pkg/docker"
 	"github.com/timoth-y/fabnctl/pkg/ssh"
+	"github.com/timoth-y/fabnctl/pkg/term"
 )
 
 type (
@@ -13,13 +15,18 @@ type (
 	ChaincodeOption func(*chaincodeArgs)
 
 	chaincodeArgs struct {
-		orgpeers         map[string][]string
-		imageName        string
-		arch             string
-		update           bool
-		version          float64
-		sequence         int
-		initErrors       []error
+		orgpeers      map[string][]string
+		imageName     string
+		withSource    bool
+		sourcePath    string
+		sourcePathAbs string
+		arch          string
+		update        bool
+		customVersion bool
+		version       float64
+		sequence      int
+		logger        *term.Logger
+		initErrors    []error
 	}
 )
 
@@ -43,9 +50,25 @@ func WithImage(name string) ChaincodeOption {
 	}
 }
 
+// WithSource ...
+func WithSource(path string) ChaincodeOption {
+	return func(args *chaincodeArgs) {
+		var err error
+		if args.sourcePathAbs, err = filepath.Abs(path); err != nil {
+			args.initErrors = append(args.initErrors,
+				fmt.Errorf("absolute path '%s' of source does not exists: %w", args.sourcePathAbs, err),
+			)
+		}
+
+		args.withSource = true
+		args.sourcePath = path
+	}
+}
+
 // WithVersion ...
 func WithVersion(version float64, sequence int) ChaincodeOption {
 	return func(args *chaincodeArgs) {
+		args.customVersion = true
 		args.version = version
 		args.sequence = sequence
 	}
@@ -58,6 +81,18 @@ func WithArch(arch string) ChaincodeOption {
 	}
 }
 
+// WithLogger can be used to pass custom logger for displaying commands output.
+func WithLogger(logger *term.Logger, options ...term.LoggerOption) ChaincodeOption {
+	return func(args *chaincodeArgs) {
+		if logger != nil {
+			args.logger = logger
+			return
+		}
+
+		args.logger = term.NewLogger(options...)
+	}
+}
+
 type (
 	// BuildOption allows passing additional arguments for building chaincodes.
 	BuildOption func(*buildArgs)
@@ -66,15 +101,15 @@ type (
 		sourcePath     string
 		sourcePathAbs  string
 		useSSH         bool
-		sshOperator *ssh.RemoteOperator
+		sshOperator    *ssh.RemoteOperator
 		useDocker      bool
 		dockerfile     string
 		dockerDriver   []build.DriverInfo
 		dockerPush     bool
 		dockerRegistry string
 		dockerAuth     string
-		ignore      []string
-		initErrors  []error
+		ignore         []string
+		initErrors     []error
 	}
 )
 

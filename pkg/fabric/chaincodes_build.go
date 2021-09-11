@@ -27,7 +27,7 @@ import (
 	"k8s.io/kubectl/pkg/cmd/util"
 )
 
-func (i *ChaincodeInstaller) Build(ctx context.Context, sourcePath string, options ...BuildOption) error {
+func (ci *ChaincodeInstaller) Build(ctx context.Context, sourcePath string, options ...BuildOption) error {
 	var (
 		args = &buildArgs{
 			sourcePath: sourcePath,
@@ -56,15 +56,15 @@ func (i *ChaincodeInstaller) Build(ctx context.Context, sourcePath string, optio
 
 	switch {
 	case args.useSSH:
-		return i.buildSSH(ctx, args)
+		return ci.buildSSH(ctx, args)
 	case args.useDocker:
-		return i.buildSSH(ctx, args)
+		return ci.buildSSH(ctx, args)
 	}
 
 	return nil
 }
 
-func (i *ChaincodeInstaller) buildSSH(ctx context.Context, args *buildArgs) error {
+func (ci *ChaincodeInstaller) buildSSH(ctx context.Context, args *buildArgs) error {
 	var (
 		srcHash    = md5.Sum([]byte(args.sourcePathAbs))
 		remotePath = filepath.Join("/tmp/fabnctl/build", hex.EncodeToString(srcHash[:]))
@@ -81,7 +81,7 @@ func (i *ChaincodeInstaller) buildSSH(ctx context.Context, args *buildArgs) erro
 
 	if _, err := os.Stat(filepath.Join(args.sourcePathAbs, "BUILD")); os.IsNotExist(err)  {
 		buildCmd = kube.FormCommand("docker", "build",
-			"-t", i.imageName,
+			"-t", ci.imageName,
 			"-f", filepath.Join(remotePath, args.dockerfile),
 			"--push",
 			remotePath,
@@ -90,7 +90,7 @@ func (i *ChaincodeInstaller) buildSSH(ctx context.Context, args *buildArgs) erro
 		buildCmd = kube.FormCommand(
 			"cd", remotePath,
 			"&&",
-			"bazel", "run", fmt.Sprintf("//smartcontracts/%s:image", i.chaincodeName),
+			"bazel", "run", fmt.Sprintf("//smartcontracts/%s:image", ci.chaincodeName),
 		)
 	}
 
@@ -103,19 +103,19 @@ func (i *ChaincodeInstaller) buildSSH(ctx context.Context, args *buildArgs) erro
 	return nil
 }
 
-func (i *ChaincodeInstaller) buildDocker(ctx context.Context, args *buildArgs) error {
+func (ci *ChaincodeInstaller) buildDocker(ctx context.Context, args *buildArgs) error {
 	var (
-		platform   = fmt.Sprintf("linux/%s", i.arch)
+		platform   = fmt.Sprintf("linux/%s", ci.arch)
 		printer    = progress.NewPrinter(ctx, os.Stdout, "auto")
 	)
 
 	if _, err := build.Build(ctx, args.dockerDriver, map[string]build.Options{
 		"default": {
 			Platforms: []v1.Platform{{
-				Architecture: i.arch,
+				Architecture: ci.arch,
 				OS:           "linux",
 			}},
-			Tags: []string{i.imageName},
+			Tags: []string{ci.imageName},
 			Inputs: build.Inputs{
 				ContextPath:    args.sourcePathAbs,
 				DockerfilePath: path.Join(args.sourcePathAbs, args.dockerfile),
@@ -127,22 +127,20 @@ func (i *ChaincodeInstaller) buildDocker(ctx context.Context, args *buildArgs) e
 
 	_ = printer.Wait()
 
-	// cmd.Printf("\n%s Successfully built chaincode image and tagged it '%s'\n",
-	// 	viper.GetString("cli.success_emoji"), imageTag,
-	// )
+	ci.logger.Successf("Successfully built chaincode image and tagged it: %s", ci.imageName)
 
 	// Pushing chaincode image to registry
 	if !args.dockerPush {
 		return nil
 	}
 
-	if err := i.determineDockerCredentials(args); err != nil {
+	if err := ci.determineDockerCredentials(args); err != nil {
 		return err
 	}
 
-	// cmd.Printf("\n🚀 Pushing chaincode image to '%s' registry\n\n", registry)
+	ci.logger.Infof("Pushing chaincode image to '%s' registry", args.dockerRegistry)
 
-	resp, err := docker.Client.ImagePush(ctx, i.imageName, types.ImagePushOptions{
+	resp, err := docker.Client.ImagePush(ctx, ci.imageName, types.ImagePushOptions{
 		Platform:     platform,
 		RegistryAuth: args.dockerRegistry,
 		All:          true,
@@ -153,14 +151,12 @@ func (i *ChaincodeInstaller) buildDocker(ctx context.Context, args *buildArgs) e
 
 	_ = jsonmessage.DisplayJSONMessagesToStream(resp, docker.CLI.Out(), nil)
 
-	// cmd.Printf("\n%s Chaincode image '%s' has been pushed to registry\n",
-	// 	viper.GetString("cli.success_emoji"), i.imageName,
-	// )
+	ci.logger.Successf("Chaincode image '%s' has been pushed to registry", ci.imageName)
 
 	return nil
 }
 
-func (i *ChaincodeInstaller) determineDockerCredentials(args *buildArgs) error {
+func (ci *ChaincodeInstaller) determineDockerCredentials(args *buildArgs) error {
 	var (
 		err      error
 		hostname = "https://index.docker.io/v1/"

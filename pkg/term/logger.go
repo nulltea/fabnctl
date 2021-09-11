@@ -1,100 +1,96 @@
 package term
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 
 	"github.com/gernest/wow"
 	"github.com/gernest/wow/spin"
-	"github.com/op/go-logging"
+	"github.com/morikuni/aec"
 	"github.com/spf13/viper"
+	"k8s.io/kubectl/pkg/cmd/util"
 )
 
-var (
-	// Logger is an instance of the shared logger tool.
-	Logger *logging.Logger
-	// ILogger is an instance of the interactive logger.
-	ILogger *wow.Wow
-)
+type Logger struct {
+	*loggerArgs
+	streamer       *wow.Wow
+	streamSpinners map[LogStreamLevel]spin.Spinner
+}
 
-type ILogLevel int
+func NewLogger(options ...LoggerOption) *Logger {
+	var args = &loggerArgs{
+		stdout: os.Stdout,
+		stderr: os.Stderr,
+	}
 
-const (
-	ILogSuccess ILogLevel = iota
-	ILogOk
-	ILogError
-	ILogWarning
-	ILogInfo
-)
+	for i := range options {
+		options[i](args)
+	}
 
-var (
-	ILogPrefixes map[ILogLevel]spin.Spinner
-)
+	return &Logger{
+		loggerArgs: args,
+		streamer: wow.New(args.stderr, spin.Get(spin.Monkey), ""),
+		streamSpinners: map[LogStreamLevel]spin.Spinner{
+			LogStreamSuccess: {Frames: []string{viper.GetString("cli.success_emoji")}},
+			LogStreamOk:      {Frames: []string{viper.GetString("cli.ok_emoji")}},
+			LogStreamError:   {Frames: []string{viper.GetString("cli.error_emoji")}},
+			LogStreamWarning: {Frames: []string{viper.GetString("cli.warning_emoji")}},
+			LogStreamInfo:    {Frames: []string{viper.GetString("cli.info_emoji")}},
+		},
+	}
+}
 
-const (
-	format = "%{color}%{time:2006.01.02 15:04:05} " +
-		"%{id:04x} %{level:.4s}%{color:reset} " +
-		"[%{module}] %{color:bold}%{shortfunc}%{color:reset} -> %{message}"
-)
+func (l *Logger) Success(message string) {
+	_, _ = fmt.Fprintln(l.stdout, aec.GreenF,
+		message, aec.DefaultF,
+	)
+}
+
+func (l *Logger) Successf(format string, a ...interface{}) {
+	l.Success(fmt.Sprintf(format, a...))
+}
+
+func (l *Logger) Info(message string) {
+	_, _ = fmt.Fprintln(l.stdout, message)
+}
+
+func (l *Logger) Infof(format string, a ...interface{}) {
+	l.Info(fmt.Sprintf(format, a...))
+}
+
+func (l *Logger) Ok(message string) {
+	_, _ = fmt.Fprintln(l.stdout, message)
+}
+
+func (l *Logger) Okf(format string, a ...interface{}) {
+	l.Ok(fmt.Sprintf(format, a...))
+}
+
+func (l *Logger) Errorf(format string, a ...interface{}) {
+	_, _ = fmt.Fprintln(l.stderr, aec.LightRedF,
+		fmt.Sprintf(format, a...), aec.DefaultF,
+	)
+}
+
+func (l *Logger) Error(err error, message string) {
+	if err != nil {
+		_, _ = fmt.Fprintln(l.stderr, aec.LightRedF,
+			fmt.Sprintf("%s: %v", message, err), aec.DefaultF,
+		)
+	}
+}
+
+func (l *Logger) MultiError(prefix string, errs ...error) {
+	l.Error(fmt.Errorf(util.MultipleErrors(prefix, errs)), "multiple errors")
+}
+
+func (l *Logger) NewLine() {
+	_, _ = fmt.Fprintln(l.stdout)
+}
+
 
 func init() {
-	var (
-		envLevel      = viper.GetString("logging")
-		chaincodeName = viper.GetString("name")
-	)
-
-	Logger = logging.MustGetLogger(chaincodeName)
-
-	backend := logging.NewBackendFormatter(
-		logging.NewLogBackend(os.Stderr, "", 0),
-		logging.MustStringFormatter(format),
-	)
-
-	level, err := logging.LogLevel(envLevel)
-	if err != nil {
-		level = logging.DEBUG
-	}
-
-	logging.SetBackend(backend)
-	logging.SetLevel(level, chaincodeName)
-
 	log.SetOutput(ioutil.Discard)
-	ILogger = wow.New(os.Stderr, spin.Get(spin.Monkey), "")
-	ILogPrefixes = map[ILogLevel]spin.Spinner{
-		ILogSuccess: {Frames: []string{viper.GetString("cli.success_emoji")}},
-		ILogOk:      {Frames: []string{viper.GetString("cli.ok_emoji")}},
-		ILogError:   {Frames: []string{viper.GetString("cli.error_emoji")}},
-		ILogWarning: {Frames: []string{viper.GetString("cli.warning_emoji")}},
-		ILogInfo:    {Frames: []string{viper.GetString("cli.info_emoji")}},
-	}
-}
-
-// DecorateWithInteractiveLog wraps `fn` call into interactive logging with loading,
-// displaying `start` message on loading, `complete` on successful end,
-// and err return value on failure.
-func DecorateWithInteractiveLog(fn func() error, start, complete string) error {
-	ILogger.Start()
-	defer ILogger.Stop()
-
-	ILogger.Text(start)
-	if err := fn(); err != nil {
-		ILogger.PersistWith(ILogPrefixes[ILogError], " "+err.Error())
-		return err
-	}
-
-	ILogger.PersistWith(ILogPrefixes[ILogSuccess], " "+complete)
-
-	return nil
-}
-
-// DecorateWithInteractiveLogWithPersist wraps `fn` call into interactive logging with loading,
-// displaying `start` message on loading and custom persist on end.
-func DecorateWithInteractiveLogWithPersist(fn func() (level ILogLevel, msg string), start string) {
-	ILogger.Start()
-	defer ILogger.Stop()
-
-	ILogger.Text(start)
-	level, msg := fn()
-	ILogger.PersistWith(ILogPrefixes[level], " "+msg)
 }

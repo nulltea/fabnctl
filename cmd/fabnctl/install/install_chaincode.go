@@ -111,7 +111,6 @@ If nothing passed docker auth config would be searched for credentials by given 
 	_ = chaincodeCmd.MarkFlagRequired("peers")
 	_ = chaincodeCmd.MarkFlagRequired("channel")
 	_ = chaincodeCmd.MarkFlagRequired("chaincode")
-	_ = chaincodeCmd.MarkFlagFilename("dockerfile")
 }
 
 func installChaincode(cmd *cobra.Command, srcPath string) error {
@@ -205,5 +204,5 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 		return fmt.Errorf("%w: failed to parse 'version' parameter: %s", shared.ErrInvalidArgs, err)
 	}
 
-
+	return nil
 }
