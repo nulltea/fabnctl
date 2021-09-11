@@ -45,11 +45,11 @@ func updateChannel(cmd *cobra.Command, _ []string) error {
 
 	// Parse flags
 	if orgs, err = cmd.Flags().GetStringArray("org"); err != nil {
-		return fmt.Errorf("%w: failed to parse required parameter 'org' (organization): %s", shared.ErrInvalidArgs, err)
+		return fmt.Errorf("%w: failed to parse required parameter 'org' (organization): %s", term.ErrInvalidArgs, err)
 	}
 
 	if channel, err = cmd.Flags().GetString("channel"); err != nil {
-		return fmt.Errorf("%w: failed to parse required 'channel' parameter: %s", shared.ErrInvalidArgs, err)
+		return fmt.Errorf("%w: failed to parse required 'channel' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
 	for _, org := range orgs {

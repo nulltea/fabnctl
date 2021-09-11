@@ -3,8 +3,10 @@ package fabric
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/docker/buildx/build"
+	"github.com/spf13/pflag"
 	"github.com/timoth-y/fabnctl/pkg/docker"
 	"github.com/timoth-y/fabnctl/pkg/ssh"
 	"github.com/timoth-y/fabnctl/pkg/term"
@@ -43,10 +45,58 @@ func WithChaincodePeers(org string, peers ...string) ChaincodeOption {
 	}
 }
 
+// WithChaincodePeersFlag ...
+func WithChaincodePeersFlag(flags *pflag.FlagSet, orgsFlag, peersFlag string) ChaincodeOption {
+	return func(args *chaincodeArgs) {
+		var (
+			orgs, peers []string
+			err error
+		)
+
+		if orgs, err = flags.GetStringArray("org"); err != nil {
+			args.initErrors = append(args.initErrors,
+				fmt.Errorf("%w: failed to parse required parameter '%s' (organization): %s",
+					term.ErrInvalidArgs, orgsFlag, err),
+			)
+		}
+
+		if peers, err = flags.GetStringArray("peer"); err != nil {
+			args.initErrors = append(args.initErrors,
+				fmt.Errorf("%w: failed to parse required parameter '%s' (peers): %s",
+					term.ErrInvalidArgs, peersFlag, err),
+			)
+		}
+
+		for i, org := range orgs {
+			if len(peers) < i + 1 {
+				args.initErrors = append(args.initErrors,
+					fmt.Errorf("%w: some passed organizations missing corresponding peer parameter: %s",
+						term.ErrInvalidArgs, org),
+				)
+			}
+			args.orgpeers[org] = strings.Split(peers[i], ",")
+		}
+	}
+}
+
 // WithImage ...
 func WithImage(name string) ChaincodeOption {
 	return func(args *chaincodeArgs) {
 		args.imageName = name
+	}
+}
+
+// WithImageFlag ...
+func WithImageFlag(flags *pflag.FlagSet, name string) ChaincodeOption {
+	return func(args *chaincodeArgs) {
+		var err error
+
+		if args.imageName, err =flags.GetString(name); err != nil {
+			args.initErrors = append(args.initErrors,
+				fmt.Errorf("%w: failed to parse required parameter '%s' (image): %s",
+					term.ErrInvalidArgs, name, err),
+			)
+		}
 	}
 }
 
@@ -65,6 +115,22 @@ func WithSource(path string) ChaincodeOption {
 	}
 }
 
+// WithSourceFlag ...
+func WithSourceFlag(flags *pflag.FlagSet, name string) ChaincodeOption {
+	return func(args *chaincodeArgs) {
+		var err error
+
+		if args.sourcePath, err = flags.GetString(name); err != nil {
+			args.initErrors = append(args.initErrors,
+				fmt.Errorf("%w: failed to parse required parameter '%s' (source): %s",
+					term.ErrInvalidArgs, name, err),
+			)
+		}
+
+		WithSource(args.sourcePath)(args)
+	}
+}
+
 // WithVersion ...
 func WithVersion(version float64, sequence int) ChaincodeOption {
 	return func(args *chaincodeArgs) {
@@ -74,10 +140,47 @@ func WithVersion(version float64, sequence int) ChaincodeOption {
 	}
 }
 
+// WithVersionFlag ...
+func WithVersionFlag(flags *pflag.FlagSet, versionFlag, sequenceFlag string) ChaincodeOption {
+	return func(args *chaincodeArgs) {
+		var err error
+
+		if args.version, err = flags.GetFloat64(versionFlag); err != nil {
+			args.initErrors = append(args.initErrors,
+				fmt.Errorf("%w: failed to parse required parameter '%s' (version): %s",
+					term.ErrInvalidArgs, versionFlag, err),
+			)
+		}
+
+		if args.sequence, err = flags.GetInt(sequenceFlag); err != nil {
+			args.initErrors = append(args.initErrors,
+				fmt.Errorf("%w: failed to parse required parameter '%s' (sequence): %s",
+					term.ErrInvalidArgs, sequenceFlag, err),
+			)
+		}
+
+		args.customVersion = true
+	}
+}
+
 // WithArch ...
 func WithArch(arch string) ChaincodeOption {
 	return func(args *chaincodeArgs) {
 		args.arch = arch
+	}
+}
+
+// WithArchFlag ...
+func WithArchFlag(flags *pflag.FlagSet, name string) ChaincodeOption {
+	return func(args *chaincodeArgs) {
+		var err error
+
+		if args.arch, err = flags.GetString(name); err != nil {
+			args.initErrors = append(args.initErrors,
+				fmt.Errorf("%w: failed to parse required parameter '%s' (architecture): %s",
+					term.ErrInvalidArgs, name, err),
+			)
+		}
 	}
 }
 
@@ -138,6 +241,22 @@ func WithDockerBuild(dockerfile string) BuildOption {
 	}
 }
 
+// WithDockerBuildFlag ...
+func WithDockerBuildFlag(flags *pflag.FlagSet, name string) BuildOption {
+	return func(args *buildArgs) {
+		var err error
+
+		if args.dockerfile, err = flags.GetString(name); err != nil {
+			args.initErrors = append(args.initErrors,
+				fmt.Errorf("%w: failed to parse required parameter '%s' (dockerfile): %s",
+					term.ErrInvalidArgs, name, err),
+			)
+		}
+
+		WithDockerBuild(args.dockerfile)(args)
+	}
+}
+
 // WithDockerPush ...
 func WithDockerPush(registry, auth string) BuildOption {
 	return func(args *buildArgs) {
@@ -147,9 +266,47 @@ func WithDockerPush(registry, auth string) BuildOption {
 	}
 }
 
+// WithDockerPushFlag ...
+func WithDockerPushFlag(flags *pflag.FlagSet, registryFlag, authFlag string) BuildOption {
+	return func(args *buildArgs) {
+		var err error
+
+		if args.dockerRegistry, err = flags.GetString(registryFlag); err != nil {
+			args.initErrors = append(args.initErrors,
+				fmt.Errorf("%w: failed to parse required parameter '%s' (docker registry): %s",
+					term.ErrInvalidArgs, registryFlag, err),
+			)
+		}
+
+		if args.dockerAuth, err = flags.GetString(authFlag); err != nil {
+			args.initErrors = append(args.initErrors,
+				fmt.Errorf("%w: failed to parse required parameter '%s' (docker auth): %s",
+					term.ErrInvalidArgs, authFlag, err),
+			)
+		}
+
+		args.dockerPush = true
+	}
+}
+
 // WithIgnore ...
 func WithIgnore(patterns ...string) BuildOption {
 	return func(args *buildArgs) {
+		args.ignore = append(args.ignore, patterns...)
+	}
+}
+
+// WithIgnoreFlag ...
+func WithIgnoreFlag(flags *pflag.FlagSet, name string) BuildOption {
+	return func(args *buildArgs) {
+		patterns, err := flags.GetStringSlice(name)
+		if err != nil {
+			args.initErrors = append(args.initErrors,
+				fmt.Errorf("%w: failed to parse required parameter '%s': %v",
+					term.ErrInvalidArgs, name, err),
+			)
+		}
+
 		args.ignore = append(args.ignore, patterns...)
 	}
 }

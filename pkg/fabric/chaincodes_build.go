@@ -19,11 +19,10 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/pkg/jsonmessage"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
-	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
 	"github.com/timoth-y/fabnctl/pkg/docker"
 	"github.com/timoth-y/fabnctl/pkg/kube"
 	"github.com/timoth-y/fabnctl/pkg/ssh"
+	"github.com/timoth-y/fabnctl/pkg/term"
 	"k8s.io/kubectl/pkg/cmd/util"
 )
 
@@ -189,10 +188,8 @@ func (ci *ChaincodeInstaller) determineDockerCredentials(args *buildArgs) error 
 
 	identity, ok := dockerCredentials[hostname]
 	if !ok {
-		return errors.Wrapf(
-			shared.ErrInvalidArgs,
-			"credentials for '%s' not found in docker config and missing in args", args.dockerRegistry,
-		)
+		return fmt.Errorf("%w: credentials for '%s' not found in docker config and missing in args",
+			term.ErrInvalidArgs, args.dockerRegistry)
 	}
 
 	if payload, err := json.Marshal(identity); err != nil {

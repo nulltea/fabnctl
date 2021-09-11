@@ -76,31 +76,31 @@ func genConnection(cmd *cobra.Command, artifactsPath string) error {
 
 	// Parsing flags:
 	if configPath, err = cmd.Flags().GetString("config"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'config' parameter", shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse 'config' parameter", term.ErrInvalidArgs)
 	}
 
 	if ownerOrg, err = cmd.Flags().GetString("org"); err != nil {
-		return fmt.Errorf("%w: failed to parse required 'org' parameter", shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse required 'org' parameter", term.ErrInvalidArgs)
 	}
 
 	if channel, err = cmd.Flags().GetString("channel"); err != nil {
-		return fmt.Errorf("%w: failed to parse required 'channel' parameter", shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse required 'channel' parameter", term.ErrInvalidArgs)
 	}
 
 	if name, err = cmd.Flags().GetString("name"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'name' parameter", shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse 'name' parameter", term.ErrInvalidArgs)
 	}
 
 	if desc, err = cmd.Flags().GetString("description"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'description' parameter", shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse 'description' parameter", term.ErrInvalidArgs)
 	}
 
 	if version, err = cmd.Flags().GetFloat64("version"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'version' parameter", shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse 'version' parameter", term.ErrInvalidArgs)
 	}
 
 	if xProperties, err = cmd.Flags().GetStringToString("x-properties"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'version' parameter", shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse 'version' parameter", term.ErrInvalidArgs)
 	}
 
 	if len(name) == 0 {

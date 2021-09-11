@@ -14,6 +14,7 @@ import (
 
 var (
 	ErrRemoteCmdFailed = fmt.Errorf("remote command failed")
+	ErrInvalidArgs = fmt.Errorf("invalid command arguments")
 )
 
 // PromptStderrView asks whether the full log output from stderr should be viewed.

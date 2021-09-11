@@ -41,6 +41,7 @@ type ChaincodeInstaller struct {
 func NewChaincodeInstaller(name, channel string, options ...ChaincodeOption) *ChaincodeInstaller {
 	args := &chaincodeArgs{
 		imageName: fmt.Sprintf("smartcontracts/%s:image", name),
+		orgpeers: make(map[string][]string),
 		version: 1,
 		sequence: 1,
 		update: true,

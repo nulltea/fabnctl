@@ -56,21 +56,21 @@ func installChannel(cmd *cobra.Command, _ []string) error {
 
 	// Parse flags
 	if orgs, err = cmd.Flags().GetStringArray("org"); err != nil {
-		return fmt.Errorf("%w: failed to parse required parameter 'org' (organization): %s", shared.ErrInvalidArgs, err)
+		return fmt.Errorf("%w: failed to parse required parameter 'org' (organization): %s", term.ErrInvalidArgs, err)
 	}
 
 	if peers, err = cmd.Flags().GetStringArray("peer"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'peer' parameter: %s", shared.ErrInvalidArgs, err)
+		return fmt.Errorf("%w: failed to parse 'peer' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
 	if channel, err = cmd.Flags().GetString("channel"); err != nil {
-		return fmt.Errorf("%w: failed to parse required 'channel' parameter: %s", shared.ErrInvalidArgs, err)
+		return fmt.Errorf("%w: failed to parse required 'channel' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
 	// Bind organizations arguments along with peers:
 	for i, org := range orgs {
 		if len(peers) < i + 1 {
-			return fmt.Errorf("%w: some passed organizations missing corresponding peer parameter: %s", org, shared.ErrInvalidArgs)
+			return fmt.Errorf("%w: some passed organizations missing corresponding peer parameter: %s", org, term.ErrInvalidArgs)
 		}
 		orgPeers[org] = peers[i]
 	}

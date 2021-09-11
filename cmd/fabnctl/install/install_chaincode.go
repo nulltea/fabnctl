@@ -1,46 +1,15 @@
 package install
 
 import (
-	"archive/tar"
-	"bufio"
-	"bytes"
-	"compress/gzip"
-	"context"
-	"crypto/md5"
-	"encoding/base64"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"os"
-	"path"
-	"path/filepath"
-	"regexp"
-	"strconv"
 	"strings"
 
-	"github.com/docker/buildx/build"
-	"github.com/docker/buildx/util/progress"
-	"github.com/docker/cli/cli/command"
-	clitypes "github.com/docker/cli/cli/config/types"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/pkg/jsonmessage"
-	helmclient "github.com/mittwald/go-helm-client"
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
-	"github.com/timoth-y/fabnctl/pkg/docker"
-	"github.com/timoth-y/fabnctl/pkg/helm"
+	"github.com/timoth-y/fabnctl/pkg/fabric"
 	"github.com/timoth-y/fabnctl/pkg/kube"
-	"github.com/timoth-y/fabnctl/pkg/model"
-	"github.com/timoth-y/fabnctl/pkg/ssh"
 	"github.com/timoth-y/fabnctl/pkg/term"
-	"github.com/timoth-y/fabnctl/pkg/util"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/yaml"
 )
 
 // chaincodeCmd represents the cc command
@@ -67,9 +36,8 @@ Examples:
 
 	Args: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
-			return errors.Errorf(
-				"%q requires exactly 1 argument: [path] (chaincode source code path)", cmd.CommandPath(),
-			)
+			return fmt.Errorf("%q requires exactly 1 argument: [path] (chaincode source code path)",
+				cmd.CommandPath())
 		}
 		return nil
 	},
@@ -82,7 +50,7 @@ func init() {
 	cmd.AddCommand(chaincodeCmd)
 
 	chaincodeCmd.Flags().StringArrayP("org", "o", nil,
-		"Organization owning chaincode. Can be used multiply time to pass list of organizations (required)")
+		"Organization owning chaincode. Can be used multiple times to pass list of organizations (required)")
 	chaincodeCmd.Flags().StringArrayP("peer", "p", nil,
 		"Peer hostname. Can be used multiply time to pass list of peers by (required)")
 	chaincodeCmd.Flags().StringP("channel", "C", "", "Channel name (required)")
@@ -134,46 +102,53 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 		sequence     = 1
 	)
 
-	// Parse flags
-	if orgs, err = cmd.Flags().GetStringArray("org"); err != nil {
-		return fmt.Errorf("%w: failed to parse required parameter 'org' (organization): %s", shared.ErrInvalidArgs, err)
-	}
-
-	if peers, err = cmd.Flags().GetStringArray("peer"); err != nil {
-		return fmt.Errorf("%w: failed to parse required 'peer' parameter: %s", shared.ErrInvalidArgs, err)
-	}
-
 	if channel, err = cmd.Flags().GetString("channel"); err != nil {
-		return fmt.Errorf("%w: failed to parse required 'channel' parameter: %s", shared.ErrInvalidArgs, err)
+		return fmt.Errorf("%w: failed to parse required 'channel' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
 	if chaincode, err = cmd.Flags().GetString("chaincode"); err != nil {
-		return fmt.Errorf("%w: failed to parse required 'chaincode' parameter: %s", shared.ErrInvalidArgs, err)
+		return fmt.Errorf("%w: failed to parse required 'chaincode' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
+	installer := fabric.NewChaincodeInstaller(chaincode, channel,
+		fabric.WithChaincodePeersFlag(cmd.Flags(), "org", "peer"),
+
+	)
+
+	// Parse flags
+	if orgs, err = cmd.Flags().GetStringArray("org"); err != nil {
+		return fmt.Errorf("%w: failed to parse required parameter 'org' (organization): %s", term.ErrInvalidArgs, err)
+	}
+
+	if peers, err = cmd.Flags().GetStringArray("peer"); err != nil {
+		return fmt.Errorf("%w: failed to parse required 'peer' parameter: %s", term.ErrInvalidArgs, err)
+	}
+
+
+
 	if registry, err = cmd.Flags().GetString("registry"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'registry' parameter: %s", shared.ErrInvalidArgs, err)
+		return fmt.Errorf("%w: failed to parse 'registry' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
 	if regAuth, err = cmd.Flags().GetString("registry-auth"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'registry-auth' parameter: %s", shared.ErrInvalidArgs, err)
+		return fmt.Errorf("%w: failed to parse 'registry-auth' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
 	if buildImage, err = cmd.Flags().GetBool("rebuild"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'rebuild' parameter: %s", shared.ErrInvalidArgs, err)
+		return fmt.Errorf("%w: failed to parse 'rebuild' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
 	if dockerfile, err = cmd.Flags().GetString("dockerfile"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'imageReg' parameter: %s", shared.ErrInvalidArgs, err)
+		return fmt.Errorf("%w: failed to parse 'imageReg' parameter: %s", term.ErrInvalidArgs, err)
 	}
 	dockerfile = strings.ReplaceAll(dockerfile, "{chaincode}", chaincode)
 
 	if buildOverSSH, err = cmd.Flags().GetBool("ssh"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'ssh' parameter: %s", shared.ErrInvalidArgs, err)
+		return fmt.Errorf("%w: failed to parse 'ssh' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
 	if sshHost, err = cmd.Flags().GetString("host"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'host' parameter: %s", shared.ErrInvalidArgs, err)
+		return fmt.Errorf("%w: failed to parse 'host' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
 	if len(sshHost) == 0 {
@@ -181,27 +156,27 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 	}
 
 	if sshPort, err = cmd.Flags().GetInt("port"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'port' parameter: %s", shared.ErrInvalidArgs, err)
+		return fmt.Errorf("%w: failed to parse 'port' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
 	if sshUser, err = cmd.Flags().GetString("user"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'user' parameter: %s", shared.ErrInvalidArgs, err)
+		return fmt.Errorf("%w: failed to parse 'user' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
 	if sshSkip, err = cmd.Flags().GetStringSlice("skip"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'skip' parameter: %s", shared.ErrInvalidArgs, err)
+		return fmt.Errorf("%w: failed to parse 'skip' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
 	if update, err = cmd.Flags().GetBool("update"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'update' parameter: %s", shared.ErrInvalidArgs, err)
+		return fmt.Errorf("%w: failed to parse 'update' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
 	if update, err = cmd.Flags().GetBool("update"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'update' parameter: %s", shared.ErrInvalidArgs, err)
+		return fmt.Errorf("%w: failed to parse 'update' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
 	if version, err = cmd.Flags().GetFloat64("version"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'version' parameter: %s", shared.ErrInvalidArgs, err)
+		return fmt.Errorf("%w: failed to parse 'version' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
 	return nil

@@ -16,12 +16,12 @@ require (
 	github.com/moby/buildkit v0.8.3 // indirect
 	github.com/moby/sys/mount v0.2.0 // indirect
 	github.com/moby/term v0.0.0-20201110203204-bea5bbe245bf // indirect
-	github.com/morikuni/aec v1.0.0 // indirect
-	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7
+	github.com/morikuni/aec v1.0.0
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/pkg/sftp v1.13.3
 	github.com/spf13/cobra v1.1.3
+	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
 	golang.org/x/sys v0.0.0-20210906170528-6f6e22806c34 // indirect

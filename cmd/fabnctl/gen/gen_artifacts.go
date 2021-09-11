@@ -55,7 +55,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 
 	// Parsing flags:
 	if configPath, err = cmd.Flags().GetString("config"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'config' parameter", shared.ErrInvalidArgs)
+		return fmt.Errorf("%w: failed to parse 'config' parameter", term.ErrInvalidArgs)
 	}
 
 	// Preparing additional values for chart installation:
