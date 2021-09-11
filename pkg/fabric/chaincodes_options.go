@@ -53,14 +53,14 @@ func WithChaincodePeersFlag(flags *pflag.FlagSet, orgsFlag, peersFlag string) Ch
 			err error
 		)
 
-		if orgs, err = flags.GetStringArray("org"); err != nil {
+		if orgs, err = flags.GetStringArray(orgsFlag); err != nil {
 			args.initErrors = append(args.initErrors,
 				fmt.Errorf("%w: failed to parse required parameter '%s' (organization): %s",
 					term.ErrInvalidArgs, orgsFlag, err),
 			)
 		}
 
-		if peers, err = flags.GetStringArray("peer"); err != nil {
+		if peers, err = flags.GetStringArray(peersFlag); err != nil {
 			args.initErrors = append(args.initErrors,
 				fmt.Errorf("%w: failed to parse required parameter '%s' (peers): %s",
 					term.ErrInvalidArgs, peersFlag, err),
@@ -132,30 +132,22 @@ func WithSourceFlag(flags *pflag.FlagSet, name string) ChaincodeOption {
 }
 
 // WithVersion ...
-func WithVersion(version float64, sequence int) ChaincodeOption {
+func WithVersion(version float64) ChaincodeOption {
 	return func(args *chaincodeArgs) {
 		args.customVersion = true
 		args.version = version
-		args.sequence = sequence
 	}
 }
 
 // WithVersionFlag ...
-func WithVersionFlag(flags *pflag.FlagSet, versionFlag, sequenceFlag string) ChaincodeOption {
+func WithVersionFlag(flags *pflag.FlagSet, name string) ChaincodeOption {
 	return func(args *chaincodeArgs) {
 		var err error
 
-		if args.version, err = flags.GetFloat64(versionFlag); err != nil {
+		if args.version, err = flags.GetFloat64(name); err != nil {
 			args.initErrors = append(args.initErrors,
 				fmt.Errorf("%w: failed to parse required parameter '%s' (version): %s",
-					term.ErrInvalidArgs, versionFlag, err),
-			)
-		}
-
-		if args.sequence, err = flags.GetInt(sequenceFlag); err != nil {
-			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s' (sequence): %s",
-					term.ErrInvalidArgs, sequenceFlag, err),
+					term.ErrInvalidArgs, name, err),
 			)
 		}
 
@@ -241,8 +233,8 @@ func WithDockerBuild(dockerfile string) BuildOption {
 	}
 }
 
-// WithDockerBuildFlag ...
-func WithDockerBuildFlag(flags *pflag.FlagSet, name string) BuildOption {
+// WithDockerfileFlag ...
+func WithDockerfileFlag(flags *pflag.FlagSet, name string) BuildOption {
 	return func(args *buildArgs) {
 		var err error
 

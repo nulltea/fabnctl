@@ -3,12 +3,12 @@ package install
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
 	"github.com/timoth-y/fabnctl/pkg/fabric"
 	"github.com/timoth-y/fabnctl/pkg/kube"
+	"github.com/timoth-y/fabnctl/pkg/ssh"
 	"github.com/timoth-y/fabnctl/pkg/term"
 )
 
@@ -66,7 +66,7 @@ If nothing passed docker auth config would be searched for credentials by given 
 	chaincodeCmd.Flags().String("host", kube.Config.Host, "Remote host for SSH connection (default: get from .kube config)")
 	chaincodeCmd.Flags().Int("port", 22, "Remote port for SSH connection")
 	chaincodeCmd.Flags().StringP("user", "u", os.Getenv("USER"), "User from remote host for SSH connection")
-	chaincodeCmd.Flags().StringSliceP("skip", "s", nil, "File patterns to skip during transfer")
+	chaincodeCmd.Flags().StringSliceP("ignore", "i", nil, "File patterns to skip during transfer")
 	chaincodeCmd.Flags().Bool("rebuild", true, "Require chaincode image rebuild")
 	chaincodeCmd.Flags().Bool("update", true,
 		`In case chaincode which given name was already installed it will be updated, otherwise will be installed as a new one`,
@@ -83,100 +83,55 @@ If nothing passed docker auth config would be searched for credentials by given 
 
 func installChaincode(cmd *cobra.Command, srcPath string) error {
 	var (
-		err          error
-		orgs         []string
-		peers        []string
-		channel      string
-		chaincode    string
-		registry     string
-		regAuth      string
-		dockerfile   string
-		buildImage   bool
-		buildOverSSH bool
-		sshHost      string
-		sshPort      int
-		sshUser      string
-		sshSkip      []string
-		update       bool
-		version      float64
-		sequence     = 1
+		chaincodeName string
+		channel string
+		err error
 	)
 
 	if channel, err = cmd.Flags().GetString("channel"); err != nil {
 		return fmt.Errorf("%w: failed to parse required 'channel' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
-	if chaincode, err = cmd.Flags().GetString("chaincode"); err != nil {
+	if chaincodeName, err = cmd.Flags().GetString("chaincode"); err != nil {
 		return fmt.Errorf("%w: failed to parse required 'chaincode' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
-	installer := fabric.NewChaincodeInstaller(chaincode, channel,
+	installer := fabric.NewChaincodeInstaller(chaincodeName, channel,
 		fabric.WithChaincodePeersFlag(cmd.Flags(), "org", "peer"),
-
+		fabric.WithImageFlag(cmd.Flags(), "image"),
+		fabric.WithSourceFlag(cmd.Flags(), "source"),
+		fabric.WithArchFlag(cmd.Flags(), "arch"),
+		fabric.WithVersionFlag(cmd.Flags(), "version"),
 	)
 
-	// Parse flags
-	if orgs, err = cmd.Flags().GetStringArray("org"); err != nil {
-		return fmt.Errorf("%w: failed to parse required parameter 'org' (organization): %s", term.ErrInvalidArgs, err)
+	if build, _ := cmd.Flags().GetBool("rebuild"); build {
+		var (
+			options = make([]fabric.BuildOption, 0)
+		)
+
+		if useSSH, _ := cmd.Flags().GetBool("ssh"); useSSH {
+			options = append(options,
+				fabric.WithRemoteBuild(nil,
+					ssh.WithHostFlag(cmd.Flags(), "host"),
+					ssh.WithPortFlag(cmd.Flags(), "port"),
+					ssh.WithUserFlag(cmd.Flags(), "user"),
+				),
+				fabric.WithIgnoreFlag(cmd.Flags(), "ignore"))
+		} else {
+
+			options = append(options,
+				fabric.WithDockerfileFlag(cmd.Flags(), "dockerfile"),
+				fabric.WithDockerPushFlag(cmd.Flags(), "registry", "registry-auth"),
+			)
+		}
+
+		if err = installer.Build(cmd.Context(), srcPath, options...); err != nil {
+			return err
+		}
 	}
 
-	if peers, err = cmd.Flags().GetStringArray("peer"); err != nil {
-		return fmt.Errorf("%w: failed to parse required 'peer' parameter: %s", term.ErrInvalidArgs, err)
-	}
-
-
-
-	if registry, err = cmd.Flags().GetString("registry"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'registry' parameter: %s", term.ErrInvalidArgs, err)
-	}
-
-	if regAuth, err = cmd.Flags().GetString("registry-auth"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'registry-auth' parameter: %s", term.ErrInvalidArgs, err)
-	}
-
-	if buildImage, err = cmd.Flags().GetBool("rebuild"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'rebuild' parameter: %s", term.ErrInvalidArgs, err)
-	}
-
-	if dockerfile, err = cmd.Flags().GetString("dockerfile"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'imageReg' parameter: %s", term.ErrInvalidArgs, err)
-	}
-	dockerfile = strings.ReplaceAll(dockerfile, "{chaincode}", chaincode)
-
-	if buildOverSSH, err = cmd.Flags().GetBool("ssh"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'ssh' parameter: %s", term.ErrInvalidArgs, err)
-	}
-
-	if sshHost, err = cmd.Flags().GetString("host"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'host' parameter: %s", term.ErrInvalidArgs, err)
-	}
-
-	if len(sshHost) == 0 {
-		sshHost = kube.Config.Host
-	}
-
-	if sshPort, err = cmd.Flags().GetInt("port"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'port' parameter: %s", term.ErrInvalidArgs, err)
-	}
-
-	if sshUser, err = cmd.Flags().GetString("user"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'user' parameter: %s", term.ErrInvalidArgs, err)
-	}
-
-	if sshSkip, err = cmd.Flags().GetStringSlice("skip"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'skip' parameter: %s", term.ErrInvalidArgs, err)
-	}
-
-	if update, err = cmd.Flags().GetBool("update"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'update' parameter: %s", term.ErrInvalidArgs, err)
-	}
-
-	if update, err = cmd.Flags().GetBool("update"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'update' parameter: %s", term.ErrInvalidArgs, err)
-	}
-
-	if version, err = cmd.Flags().GetFloat64("version"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'version' parameter: %s", term.ErrInvalidArgs, err)
+	if err = installer.Install(cmd.Context()); err != nil {
+		return err
 	}
 
 	return nil
