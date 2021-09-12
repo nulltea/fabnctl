@@ -38,24 +38,34 @@ type ChaincodeInstaller struct {
 }
 
 // NewChaincodeInstaller constructs new ChaincodeInstaller instance.
-func NewChaincodeInstaller(name, channel string, options ...ChaincodeOption) *ChaincodeInstaller {
+func NewChaincodeInstaller(name, channel string, options ...ChaincodeOption) (*ChaincodeInstaller, error) {
 	args := &chaincodeArgs{
 		imageName: fmt.Sprintf("smartcontracts/%s:image", name),
 		orgpeers: make(map[string][]string),
 		version: 1,
 		sequence: 1,
 		update: true,
+		sharedArgs: &sharedArgs{
+			arch: "amd64",
+			kubeNamespace: "network",
+			logger: term.NewLogger(),
+			chartsPath: "./network-config.yaml",
+		},
 	}
 
 	for i := range options {
 		options[i](args)
 	}
 
+	if len(args.initErrors) > 0 {
+		return nil, args.Error()
+	}
+
 	return &ChaincodeInstaller{
 		channel:       channel,
 		chaincodeName: name,
 		chaincodeArgs: args,
-	}
+	}, nil
 }
 
 func (ci *ChaincodeInstaller) Install(ctx context.Context) error {

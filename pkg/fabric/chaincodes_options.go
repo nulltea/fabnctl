@@ -22,13 +22,11 @@ type (
 		withSource    bool
 		sourcePath    string
 		sourcePathAbs string
-		arch          string
 		update        bool
 		customVersion bool
 		version       float64
 		sequence      int
-		logger        *term.Logger
-		initErrors    []error
+		*sharedArgs
 	}
 )
 
@@ -131,6 +129,14 @@ func WithSourceFlag(flags *pflag.FlagSet, name string) ChaincodeOption {
 	}
 }
 
+func WithSharedOptionsForChaincode(options ...SharedOption) ChaincodeOption {
+	return func(args *chaincodeArgs) {
+		for i := range options {
+			options[i](args.sharedArgs)
+		}
+	}
+}
+
 // WithVersion ...
 func WithVersion(version float64) ChaincodeOption {
 	return func(args *chaincodeArgs) {
@@ -152,39 +158,6 @@ func WithVersionFlag(flags *pflag.FlagSet, name string) ChaincodeOption {
 		}
 
 		args.customVersion = true
-	}
-}
-
-// WithArch ...
-func WithArch(arch string) ChaincodeOption {
-	return func(args *chaincodeArgs) {
-		args.arch = arch
-	}
-}
-
-// WithArchFlag ...
-func WithArchFlag(flags *pflag.FlagSet, name string) ChaincodeOption {
-	return func(args *chaincodeArgs) {
-		var err error
-
-		if args.arch, err = flags.GetString(name); err != nil {
-			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s' (architecture): %s",
-					term.ErrInvalidArgs, name, err),
-			)
-		}
-	}
-}
-
-// WithLogger can be used to pass custom logger for displaying commands output.
-func WithLogger(logger *term.Logger, options ...term.LoggerOption) ChaincodeOption {
-	return func(args *chaincodeArgs) {
-		if logger != nil {
-			args.logger = logger
-			return
-		}
-
-		args.logger = term.NewLogger(options...)
 	}
 }
 
@@ -302,6 +275,3 @@ func WithIgnoreFlag(flags *pflag.FlagSet, name string) BuildOption {
 		args.ignore = append(args.ignore, patterns...)
 	}
 }
-
-
-

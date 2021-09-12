@@ -97,14 +97,21 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 		return fmt.Errorf("%w: failed to parse required 'chaincode' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
-	installer := fabric.NewChaincodeInstaller(chaincodeName, channel,
+	installer, err := fabric.NewChaincodeInstaller(chaincodeName, channel,
 		fabric.WithChaincodePeersFlag(cmd.Flags(), "org", "peer"),
 		fabric.WithImageFlag(cmd.Flags(), "image"),
 		fabric.WithSourceFlag(cmd.Flags(), "source"),
-		fabric.WithArchFlag(cmd.Flags(), "arch"),
 		fabric.WithVersionFlag(cmd.Flags(), "version"),
-		fabric.WithLogger(logger),
+		fabric.WithSharedOptionsForChaincode(
+			fabric.WithArchFlag(cmd.Flags(), "arch"),
+			fabric.WithKubeNamespaceFlag(cmd.Flags(), "namespace"),
+			fabric.WithLogger(logger),
+		),
 	)
+
+	if err != nil {
+		return err
+	}
 
 	if build, _ := cmd.Flags().GetBool("rebuild"); build {
 		var (
@@ -118,7 +125,8 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 					ssh.WithPortFlag(cmd.Flags(), "port"),
 					ssh.WithUserFlag(cmd.Flags(), "user"),
 				),
-				fabric.WithIgnoreFlag(cmd.Flags(), "ignore"))
+				fabric.WithIgnoreFlag(cmd.Flags(), "ignore"),
+			)
 		} else {
 			options = append(options,
 				fabric.WithDockerfileFlag(cmd.Flags(), "dockerfile"),
