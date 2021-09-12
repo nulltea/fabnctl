@@ -83,6 +83,7 @@ If nothing passed docker auth config would be searched for credentials by given 
 
 func installChaincode(cmd *cobra.Command, srcPath string) error {
 	var (
+		logger = term.NewLogger()
 		chaincodeName string
 		channel string
 		err error
@@ -102,6 +103,7 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 		fabric.WithSourceFlag(cmd.Flags(), "source"),
 		fabric.WithArchFlag(cmd.Flags(), "arch"),
 		fabric.WithVersionFlag(cmd.Flags(), "version"),
+		fabric.WithLogger(logger),
 	)
 
 	if build, _ := cmd.Flags().GetBool("rebuild"); build {
@@ -118,7 +120,6 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 				),
 				fabric.WithIgnoreFlag(cmd.Flags(), "ignore"))
 		} else {
-
 			options = append(options,
 				fabric.WithDockerfileFlag(cmd.Flags(), "dockerfile"),
 				fabric.WithDockerPushFlag(cmd.Flags(), "registry", "registry-auth"),
