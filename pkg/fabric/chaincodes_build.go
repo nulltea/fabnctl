@@ -57,7 +57,7 @@ func (c *Chaincode) Build(ctx context.Context, sourcePath string, options ...Bui
 	case args.useSSH:
 		return c.buildSSH(ctx, args)
 	case args.useDocker:
-		return c.buildSSH(ctx, args)
+		return c.buildDocker(ctx, args)
 	}
 
 	return nil
@@ -93,10 +93,8 @@ func (c *Chaincode) buildSSH(ctx context.Context, args *buildArgs) error {
 		)
 	}
 
-	if _, stderr, err := args.sshOperator.Execute(buildCmd, ssh.WithStream(true)); err != nil {
+	if _, _, err := args.sshOperator.Execute(buildCmd, ssh.WithStream(true)); err != nil {
 		return err
-	} else if len(stderr) != 0 {
-		return fmt.Errorf("failed building chaincode: %s", string(stderr))
 	}
 
 	return nil

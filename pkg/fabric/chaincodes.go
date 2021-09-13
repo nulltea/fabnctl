@@ -18,7 +18,6 @@ import (
 	helmclient "github.com/mittwald/go-helm-client"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
-	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
 	"github.com/timoth-y/fabnctl/pkg/helm"
 	"github.com/timoth-y/fabnctl/pkg/kube"
 	"github.com/timoth-y/fabnctl/pkg/model"
@@ -105,7 +104,7 @@ func (c *Chaincode) Install(ctx context.Context) error {
 			"-v", util.Vtoa(c.version),
 			"--sequence", stoa(c.sequence),
 			"-C", c.channel,
-			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), shared.Domain),
+			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), c.domain),
 			"--tls", "--cafile", "$ORDERER_CA",
 		)
 
@@ -128,7 +127,7 @@ func (c *Chaincode) Install(ctx context.Context) error {
 			if ok, err := kube.WaitForPodReady(
 				ctx,
 				&peerPodName,
-				fmt.Sprintf("fabnctl/app=%s.%s.org", peer, org), shared.Namespace,
+				fmt.Sprintf("fabnctl/app=%s.%s.org", peer, org), c.kubeNamespace,
 			); err != nil {
 				return err
 			} else if !ok {
@@ -140,7 +139,7 @@ func (c *Chaincode) Install(ctx context.Context) error {
 				ctx,
 				&cliPodName,
 				fmt.Sprintf("fabnctl/app=cli.%s.%s.org", peer, org),
-				shared.Namespace,
+				c.kubeNamespace,
 			); err != nil {
 				return err
 			} else if !ok {
@@ -167,7 +166,7 @@ func (c *Chaincode) Install(ctx context.Context) error {
 
 			// Copping chaincode package to cli pod:
 			if err := c.logger.Stream(func() error {
-				if err := kube.CopyToPod(ctx, cliPodName, shared.Namespace, &packageBuffer, packageTarGzip); err != nil {
+				if err := kube.CopyToPod(ctx, cliPodName, c.kubeNamespace, &packageBuffer, packageTarGzip); err != nil {
 					return err
 				}
 				return nil
@@ -180,7 +179,7 @@ func (c *Chaincode) Install(ctx context.Context) error {
 			// Installing chaincode package:
 			if err := c.logger.Stream(func() error {
 				var err error
-				if _, stderr, err = kube.ExecCommandInPod(ctx, cliPodName, shared.Namespace,
+				if _, stderr, err = kube.ExecCommandInPod(ctx, cliPodName, c.kubeNamespace,
 					"peer", "lifecycle", "chaincode", "install", packageTarGzip,
 				); err != nil {
 					if errors.Is(err, term.ErrRemoteCmdFailed) {
@@ -204,8 +203,8 @@ func (c *Chaincode) Install(ctx context.Context) error {
 				values    = make(map[string]interface{})
 				chartSpec = &helmclient.ChartSpec{
 					ReleaseName: fmt.Sprintf("%s-cc-%s-%s", c.chaincodeName, peer, org),
-					ChartName:   path.Join(shared.ChartsPath, "chaincode"),
-					Namespace:   shared.Namespace,
+					ChartName:   path.Join(c.chartsPath, "chaincode"),
+					Namespace:   c.kubeNamespace,
 					Wait:        true,
 				}
 			)
@@ -243,7 +242,7 @@ func (c *Chaincode) Install(ctx context.Context) error {
 
 			// Checking whether the chaincode was already approved by organization:
 			if stdout, stderr, err = kube.ExecShellInPod(ctx,
-				cliPodName, shared.Namespace,
+				cliPodName, c.kubeNamespace,
 				checkCommitReadinessCmd,
 			); err != nil {
 				if errors.Is(err, term.ErrRemoteCmdFailed) {
@@ -264,7 +263,7 @@ func (c *Chaincode) Install(ctx context.Context) error {
 				"--package-id", packageID,
 				"--init-required=false",
 				"-C", c.channel,
-				"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), shared.Domain),
+				"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), c.domain),
 				"--tls", "--cafile", "$ORDERER_CA",
 			)
 
@@ -272,7 +271,7 @@ func (c *Chaincode) Install(ctx context.Context) error {
 			if !checkChaincodeApprovalByOrg(stdout, org) {
 				if err = c.logger.Stream(func() (err error) {
 					if _, stderr, err = kube.ExecShellInPod(ctx,
-						cliPodName, shared.Namespace,
+						cliPodName, c.kubeNamespace,
 						approveCmd,
 					); err != nil {
 						if errors.Is(err, term.ErrRemoteCmdFailed) {
@@ -301,7 +300,7 @@ func (c *Chaincode) Install(ctx context.Context) error {
 	// Verifying commit readiness,
 	// by checking that all organizations on channel approved chaincode:
 	if stdout, stderr, err := kube.ExecShellInPod(ctx,
-		availableCliPod, shared.Namespace,
+		availableCliPod, c.kubeNamespace,
 		checkCommitReadinessCmd,
 	); err != nil {
 		if errors.Is(err, term.ErrRemoteCmdFailed) {
@@ -331,14 +330,14 @@ func (c *Chaincode) Install(ctx context.Context) error {
 		"--sequence", stoa(c.sequence),
 		"--init-required=false",
 		"-C", c.channel,
-		"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), shared.Domain),
+		"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), c.domain),
 		"--tls", "--cafile", "$ORDERER_CA",
 	)
 
 	// Committing chaincode on peers of all given organizations:
 	for org, peer := range orgPeers {
 		var (
-			orgHost              = fmt.Sprintf("%s.org.%s", org, shared.Domain)
+			orgHost              = fmt.Sprintf("%s.org.%s", org, c.domain)
 			peerHost             = fmt.Sprintf("%s.%s", peer, orgHost)
 			cryptoConfigPathBase = "/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto-config"
 			commitCmdEnding      = kube.FormCommand(
@@ -360,7 +359,7 @@ func (c *Chaincode) Install(ctx context.Context) error {
 	var stderr io.Reader
 	if err := c.logger.Stream(func() (err error) {
 		if _, stderr, err = kube.ExecShellInPod(ctx,
-			availableCliPod, shared.Namespace,
+			availableCliPod, c.kubeNamespace,
 			commitCmd,
 		); err != nil {
 			if errors.Is(err, term.ErrRemoteCmdFailed) {
@@ -485,7 +484,7 @@ func (c *Chaincode) checkChaincodeCommitStatus(ctx context.Context) (bool, float
 	// Checking whether the chaincode was already committed:
 	stdout, stderr, err := kube.ExecCommandInPod(
 		ctx,
-		availableCliPod, shared.Namespace,
+		availableCliPod, c.kubeNamespace,
 		"peer", "lifecycle", "chaincode", "querycommitted", "-C", c.channel,
 	)
 
