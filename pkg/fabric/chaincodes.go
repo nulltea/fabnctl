@@ -37,8 +37,8 @@ type Chaincode struct {
 	*chaincodeArgs
 }
 
-// NewChaincodeInstaller constructs new Chaincode instance.
-func NewChaincodeInstaller(name, channel string, options ...ChaincodeOption) (*Chaincode, error) {
+// NewChaincode constructs new Chaincode instance.
+func NewChaincode(name, channel string, options ...ChaincodeOption) (*Chaincode, error) {
 	args := &chaincodeArgs{
 		imageName: fmt.Sprintf("smartcontracts/%s:image", name),
 		orgpeers: make(map[string][]string),

@@ -51,6 +51,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 		genJobName = "artifacts.generate"
 		cryptoConfigDir = fmt.Sprintf(".crypto-config.%s", shared.Domain)
 		channelArtifactsDir = fmt.Sprintf(".channel-artifacts.%s", shared.Domain)
+		logger = term.NewLogger()
 	)
 
 	// Parsing flags:
@@ -85,7 +86,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 	ctx, cancel := context.WithTimeout(cmd.Context(), viper.GetDuration("helm.install_timeout"))
 	defer cancel()
 
-	if err = term.DecorateWithInteractiveLog(func() error {
+	if err = logger.Stream(func() error {
 		if err = helm.Client.InstallOrUpgradeChart(ctx, chartSpec); err != nil {
 			return fmt.Errorf("failed to install artifacts helm chart: %w", err)
 		}
@@ -97,8 +98,6 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 	}
 
 	cancel()
-
-
 
 	// Waiting for 'artifacts.generate' job completion:
 	if ok, err := kube.WaitForJobComplete(
@@ -164,11 +163,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to copy crypto-config: %w", err)
 	}
 
-	cmd.Println(
-		viper.GetString("cli.success_emoji"),
-		"Files 'crypto-config' has been downloaded to",
-		cryptoConfigDir,
-	)
+	logger.Successf("Files 'crypto-config' has been downloaded to %s", cryptoConfigDir)
 
 	// Downloading generated 'channel-artifacts' artifacts on local file system:
 	if _, err = os.Stat(channelArtifactsDir); !os.IsNotExist(err) {
@@ -182,11 +177,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to copy channel-artifacts: %w", err)
 	}
 
-	cmd.Println(
-		viper.GetString("cli.success_emoji"),
-		"Files 'channel-artifacts' has been downloaded to",
-		channelArtifactsDir,
-	)
+	logger.Successf("Files 'channel-artifacts' has been downloaded to", channelArtifactsDir)
 
 	cmd.Println("🎉 Network artifacts generation done!")
 

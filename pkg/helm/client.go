@@ -1,8 +1,6 @@
 package helm
 
 import (
-	"fmt"
-
 	"github.com/mittwald/go-helm-client"
 	"github.com/timoth-y/fabnctl/pkg/term"
 )
@@ -17,7 +15,7 @@ func init() {
 			Debug:   true,
 			Linting: true,
 			DebugLog: func(format string, v ...interface{}) {
-				term.ILogger.Text("Client: " + fmt.Sprintf(format, v...))
+				term.NewLogger().StreamTextf(format, v...)
 			},
 		}
 	)

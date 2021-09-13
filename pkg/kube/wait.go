@@ -108,26 +108,27 @@ func WaitForEvent(
 ) (bool, error) {
 	var (
 		timer = time.NewTimer(15 * time.Second)
+		logger = term.NewLogger()
 	)
-	term.ILogger.Text(msgStart())
-	term.ILogger.Start()
+	logger.Streamer.Text(msgStart())
+	logger.Streamer.Start()
 
 	LOOP: for {
 		select {
 		case event := <- watcher.ResultChan():
 			if onEvent(event) {
-				term.ILogger.PersistWith(term.ILogPrefixes[term.LogStreamOk], " " + msgSuccess())
-				term.ILogger.Stop()
+				logger.Streamer.PersistWith(logger.StreamSpinners[term.LogStreamOk], " " + msgSuccess())
+				logger.Streamer.Stop()
 				cancel()
 				break LOOP
 			}
 		case <- timer.C:
-			term.ILogger.Spinner(term.ILogPrefixes[term.LogStreamError])
-			term.ILogger.Text(" " + msgWarning())
+			logger.Streamer.Spinner(logger.StreamSpinners[term.LogStreamError])
+			logger.Streamer.Text(" " + msgWarning())
 		case <- ctx.Done():
 			if ctx.Err() == context.DeadlineExceeded {
-				term.ILogger.PersistWith(term.ILogPrefixes[term.LogStreamError], msgTimeout())
-				term.ILogger.Stop()
+				logger.Streamer.PersistWith(logger.StreamSpinners[term.LogStreamError], msgTimeout())
+				logger.Streamer.Stop()
 				return false, nil
 			}
 			break LOOP

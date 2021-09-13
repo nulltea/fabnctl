@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
 	"github.com/timoth-y/fabnctl/pkg/model"
+	"github.com/timoth-y/fabnctl/pkg/term"
 	"github.com/timoth-y/fabnctl/pkg/util"
 	"sigs.k8s.io/yaml"
 )

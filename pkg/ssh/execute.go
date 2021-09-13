@@ -29,7 +29,7 @@ func (o *RemoteOperator) Execute(command string, options ...ExecuteOption) ([]by
 
 	defer func() {
 		if err = session.Close(); err != nil {
-			term.Logger.Errorf("failed to close SSH session")
+			term.NewLogger().Errorf(err, "failed to close SSH session")
 		}
 	}()
 

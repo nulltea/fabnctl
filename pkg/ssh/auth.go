@@ -36,12 +36,12 @@ func publicKeyAuthMethod(path string) (ssh.AuthMethod, context.CancelFunc, error
 			return nil, noopCloseFunc, fmt.Errorf("unable to parse private key: %s", err.Error())
 		}
 
-		a, close := sshAgent(path)
+		a, cl := sshAgent(path)
 		if a != nil {
-			return a, close, nil
+			return a, cl, nil
 		}
 
-		defer close()
+		defer cl()
 
 		fmt.Printf("Enter passphrase for '%s': ", path)
 		STDIN := int(os.Stdin.Fd())
@@ -63,7 +63,7 @@ func sshAgent(publicKeyPath string) (ssh.AuthMethod, context.CancelFunc) {
 		wrapWithErrLogFunc = func(f func() error) context.CancelFunc {
 			return func() {
 				if err := f(); err != nil {
-					term.Logger.Errorf("error during closing SSH agent: %v", err)
+					term.NewLogger().Error(err, "error during closing SSH agent")
 				}
 			}
 		}

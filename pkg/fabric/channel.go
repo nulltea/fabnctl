@@ -10,6 +10,7 @@ import (
 	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
 	"github.com/timoth-y/fabnctl/pkg/kube"
 	"github.com/timoth-y/fabnctl/pkg/term"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Channel struct {
@@ -150,6 +151,55 @@ func (c *Channel) Install(ctx context.Context) error {
 	}
 
 	c.logger.Successf("Channel '%s' successfully deployed!", c.channelName)
+
+	return nil
+}
+
+func (c *Channel) SetAnchors(ctx context.Context, orgs ...string) error {
+	for _, org := range orgs {
+		var cliPodName string
+
+		c.logger.Infof("Going to setup anchor peers of '%s' organization to the channel definition:", org)
+
+		if pods, err := kube.Client.CoreV1().Pods(shared.Namespace).List(ctx, metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("fabnctl/cid=org-peer-cli,fabnctl/org=%s", org),
+		}); err != nil {
+			return fmt.Errorf("failed to find CLI pod for '%s' organization: %w", org, err)
+		} else if pods == nil || pods.Size() == 0 {
+			return fmt.Errorf("failed to find CLI pod for '%s' organization", org)
+		} else {
+			cliPodName = pods.Items[0].Name
+		}
+
+		var updateCmd = kube.FormCommand(
+			"peer channel update",
+			"-c", c.channelName,
+			"-f", fmt.Sprintf("./channel-artifacts/%s-anchors.tx", org),
+			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), shared.Domain),
+			"--tls", "--cafile", "$ORDERER_CA",
+		)
+
+		// Update channel with org's anchor peers:
+		var stderr io.Reader
+		if err := c.logger.Stream(func() (err error) {
+			if _, stderr, err = kube.ExecShellInPod(ctx, cliPodName, shared.Namespace, updateCmd); err != nil {
+				if errors.Is(err, term.ErrRemoteCmdFailed){
+					return fmt.Errorf("Failed to update channel: %w", err)
+				}
+
+				return fmt.Errorf("Failed to execute command on '%s' pod: %w", cliPodName, err)
+			}
+			return nil
+		}, "Updating channel",
+			fmt.Sprintf("Channel '%s' successfully updated", c.channelName),
+		); err != nil {
+			return c.logger.WrapWithStderrViewPrompt(err, stderr, false)
+		}
+
+		c.logger.NewLine()
+	}
+
+	c.logger.Successf("Channel '%s' successfully updated!", c.channelName)
 
 	return nil
 }

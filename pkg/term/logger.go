@@ -15,8 +15,8 @@ import (
 
 type Logger struct {
 	*loggerArgs
-	streamer       *wow.Wow
-	streamSpinners map[LogStreamLevel]spin.Spinner
+	Streamer       *wow.Wow
+	StreamSpinners map[LogStreamLevel]spin.Spinner
 }
 
 func NewLogger(options ...LoggerOption) *Logger {
@@ -31,8 +31,8 @@ func NewLogger(options ...LoggerOption) *Logger {
 
 	return &Logger{
 		loggerArgs: args,
-		streamer: wow.New(args.stderr, spin.Get(spin.Monkey), ""),
-		streamSpinners: map[LogStreamLevel]spin.Spinner{
+		Streamer:   wow.New(args.stderr, spin.Get(spin.Monkey), ""),
+		StreamSpinners: map[LogStreamLevel]spin.Spinner{
 			LogStreamSuccess: {Frames: []string{viper.GetString("cli.success_emoji")}},
 			LogStreamOk:      {Frames: []string{viper.GetString("cli.ok_emoji")}},
 			LogStreamError:   {Frames: []string{viper.GetString("cli.error_emoji")}},
@@ -68,9 +68,9 @@ func (l *Logger) Okf(format string, a ...interface{}) {
 	l.Ok(fmt.Sprintf(format, a...))
 }
 
-func (l *Logger) Errorf(format string, a ...interface{}) {
+func (l *Logger) Errorf(err error, format string, a ...interface{}) {
 	_, _ = fmt.Fprintln(l.stderr, aec.LightRedF,
-		fmt.Sprintf(format, a...), aec.DefaultF,
+		fmt.Sprintf("%s: %v", fmt.Sprintf(format, a...), err), aec.DefaultF,
 	)
 }
 

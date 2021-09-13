@@ -97,13 +97,15 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 		return fmt.Errorf("%w: failed to parse required 'chaincode' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
-	installer, err := fabric.NewChaincodeInstaller(chaincodeName, channel,
+	chaincode, err := fabric.NewChaincode(chaincodeName, channel,
 		fabric.WithChaincodePeersFlag(cmd.Flags(), "org", "peer"),
 		fabric.WithImageFlag(cmd.Flags(), "image"),
 		fabric.WithSourceFlag(cmd.Flags(), "source"),
 		fabric.WithVersionFlag(cmd.Flags(), "version"),
 		fabric.WithSharedOptionsForChaincode(
 			fabric.WithArchFlag(cmd.Flags(), "arch"),
+			fabric.WithDomainFlag(cmd.Flags(), "domain"),
+			fabric.WithCustomDeployChartsFlag(cmd.Flags(), "charts"),
 			fabric.WithKubeNamespaceFlag(cmd.Flags(), "namespace"),
 			fabric.WithLogger(logger),
 		),
@@ -134,12 +136,12 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 			)
 		}
 
-		if err = installer.Build(cmd.Context(), srcPath, options...); err != nil {
+		if err = chaincode.Build(cmd.Context(), srcPath, options...); err != nil {
 			return err
 		}
 	}
 
-	if err = installer.Install(cmd.Context()); err != nil {
+	if err = chaincode.Install(cmd.Context()); err != nil {
 		return err
 	}
 

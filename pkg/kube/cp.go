@@ -63,9 +63,7 @@ func CopyToPod(
 	go func() {
 		defer pipeWriter.Close()
 		if err = util.WriteBytesToTar(destPath, buffer, pipeWriter); err != nil {
-			term.Logger.Error(
-				fmt.Errorf("failed to write '%s' into pod writer: %w", destPath, err),
-			)
+			term.NewLogger().Errorf(err, "failed to write '%s' into pod writer", destPath)
 		}
 	}()
 

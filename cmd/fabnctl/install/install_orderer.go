@@ -28,20 +28,19 @@ func init() {
 func installOrderer(cmd *cobra.Command, _ []string) error {
 	var logger = term.NewLogger()
 
-	installer, err := fabric.NewOrderer(viper.GetString("fabric.orderer_hostname_name"),
+	orderer, err := fabric.NewOrderer(viper.GetString("fabric.orderer_hostname_name"),
 		fabric.WithArchFlag(cmd.Flags(), "arch"),
 		fabric.WithDomainFlag(cmd.Flags(), "domain"),
 		fabric.WithCustomDeployChartsFlag(cmd.Flags(), "charts"),
 		fabric.WithKubeNamespaceFlag(cmd.Flags(), "namespace"),
 		fabric.WithLogger(logger),
-
 	)
 
 	if err != nil {
 		return err
 	}
 
-	if err = installer.Install(cmd.Context()); err != nil {
+	if err = orderer.Install(cmd.Context()); err != nil {
 		return err
 	}
 	return nil

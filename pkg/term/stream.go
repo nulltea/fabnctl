@@ -1,5 +1,7 @@
 package term
 
+import "fmt"
+
 type LogStreamLevel int
 
 const (
@@ -14,16 +16,16 @@ const (
 // displaying `start` message on loading, `complete` on successful end,
 // and err return value on failure.
 func (l *Logger) Stream(fn func() error, start, complete string) error {
-	l.streamer.Start()
-	defer l.streamer.Stop()
+	l.Streamer.Start()
+	defer l.Streamer.Stop()
 
-	l.streamer.Text(start)
+	l.Streamer.Text(start)
 	if err := fn(); err != nil {
-		l.streamer.PersistWith(l.streamSpinners[LogStreamError], " "+err.Error())
+		l.Streamer.PersistWith(l.StreamSpinners[LogStreamError], " "+err.Error())
 		return err
 	}
 
-	l.streamer.PersistWith(l.streamSpinners[LogStreamSuccess], " "+complete)
+	l.Streamer.PersistWith(l.StreamSpinners[LogStreamSuccess], " "+complete)
 
 	return nil
 }
@@ -31,10 +33,14 @@ func (l *Logger) Stream(fn func() error, start, complete string) error {
 // StreamLevel wraps `fn` call into interactive logging with loading,
 // displaying `start` message on loading and custom persist on end.
 func (l *Logger) StreamLevel(fn func() (level LogStreamLevel, msg string), start string) {
-	l.streamer.Start()
-	defer l.streamer.Stop()
+	l.Streamer.Start()
+	defer l.Streamer.Stop()
 
-	l.streamer.Text(start)
+	l.Streamer.Text(start)
 	level, msg := fn()
-	l.streamer.PersistWith(l.streamSpinners[level], " "+msg)
+	l.Streamer.PersistWith(l.StreamSpinners[level], " "+msg)
+}
+
+func (l *Logger) StreamTextf(format string, a ...interface{}) {
+	l.Streamer.Text(fmt.Sprintf(format, a...))
 }
