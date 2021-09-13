@@ -12,12 +12,12 @@ import (
 	"github.com/timoth-y/fabnctl/pkg/term"
 )
 
-type ChannelInstaller struct {
+type Channel struct {
 	channelName string
 	*channelArgs
 }
 
-func NewChannelInstaller(name string, options ...ChannelOption) (*ChannelInstaller, error) {
+func NewChannel(name string, options ...ChannelOption) (*Channel, error) {
 	var args = &channelArgs{
 		orgpeers: make(map[string][]string),
 		sharedArgs: &sharedArgs{
@@ -36,28 +36,28 @@ func NewChannelInstaller(name string, options ...ChannelOption) (*ChannelInstall
 		return nil, args.Error()
 	}
 
-	return &ChannelInstaller{
+	return &Channel{
 		channelName: name,
 		channelArgs: args,
 	}, nil
 }
 
-func (ci *ChannelInstaller) Install(ctx context.Context) error {
+func (c *Channel) Install(ctx context.Context) error {
 	var channelExists bool
 
-	for org, peers := range ci.orgpeers {
+	for org, peers := range c.orgpeers {
 		for _, peer := range peers {
 			var (
 				peerPodName = fmt.Sprintf("%s.%s.org", peer, org)
 				cliPodName  = fmt.Sprintf("cli.%s.%s.org", peer, org)
 			)
 
-			ci.logger.Infof("Going to setup channel on '%s' peer of '%s' organization:", peer, org)
+			c.logger.Infof("Going to setup channel on '%s' peer of '%s' organization:", peer, org)
 
 			// Waiting for 'org.peer' pod readiness:
 			if ok, err := kube.WaitForPodReady(ctx,
 				&peerPodName,
-				fmt.Sprintf("fabnctl/app=%s.%s.org", peer, org), ci.kubeNamespace,
+				fmt.Sprintf("fabnctl/app=%s.%s.org", peer, org), c.kubeNamespace,
 			); err != nil {
 				return err
 			} else if !ok {
@@ -69,7 +69,7 @@ func (ci *ChannelInstaller) Install(ctx context.Context) error {
 				ctx,
 				&cliPodName,
 				fmt.Sprintf("fabnctl/app=cli.%s.%s.org", peer, org),
-				ci.kubeNamespace,
+				c.kubeNamespace,
 			); err != nil {
 				return err
 			} else if !ok {
@@ -79,20 +79,20 @@ func (ci *ChannelInstaller) Install(ctx context.Context) error {
 			var (
 				joinCmd = kube.FormCommand(
 					"peer channel join",
-					"-b", fmt.Sprintf("%s.block", ci.channelName),
+					"-b", fmt.Sprintf("%s.block", c.channelName),
 				)
 
 				fetchCmd = kube.FormCommand(
-					"peer channel fetch config", fmt.Sprintf("%s.block", ci.channelName),
-					"-c", ci.channelName,
+					"peer channel fetch config", fmt.Sprintf("%s.block", c.channelName),
+					"-c", c.channelName,
 					"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), shared.Domain),
 					"--tls", "--cafile", "$ORDERER_CA",
 				)
 
 				createCmd = kube.FormCommand(
 					"peer channel create",
-					"-c", ci.channelName,
-					"-f", fmt.Sprintf("./channel-artifacts/%s.tx", ci.channelName),
+					"-c", c.channelName,
+					"-f", fmt.Sprintf("./channel-artifacts/%s.tx", c.channelName),
 					"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), shared.Domain),
 					"--tls", "--cafile", "$ORDERER_CA",
 				)
@@ -101,9 +101,9 @@ func (ci *ChannelInstaller) Install(ctx context.Context) error {
 			if !channelExists {
 				// Checking whether specified channel is already created or not,
 				// by trying to fetch in genesis block:
-				if _, _, err := kube.ExecShellInPod(ctx, cliPodName, ci.kubeNamespace, fetchCmd); err == nil {
+				if _, _, err := kube.ExecShellInPod(ctx, cliPodName, c.kubeNamespace, fetchCmd); err == nil {
 					channelExists = true
-					ci.logger.Infof("Channel '%s' already created, fetched its genesis block", ci.channelName)
+					c.logger.Infof("Channel '%s' already created, fetched its genesis block", c.channelName)
 				} else if errors.Is(err, term.ErrRemoteCmdFailed) {
 					return fmt.Errorf("failed to execute command on '%s' pod: %w", cliPodName, err)
 				}
@@ -113,8 +113,8 @@ func (ci *ChannelInstaller) Install(ctx context.Context) error {
 
 			// Creating channel in case it wasn't yet:
 			if !channelExists {
-				if err := ci.logger.Stream(func() (err error) {
-					if _, stderr, err = kube.ExecShellInPod(ctx, cliPodName, ci.kubeNamespace, createCmd); err != nil {
+				if err := c.logger.Stream(func() (err error) {
+					if _, stderr, err = kube.ExecShellInPod(ctx, cliPodName, c.kubeNamespace, createCmd); err != nil {
 						if errors.Is(err, term.ErrRemoteCmdFailed) {
 							return fmt.Errorf("failed to create channel")
 						}
@@ -123,15 +123,15 @@ func (ci *ChannelInstaller) Install(ctx context.Context) error {
 					}
 					return nil
 				}, "Creating channel",
-					fmt.Sprintf("Channel '%s' successfully created", ci.channelName),
+					fmt.Sprintf("Channel '%s' successfully created", c.channelName),
 				); err != nil {
-					return ci.logger.WrapWithStderrViewPrompt(err, stderr, false)
+					return c.logger.WrapWithStderrViewPrompt(err, stderr, false)
 				}
 			}
 
 			// Joining peer to channel:
-			if err := ci.logger.Stream(func() (err error) {
-				if _, stderr, err = kube.ExecShellInPod(ctx, cliPodName, ci.kubeNamespace, joinCmd); err != nil {
+			if err := c.logger.Stream(func() (err error) {
+				if _, stderr, err = kube.ExecShellInPod(ctx, cliPodName, c.kubeNamespace, joinCmd); err != nil {
 					if errors.Is(err, term.ErrRemoteCmdFailed) {
 						return fmt.Errorf("failed to join channel: %w", err)
 					}
@@ -139,17 +139,17 @@ func (ci *ChannelInstaller) Install(ctx context.Context) error {
 					return fmt.Errorf("failed to execute command on '%s' pod: %w", cliPodName, err)
 				}
 				return nil
-			}, fmt.Sprintf("Joinging '%s' organization to '%s' channel", org, ci.channelName),
-				fmt.Sprintf("Organization '%s' successfully joined '%s' channel", org, ci.channelName),
+			}, fmt.Sprintf("Joinging '%s' organization to '%s' channel", org, c.channelName),
+				fmt.Sprintf("Organization '%s' successfully joined '%s' channel", org, c.channelName),
 			); err != nil {
-				return ci.logger.WrapWithStderrViewPrompt(err, stderr, false)
+				return c.logger.WrapWithStderrViewPrompt(err, stderr, false)
 			}
 
-			ci.logger.NewLine()
+			c.logger.NewLine()
 		}
 	}
 
-	ci.logger.Successf("Channel '%s' successfully deployed!", ci.channelName)
+	c.logger.Successf("Channel '%s' successfully deployed!", c.channelName)
 
 	return nil
 }

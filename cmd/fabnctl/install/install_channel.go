@@ -51,10 +51,12 @@ func installChannel(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("%w: failed to parse required 'channel' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
-	installer, err := fabric.NewChannelInstaller(channelName,
+	installer, err := fabric.NewChannel(channelName,
 		fabric.WithChannelPeersFlag(cmd.Flags(), "org", "peer"),
 		fabric.WithSharedOptionsForChannel(
 			fabric.WithArchFlag(cmd.Flags(), "arch"),
+			fabric.WithDomainFlag(cmd.Flags(), "domain"),
+			fabric.WithCustomDeployChartsFlag(cmd.Flags(), "charts"),
 			fabric.WithKubeNamespaceFlag(cmd.Flags(), "namespace"),
 			fabric.WithLogger(logger),
 		),

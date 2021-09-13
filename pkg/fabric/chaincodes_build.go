@@ -26,7 +26,7 @@ import (
 	"k8s.io/kubectl/pkg/cmd/util"
 )
 
-func (ci *ChaincodeInstaller) Build(ctx context.Context, sourcePath string, options ...BuildOption) error {
+func (c *Chaincode) Build(ctx context.Context, sourcePath string, options ...BuildOption) error {
 	var (
 		args = &buildArgs{
 			sourcePath: sourcePath,
@@ -55,15 +55,15 @@ func (ci *ChaincodeInstaller) Build(ctx context.Context, sourcePath string, opti
 
 	switch {
 	case args.useSSH:
-		return ci.buildSSH(ctx, args)
+		return c.buildSSH(ctx, args)
 	case args.useDocker:
-		return ci.buildSSH(ctx, args)
+		return c.buildSSH(ctx, args)
 	}
 
 	return nil
 }
 
-func (ci *ChaincodeInstaller) buildSSH(ctx context.Context, args *buildArgs) error {
+func (c *Chaincode) buildSSH(ctx context.Context, args *buildArgs) error {
 	var (
 		srcHash    = md5.Sum([]byte(args.sourcePathAbs))
 		remotePath = filepath.Join("/tmp/fabnctl/build", hex.EncodeToString(srcHash[:]))
@@ -80,7 +80,7 @@ func (ci *ChaincodeInstaller) buildSSH(ctx context.Context, args *buildArgs) err
 
 	if _, err := os.Stat(filepath.Join(args.sourcePathAbs, "BUILD")); os.IsNotExist(err)  {
 		buildCmd = kube.FormCommand("docker", "build",
-			"-t", ci.imageName,
+			"-t", c.imageName,
 			"-f", filepath.Join(remotePath, args.dockerfile),
 			"--push",
 			remotePath,
@@ -89,7 +89,7 @@ func (ci *ChaincodeInstaller) buildSSH(ctx context.Context, args *buildArgs) err
 		buildCmd = kube.FormCommand(
 			"cd", remotePath,
 			"&&",
-			"bazel", "run", fmt.Sprintf("//smartcontracts/%s:image", ci.chaincodeName),
+			"bazel", "run", fmt.Sprintf("//smartcontracts/%s:image", c.chaincodeName),
 		)
 	}
 
@@ -102,19 +102,19 @@ func (ci *ChaincodeInstaller) buildSSH(ctx context.Context, args *buildArgs) err
 	return nil
 }
 
-func (ci *ChaincodeInstaller) buildDocker(ctx context.Context, args *buildArgs) error {
+func (c *Chaincode) buildDocker(ctx context.Context, args *buildArgs) error {
 	var (
-		platform   = fmt.Sprintf("linux/%s", ci.arch)
+		platform   = fmt.Sprintf("linux/%s", c.arch)
 		printer    = progress.NewPrinter(ctx, os.Stdout, "auto")
 	)
 
 	if _, err := build.Build(ctx, args.dockerDriver, map[string]build.Options{
 		"default": {
 			Platforms: []v1.Platform{{
-				Architecture: ci.arch,
+				Architecture: c.arch,
 				OS:           "linux",
 			}},
-			Tags: []string{ci.imageName},
+			Tags: []string{c.imageName},
 			Inputs: build.Inputs{
 				ContextPath:    args.sourcePathAbs,
 				DockerfilePath: path.Join(args.sourcePathAbs, args.dockerfile),
@@ -126,20 +126,20 @@ func (ci *ChaincodeInstaller) buildDocker(ctx context.Context, args *buildArgs) 
 
 	_ = printer.Wait()
 
-	ci.logger.Successf("Successfully built chaincode image and tagged it: %s", ci.imageName)
+	c.logger.Successf("Successfully built chaincode image and tagged it: %s", c.imageName)
 
 	// Pushing chaincode image to registry
 	if !args.dockerPush {
 		return nil
 	}
 
-	if err := ci.determineDockerCredentials(args); err != nil {
+	if err := c.determineDockerCredentials(args); err != nil {
 		return err
 	}
 
-	ci.logger.Infof("Pushing chaincode image to '%s' registry", args.dockerRegistry)
+	c.logger.Infof("Pushing chaincode image to '%s' registry", args.dockerRegistry)
 
-	resp, err := docker.Client.ImagePush(ctx, ci.imageName, types.ImagePushOptions{
+	resp, err := docker.Client.ImagePush(ctx, c.imageName, types.ImagePushOptions{
 		Platform:     platform,
 		RegistryAuth: args.dockerRegistry,
 		All:          true,
@@ -150,12 +150,12 @@ func (ci *ChaincodeInstaller) buildDocker(ctx context.Context, args *buildArgs) 
 
 	_ = jsonmessage.DisplayJSONMessagesToStream(resp, docker.CLI.Out(), nil)
 
-	ci.logger.Successf("Chaincode image '%s' has been pushed to registry", ci.imageName)
+	c.logger.Successf("Chaincode image '%s' has been pushed to registry", c.imageName)
 
 	return nil
 }
 
-func (ci *ChaincodeInstaller) determineDockerCredentials(args *buildArgs) error {
+func (c *Chaincode) determineDockerCredentials(args *buildArgs) error {
 	var (
 		err      error
 		hostname = "https://index.docker.io/v1/"

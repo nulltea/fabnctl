@@ -13,7 +13,7 @@ import (
 )
 
 type (
-	// ChaincodeOption allows passing additional arguments for ChaincodeInstaller.
+	// ChaincodeOption allows passing additional arguments for Chaincode.
 	ChaincodeOption func(*chaincodeArgs)
 
 	chaincodeArgs struct {

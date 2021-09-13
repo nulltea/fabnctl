@@ -28,8 +28,8 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-// ChaincodeInstaller defines methods for building and installing chaincodes as an external services.
-type ChaincodeInstaller struct {
+// Chaincode defines methods for building and installing chaincodes as an external services.
+type Chaincode struct {
 	org           string
 	peer          string
 	channel       string
@@ -37,8 +37,8 @@ type ChaincodeInstaller struct {
 	*chaincodeArgs
 }
 
-// NewChaincodeInstaller constructs new ChaincodeInstaller instance.
-func NewChaincodeInstaller(name, channel string, options ...ChaincodeOption) (*ChaincodeInstaller, error) {
+// NewChaincodeInstaller constructs new Chaincode instance.
+func NewChaincodeInstaller(name, channel string, options ...ChaincodeOption) (*Chaincode, error) {
 	args := &chaincodeArgs{
 		imageName: fmt.Sprintf("smartcontracts/%s:image", name),
 		orgpeers: make(map[string][]string),
@@ -61,38 +61,38 @@ func NewChaincodeInstaller(name, channel string, options ...ChaincodeOption) (*C
 		return nil, args.Error()
 	}
 
-	return &ChaincodeInstaller{
+	return &Chaincode{
 		channel:       channel,
 		chaincodeName: name,
 		chaincodeArgs: args,
 	}, nil
 }
 
-func (ci *ChaincodeInstaller) Install(ctx context.Context) error {
+func (c *Chaincode) Install(ctx context.Context) error {
 	var (
 		orgPeers = make(map[string]string)
 	)
 
-	if committed, ver, seq, err := ci.checkChaincodeCommitStatus(ctx); err != nil {
+	if committed, ver, seq, err := c.checkChaincodeCommitStatus(ctx); err != nil {
 		return err
 	} else if committed {
-		ci.logger.Infof(
+		c.logger.Infof(
 			"Chaincode '%s' is already committed on '%s' channel with version '%.1f' and sequence '%d'",
-			ci.chaincodeName, ci.channel, ver, seq,
+			c.chaincodeName, c.channel, ver, seq,
 		)
 
-		if !ci.customVersion {
+		if !c.customVersion {
 			ver += 0.1
 		}
 
 		seq += 1
 
-		if ci.update {
-			ci.version = ver
-			ci.sequence = seq
-			ci.logger.Infof("It will be updated to version '%.1f' and sequence '%d'", ci.version, ci.sequence)
+		if c.update {
+			c.version = ver
+			c.sequence = seq
+			c.logger.Infof("It will be updated to version '%.1f' and sequence '%d'", c.version, c.sequence)
 		} else {
-			ci.logger.Infof("Further steps will be skipped")
+			c.logger.Infof("Further steps will be skipped")
 			return nil
 		}
 	}
@@ -101,10 +101,10 @@ func (ci *ChaincodeInstaller) Install(ctx context.Context) error {
 	var (
 		checkCommitReadinessCmd = kube.FormCommand(
 			"peer", "lifecycle", "chaincode", "checkcommitreadiness",
-			"-n", ci.chaincodeName,
-			"-v", util.Vtoa(ci.version),
-			"--sequence", stoa(ci.sequence),
-			"-C", ci.channel,
+			"-n", c.chaincodeName,
+			"-v", util.Vtoa(c.version),
+			"--sequence", stoa(c.sequence),
+			"-C", c.channel,
 			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), shared.Domain),
 			"--tls", "--cafile", "$ORDERER_CA",
 		)
@@ -113,16 +113,16 @@ func (ci *ChaincodeInstaller) Install(ctx context.Context) error {
 	)
 
 	// Iterate over given organization and peer pairs and perform chaincode installation
-	for org, peers := range ci.orgpeers {
+	for org, peers := range c.orgpeers {
 		for _, peer := range peers {
 			var (
 				peerPodName    = fmt.Sprintf("%s.%s.org", peer, org)
 				cliPodName     = fmt.Sprintf("cli.%s.%s.org", peer, org)
-				packageTarGzip = fmt.Sprintf("%s.%s.%s.tar.gz", ci.chaincodeName, peer, org)
+				packageTarGzip = fmt.Sprintf("%s.%s.%s.tar.gz", c.chaincodeName, peer, org)
 				packageBuffer  bytes.Buffer
 			)
 
-			ci.logger.Infof("Going to install chaincode on '%s' peer of '%s' organization:", peer, org)
+			c.logger.Infof("Going to install chaincode on '%s' peer of '%s' organization:", peer, org)
 
 			// Waiting for 'org.peer' pod readiness:
 			if ok, err := kube.WaitForPodReady(
@@ -154,8 +154,8 @@ func (ci *ChaincodeInstaller) Install(ctx context.Context) error {
 			)
 
 			// Packaging chaincode into tar.gz archive:
-			if err := ci.logger.Stream(func() error {
-				if err := ci.packageExternalChaincodeInTarGzip(org, peer, &packageBuffer); err != nil {
+			if err := c.logger.Stream(func() error {
+				if err := c.packageExternalChaincodeInTarGzip(org, peer, &packageBuffer); err != nil {
 					return fmt.Errorf("failed to package chaincode in '%s' archive: %w", packageTarGzip, err)
 				}
 				return nil
@@ -166,7 +166,7 @@ func (ci *ChaincodeInstaller) Install(ctx context.Context) error {
 			}
 
 			// Copping chaincode package to cli pod:
-			if err := ci.logger.Stream(func() error {
+			if err := c.logger.Stream(func() error {
 				if err := kube.CopyToPod(ctx, cliPodName, shared.Namespace, &packageBuffer, packageTarGzip); err != nil {
 					return err
 				}
@@ -178,7 +178,7 @@ func (ci *ChaincodeInstaller) Install(ctx context.Context) error {
 			}
 
 			// Installing chaincode package:
-			if err := ci.logger.Stream(func() error {
+			if err := c.logger.Stream(func() error {
 				var err error
 				if _, stderr, err = kube.ExecCommandInPod(ctx, cliPodName, shared.Namespace,
 					"peer", "lifecycle", "chaincode", "install", packageTarGzip,
@@ -192,7 +192,7 @@ func (ci *ChaincodeInstaller) Install(ctx context.Context) error {
 
 				return nil
 			}, "Installing chaincode package", "Chaincode package has been installed"); err != nil {
-				return ci.logger.WrapWithStderrViewPrompt(err, stderr, false)
+				return c.logger.WrapWithStderrViewPrompt(err, stderr, false)
 			}
 
 			packageID = parseInstalledPackageID(stderr)
@@ -203,7 +203,7 @@ func (ci *ChaincodeInstaller) Install(ctx context.Context) error {
 			var (
 				values    = make(map[string]interface{})
 				chartSpec = &helmclient.ChartSpec{
-					ReleaseName: fmt.Sprintf("%s-cc-%s-%s", ci.chaincodeName, peer, org),
+					ReleaseName: fmt.Sprintf("%s-cc-%s-%s", c.chaincodeName, peer, org),
 					ChartName:   path.Join(shared.ChartsPath, "chaincode"),
 					Namespace:   shared.Namespace,
 					Wait:        true,
@@ -211,12 +211,12 @@ func (ci *ChaincodeInstaller) Install(ctx context.Context) error {
 			)
 
 			values["image"] = map[string]interface{}{
-				"repository": ci.imageName,
+				"repository": c.imageName,
 			}
 
 			values["peer"] = peer
 			values["org"] = org
-			values["chaincode"] = ci.chaincodeName
+			values["chaincode"] = c.chaincodeName
 			values["ccid"] = packageID
 
 			valuesYaml, err := yaml.Marshal(values)
@@ -229,7 +229,7 @@ func (ci *ChaincodeInstaller) Install(ctx context.Context) error {
 			// Installing orderer helm chart:
 			helmCtx, cancel := context.WithTimeout(ctx, viper.GetDuration("helm.install_timeout"))
 
-			if err = ci.logger.Stream(func() error {
+			if err = c.logger.Stream(func() error {
 				defer cancel()
 				if err = helm.Client.InstallOrUpgradeChart(helmCtx, chartSpec); err != nil {
 					return fmt.Errorf("failed to install chaincode helm chart: %w", err)
@@ -247,7 +247,7 @@ func (ci *ChaincodeInstaller) Install(ctx context.Context) error {
 				checkCommitReadinessCmd,
 			); err != nil {
 				if errors.Is(err, term.ErrRemoteCmdFailed) {
-					return ci.logger.WrapWithStderrViewPrompt(
+					return c.logger.WrapWithStderrViewPrompt(
 						fmt.Errorf("Failed to check chaincode approval by '%s' organization: %w", org, err),
 						stderr, true,
 					)
@@ -258,19 +258,19 @@ func (ci *ChaincodeInstaller) Install(ctx context.Context) error {
 
 			var approveCmd = kube.FormCommand(
 				"peer", "lifecycle", "chaincode", "approveformyorg",
-				"-n", ci.chaincodeName,
-				"-v", util.Vtoa(ci.version),
-				"--sequence", stoa(ci.sequence),
+				"-n", c.chaincodeName,
+				"-v", util.Vtoa(c.version),
+				"--sequence", stoa(c.sequence),
 				"--package-id", packageID,
 				"--init-required=false",
-				"-C", ci.channel,
+				"-C", c.channel,
 				"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), shared.Domain),
 				"--tls", "--cafile", "$ORDERER_CA",
 			)
 
 			// Approving chaincode if needed:
 			if !checkChaincodeApprovalByOrg(stdout, org) {
-				if err = ci.logger.Stream(func() (err error) {
+				if err = c.logger.Stream(func() (err error) {
 					if _, stderr, err = kube.ExecShellInPod(ctx,
 						cliPodName, shared.Namespace,
 						approveCmd,
@@ -286,17 +286,17 @@ func (ci *ChaincodeInstaller) Install(ctx context.Context) error {
 				}, "Approving chaincode",
 					fmt.Sprintf("Chaincode has been approved for '%s' organization", org),
 				); err != nil {
-					return ci.logger.WrapWithStderrViewPrompt(err, stderr, false)
+					return c.logger.WrapWithStderrViewPrompt(err, stderr, false)
 				}
 			} else {
-				ci.logger.Infof("Chaincode is already approved by '%s' organization", org)
+				c.logger.Infof("Chaincode is already approved by '%s' organization", org)
 			}
 
 			availableCliPod = cliPodName
 		}
 	}
 
-	ci.logger.NewLine()
+	c.logger.NewLine()
 
 	// Verifying commit readiness,
 	// by checking that all organizations on channel approved chaincode:
@@ -305,7 +305,7 @@ func (ci *ChaincodeInstaller) Install(ctx context.Context) error {
 		checkCommitReadinessCmd,
 	); err != nil {
 		if errors.Is(err, term.ErrRemoteCmdFailed) {
-			return ci.logger.WrapWithStderrViewPrompt(
+			return c.logger.WrapWithStderrViewPrompt(
 				fmt.Errorf("failed to check chaincode commit readiness: %w", err),
 				stderr, true,
 			)
@@ -315,22 +315,22 @@ func (ci *ChaincodeInstaller) Install(ctx context.Context) error {
 	} else if ready, notApprovedBy := checkChaincodeCommitReadiness(stdout); !ready {
 		return fmt.Errorf(
 			"chaincode isn't ready to be commited, some organizations on '%s' channel haven't approved it yet: %s",
-			ci.channel, strings.Join(notApprovedBy, ", "),
+			c.channel, strings.Join(notApprovedBy, ", "),
 		)
 	} else {
-		ci.logger.Okf(
+		c.logger.Okf(
 			"%s Chaincode has been approved by all organizations on '%s' channel, it's ready to be committed",
-			ci.channel,
+			c.channel,
 		)
 	}
 
 	var commitCmd = kube.FormCommand(
 		"peer", "lifecycle", "chaincode", "commit",
-		"-n", ci.chaincodeName,
-		"-v", util.Vtoa(ci.version),
-		"--sequence", stoa(ci.sequence),
+		"-n", c.chaincodeName,
+		"-v", util.Vtoa(c.version),
+		"--sequence", stoa(c.sequence),
 		"--init-required=false",
-		"-C", ci.channel,
+		"-C", c.channel,
 		"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), shared.Domain),
 		"--tls", "--cafile", "$ORDERER_CA",
 	)
@@ -355,10 +355,10 @@ func (ci *ChaincodeInstaller) Install(ctx context.Context) error {
 		commitCmd = kube.FormCommand(commitCmd, commitCmdEnding)
 	}
 
-	ci.logger.NewLine()
+	c.logger.NewLine()
 
 	var stderr io.Reader
-	if err := ci.logger.Stream(func() (err error) {
+	if err := c.logger.Stream(func() (err error) {
 		if _, stderr, err = kube.ExecShellInPod(ctx,
 			availableCliPod, shared.Namespace,
 			commitCmd,
@@ -376,15 +376,15 @@ func (ci *ChaincodeInstaller) Install(ctx context.Context) error {
 	}, "Committing chaincode on organization peers",
 		"Chaincode has been committed on all organization peers",
 	); err != nil {
-		return ci.logger.WrapWithStderrViewPrompt(err, stderr, false)
+		return c.logger.WrapWithStderrViewPrompt(err, stderr, false)
 	}
 
-	ci.logger.Successf("Chaincode '%s' v%.1f successfully deployed!", ci.chaincodeName, ci.version)
+	c.logger.Successf("Chaincode '%s' v%.1f successfully deployed!", c.chaincodeName, c.version)
 
 	return nil
 }
 
-func (ci *ChaincodeInstaller) packageExternalChaincodeInTarGzip(org, peer string, writer io.Writer) error {
+func (c *Chaincode) packageExternalChaincodeInTarGzip(org, peer string, writer io.Writer) error {
 	var (
 		codeBuffer bytes.Buffer
 		mdBuffer   bytes.Buffer
@@ -398,23 +398,23 @@ func (ci *ChaincodeInstaller) packageExternalChaincodeInTarGzip(org, peer string
 
 		metadata = model.ChaincodeMetadata{
 			Type:  "external",
-			Label: ci.chaincodeName,
+			Label: c.chaincodeName,
 		}
 		connection = model.ChaincodeConnection{
-			Address:     fmt.Sprintf("%s-chaincode-%s-%s:7052", ci.chaincodeName, peer, org),
+			Address:     fmt.Sprintf("%s-chaincode-%s-%s:7052", c.chaincodeName, peer, org),
 			DialTimeout: "10s",
 		}
 	)
 
 	defer func() {
 		if err := packageGzip.Close(); err != nil {
-			ci.logger.Error(err, "failed to close package gzip writer")
+			c.logger.Error(err, "failed to close package gzip writer")
 		}
 	}()
 
 	defer func() {
 		if err := codeTar.Close(); err != nil {
-			ci.logger.Error(err, "failed to close code tar writer")
+			c.logger.Error(err, "failed to close code tar writer")
 		}
 	}()
 
@@ -426,8 +426,8 @@ func (ci *ChaincodeInstaller) packageExternalChaincodeInTarGzip(org, peer string
 		return fmt.Errorf("failed to write 'connection.json' into 'code.tar.gz' archive: %w", err)
 	}
 
-	if ci.withSource {
-		indexesPath := path.Join(ci.sourcePathAbs, "META-INF", "statedb", "couchdb", "indexes")
+	if c.withSource {
+		indexesPath := path.Join(c.sourcePathAbs, "META-INF", "statedb", "couchdb", "indexes")
 		if indexes, err := ioutil.ReadDir(indexesPath); err == nil {
 			for _, index := range indexes {
 				indexBytes, err := ioutil.ReadFile(path.Join(indexesPath, index.Name()))
@@ -444,11 +444,11 @@ func (ci *ChaincodeInstaller) packageExternalChaincodeInTarGzip(org, peer string
 	}
 
 	if err := codeTar.Close(); err != nil {
-		ci.logger.Error(err, "failed to close code tar writer")
+		c.logger.Error(err, "failed to close code tar writer")
 	}
 
 	if err := codeGzip.Close(); err != nil {
-		ci.logger.Error(err, "failed to close code gzip writer")
+		c.logger.Error(err, "failed to close code gzip writer")
 	}
 
 	if err := util.WriteBytesToTar("code.tar.gz", &codeBuffer, packageTar); err != nil {
@@ -466,7 +466,7 @@ func (ci *ChaincodeInstaller) packageExternalChaincodeInTarGzip(org, peer string
 	return nil
 }
 
-func (ci *ChaincodeInstaller) checkChaincodeCommitStatus(ctx context.Context) (bool, float64, int, error) {
+func (c *Chaincode) checkChaincodeCommitStatus(ctx context.Context) (bool, float64, int, error) {
 	var (
 		availableCliPod string
 		buffer          bytes.Buffer
@@ -486,13 +486,13 @@ func (ci *ChaincodeInstaller) checkChaincodeCommitStatus(ctx context.Context) (b
 	stdout, stderr, err := kube.ExecCommandInPod(
 		ctx,
 		availableCliPod, shared.Namespace,
-		"peer", "lifecycle", "chaincode", "querycommitted", "-C", ci.channel,
+		"peer", "lifecycle", "chaincode", "querycommitted", "-C", c.channel,
 	)
 
 	if err != nil {
 		if errors.Is(err, term.ErrRemoteCmdFailed) {
-			return false, 0, 0, ci.logger.WrapWithStderrViewPrompt(
-				fmt.Errorf("failed to check сommit status for '%s' chaincode: %w", ci.chaincodeName, err),
+			return false, 0, 0, c.logger.WrapWithStderrViewPrompt(
+				fmt.Errorf("failed to check сommit status for '%s' chaincode: %w", c.chaincodeName, err),
 				stderr, true,
 			)
 		}
@@ -504,7 +504,7 @@ func (ci *ChaincodeInstaller) checkChaincodeCommitStatus(ctx context.Context) (b
 		return false, 0, 0, nil
 	}
 
-	match := regexp.MustCompile(fmt.Sprintf("Name: %s, Version: (\\d*.\\d*), Sequence: (\\d*)", ci.chaincodeName)).
+	match := regexp.MustCompile(fmt.Sprintf("Name: %s, Version: (\\d*.\\d*), Sequence: (\\d*)", c.chaincodeName)).
 		FindStringSubmatch(buffer.String())
 
 	if len(match) < 3 {
