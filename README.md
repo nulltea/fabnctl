@@ -230,6 +230,7 @@ fabnctl gen connection -f ./network-config.yaml --name application \
 
 ## Roadmap
 
+- [x] Builds over SSH [(#12)](https://github.com/timoth-y/fabnctl/pull/12)
 - [ ] Add multiply orderers deployment support
 - [ ] Simplify interactive logging implementation
 - [ ] Source charts on [artifacthub.io](https://artifacthub.io)
