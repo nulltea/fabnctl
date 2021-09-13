@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/spf13/pflag"
-	"github.com/timoth-y/fabnctl/pkg/term"
 )
 
 type (
@@ -41,23 +40,20 @@ func WithChannelPeersFlag(flags *pflag.FlagSet, orgsFlag, peersFlag string) Chan
 
 		if orgs, err = flags.GetStringArray(orgsFlag); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s' (organization): %s",
-					term.ErrInvalidArgs, orgsFlag, err),
+				fmt.Errorf("failed to parse required parameter '%s' (organization): %s", orgsFlag, err),
 			)
 		}
 
 		if peers, err = flags.GetStringArray(peersFlag); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s' (peers): %s",
-					term.ErrInvalidArgs, peersFlag, err),
+				fmt.Errorf("failed to parse required parameter '%s' (peers): %s", peersFlag, err),
 			)
 		}
 
 		for i, org := range orgs {
 			if len(peers) < i + 1 {
 				args.initErrors = append(args.initErrors,
-					fmt.Errorf("%w: some passed organizations missing corresponding peer parameter: %s",
-						term.ErrInvalidArgs, org),
+					fmt.Errorf("some passed organizations missing corresponding peer parameter: %s", org),
 				)
 			}
 			args.orgpeers[org] = strings.Split(peers[i], ",")

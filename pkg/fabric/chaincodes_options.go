@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/timoth-y/fabnctl/pkg/docker"
 	"github.com/timoth-y/fabnctl/pkg/ssh"
-	"github.com/timoth-y/fabnctl/pkg/term"
 )
 
 type (
@@ -53,23 +52,20 @@ func WithChaincodePeersFlag(flags *pflag.FlagSet, orgsFlag, peersFlag string) Ch
 
 		if orgs, err = flags.GetStringArray(orgsFlag); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s' (organization): %s",
-					term.ErrInvalidArgs, orgsFlag, err),
+				fmt.Errorf("failed to parse required parameter '%s' (organization): %s", orgsFlag, err),
 			)
 		}
 
 		if peers, err = flags.GetStringArray(peersFlag); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s' (peers): %s",
-					term.ErrInvalidArgs, peersFlag, err),
+				fmt.Errorf("failed to parse required parameter '%s' (peers): %s", peersFlag, err),
 			)
 		}
 
 		for i, org := range orgs {
 			if len(peers) < i + 1 {
 				args.initErrors = append(args.initErrors,
-					fmt.Errorf("%w: some passed organizations missing corresponding peer parameter: %s",
-						term.ErrInvalidArgs, org),
+					fmt.Errorf("some passed organizations missing corresponding peer parameter: %s", org),
 				)
 			}
 			args.orgpeers[org] = strings.Split(peers[i], ",")
@@ -91,8 +87,7 @@ func WithImageFlag(flags *pflag.FlagSet, name string) ChaincodeOption {
 
 		if args.imageName, err =flags.GetString(name); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s' (image): %s",
-					term.ErrInvalidArgs, name, err),
+				fmt.Errorf("failed to parse required parameter '%s' (image): %s", name, err),
 			)
 		}
 	}
@@ -120,8 +115,7 @@ func WithSourceFlag(flags *pflag.FlagSet, name string) ChaincodeOption {
 
 		if args.sourcePath, err = flags.GetString(name); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s' (source): %s",
-					term.ErrInvalidArgs, name, err),
+				fmt.Errorf("failed to parse required parameter '%s' (source): %s", name, err),
 			)
 		}
 
@@ -152,8 +146,7 @@ func WithVersionFlag(flags *pflag.FlagSet, name string) ChaincodeOption {
 
 		if args.version, err = flags.GetFloat64(name); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s' (version): %s",
-					term.ErrInvalidArgs, name, err),
+				fmt.Errorf("failed to parse required parameter '%s' (version): %s", name, err),
 			)
 		}
 
@@ -213,8 +206,7 @@ func WithDockerfileFlag(flags *pflag.FlagSet, name string) BuildOption {
 
 		if args.dockerfile, err = flags.GetString(name); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s' (dockerfile): %s",
-					term.ErrInvalidArgs, name, err),
+				fmt.Errorf("failed to parse required parameter '%s' (dockerfile): %s", name, err),
 			)
 		}
 
@@ -238,15 +230,13 @@ func WithDockerPushFlag(flags *pflag.FlagSet, registryFlag, authFlag string) Bui
 
 		if args.dockerRegistry, err = flags.GetString(registryFlag); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s' (docker registry): %s",
-					term.ErrInvalidArgs, registryFlag, err),
+				fmt.Errorf("failed to parse required parameter '%s' (docker registry): %s", registryFlag, err),
 			)
 		}
 
 		if args.dockerAuth, err = flags.GetString(authFlag); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s' (docker auth): %s",
-					term.ErrInvalidArgs, authFlag, err),
+				fmt.Errorf("failed to parse required parameter '%s' (docker auth): %s", authFlag, err),
 			)
 		}
 
@@ -267,8 +257,7 @@ func WithIgnoreFlag(flags *pflag.FlagSet, name string) BuildOption {
 		patterns, err := flags.GetStringSlice(name)
 		if err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s': %v",
-					term.ErrInvalidArgs, name, err),
+				fmt.Errorf("failed to parse required parameter '%s': %v", name, err),
 			)
 		}
 

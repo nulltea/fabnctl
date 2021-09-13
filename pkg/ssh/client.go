@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"golang.org/x/crypto/ssh"
-	"k8s.io/kubectl/pkg/cmd/util"
 )
 
 type RemoteOperator struct {
@@ -37,7 +36,7 @@ func New(options ...Option) (*RemoteOperator, error) {
 	}
 
 	if len(op.initErrors) > 0 {
-		return nil, fmt.Errorf(util.MultipleErrors("invalid args", op.clientArgs.initErrors))
+		return nil, op.errors()
 	}
 
 	if op.Client, err = ssh.Dial("tcp",

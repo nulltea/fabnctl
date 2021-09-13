@@ -3,6 +3,7 @@ package ssh
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/pflag"
 	"github.com/timoth-y/fabnctl/pkg/term"
@@ -41,8 +42,7 @@ func WithHostFlag(flags *pflag.FlagSet, name string) Option {
 
 		if args.host, err = flags.GetString(name); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s': %v",
-					term.ErrInvalidArgs, name, err),
+				fmt.Errorf("failed to parse required parameter '%s': %v", name, err),
 			)
 		}
 	}
@@ -66,8 +66,7 @@ func WithPortFlag(flags *pflag.FlagSet, name string) Option {
 
 		if args.port, err = flags.GetInt(name); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s': %v",
-					term.ErrInvalidArgs, name, err),
+				fmt.Errorf("failed to parse required parameter '%s': %v", name, err),
 			)
 		}
 	}
@@ -91,8 +90,7 @@ func WithUserFlag(flags *pflag.FlagSet, name string) Option {
 
 		if args.User, err = flags.GetString(name); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s': %v",
-					term.ErrInvalidArgs, name, err),
+				fmt.Errorf("failed to parse required parameter '%s': %v", name, err),
 			)
 		}
 	}
@@ -117,8 +115,7 @@ func WithPasswordFlag(flags *pflag.FlagSet, name string) Option {
 		password, err := flags.GetString(name)
 		if err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s': %v",
-					term.ErrInvalidArgs, name, err),
+				fmt.Errorf("failed to parse required parameter '%s': %v", name, err),
 			)
 		}
 
@@ -152,8 +149,7 @@ func WithPublicKeyPathFlag(flags *pflag.FlagSet, name string) Option {
 		path, err := flags.GetString(name)
 		if err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s': %v",
-					term.ErrInvalidArgs, name, err),
+				fmt.Errorf("failed to parse required parameter '%s': %v", name, err),
 			)
 		}
 
@@ -171,4 +167,14 @@ func WithLogger(logger *term.Logger, options ...term.LoggerOption) Option {
 
 		args.logger = term.NewLogger(options...)
 	}
+}
+
+func (a *clientArgs) errors() error {
+	var errs = make([]string, 0, len(a.initErrors))
+
+	for _, err := range a.initErrors {
+		errs = append(errs, err.Error())
+	}
+
+	return fmt.Errorf("%w: %s", term.ErrInvalidArgs, strings.Join(errs, ", "))
 }

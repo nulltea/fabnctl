@@ -54,6 +54,8 @@ func init() {
 	chaincodeCmd.Flags().StringArrayP("peer", "p", nil,
 		"Peer hostname. Can be used multiply time to pass list of peers by (required)")
 	chaincodeCmd.Flags().StringP("channel", "C", "", "Channel name (required)")
+	chaincodeCmd.Flags().String("image", "", "Chaincode image")
+	chaincodeCmd.Flags().String("source", "", "Chaincode source path")
 	chaincodeCmd.Flags().StringP("chaincode", "c", "", "Chaincode name (required)")
 	chaincodeCmd.Flags().StringP("registry", "r", "",
 		"Image registry that would be used to tag and push chaincode image (default: search in docker config)")
@@ -122,7 +124,7 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 
 		if useSSH, _ := cmd.Flags().GetBool("ssh"); useSSH {
 			options = append(options,
-				fabric.WithRemoteBuild(nil,
+				fabric.WithRemoteBuild(
 					ssh.WithHostFlag(cmd.Flags(), "host"),
 					ssh.WithPortFlag(cmd.Flags(), "port"),
 					ssh.WithUserFlag(cmd.Flags(), "user"),

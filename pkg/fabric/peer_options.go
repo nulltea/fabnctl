@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/pflag"
-	"github.com/timoth-y/fabnctl/pkg/term"
 )
 
 type (
@@ -27,8 +26,7 @@ func WithCAFlag(flags *pflag.FlagSet, name string) PeerOption {
 		var err error
 		if args.installCA, err = flags.GetBool("withCA"); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s': %s",
-					term.ErrInvalidArgs, name, err),
+				fmt.Errorf("failed to parse required parameter '%s': %s", name, err),
 			)
 		}
 	}

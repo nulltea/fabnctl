@@ -2,10 +2,10 @@ package fabric
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/pflag"
 	"github.com/timoth-y/fabnctl/pkg/term"
-	"k8s.io/kubectl/pkg/cmd/util"
 )
 
 type (
@@ -36,8 +36,7 @@ func WithDomainFlag(flags *pflag.FlagSet, name string) SharedOption {
 
 		if args.domain, err = flags.GetString(name); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s' (domain name): %s",
-					term.ErrInvalidArgs, name, err),
+				fmt.Errorf("failed to parse required parameter '%s' (domain name): %s", name, err),
 			)
 		}
 	}
@@ -57,8 +56,7 @@ func WithNetworkConfigFlag(flags *pflag.FlagSet, name string) SharedOption {
 
 		if args.domain, err = flags.GetString(name); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s' (network config path): %s",
-					term.ErrInvalidArgs, name, err),
+				fmt.Errorf("failed to parse required parameter '%s' (network config path): %s", name, err),
 			)
 		}
 	}
@@ -78,8 +76,7 @@ func WithKubeNamespaceFlag(flags *pflag.FlagSet, name string) SharedOption {
 
 		if args.kubeNamespace, err = flags.GetString(name); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s' (Kubernetes namespace): %s",
-					term.ErrInvalidArgs, name, err),
+				fmt.Errorf("failed to parse required parameter '%s' (Kubernetes namespace): %s", name, err),
 			)
 		}
 	}
@@ -99,8 +96,7 @@ func WithCustomDeployChartsFlag(flags *pflag.FlagSet, name string) SharedOption 
 
 		if args.chartsPath, err = flags.GetString(name); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s' (helm charts path): %s",
-					term.ErrInvalidArgs, name, err),
+				fmt.Errorf("failed to parse required parameter '%s' (helm charts path): %s", name, err),
 			)
 		}
 	}
@@ -120,8 +116,7 @@ func WithArchFlag(flags *pflag.FlagSet, name string) SharedOption {
 
 		if args.arch, err = flags.GetString(name); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("%w: failed to parse required parameter '%s' (architecture): %s",
-					term.ErrInvalidArgs, name, err),
+				fmt.Errorf("failed to parse required parameter '%s' (architecture): %s", name, err),
 			)
 		}
 	}
@@ -140,5 +135,11 @@ func WithLogger(logger *term.Logger, options ...term.LoggerOption) SharedOption 
 }
 
 func (a *sharedArgs) Error() error {
-	return fmt.Errorf(util.MultipleErrors("invalid args", a.initErrors))
+	var errs = make([]string, 0, len(a.initErrors))
+
+	for _, err := range a.initErrors {
+		errs = append(errs, err.Error())
+	}
+
+	return fmt.Errorf("%w: %s", term.ErrInvalidArgs, strings.Join(errs, ", "))
 }

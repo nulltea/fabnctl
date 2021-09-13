@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"github.com/timoth-y/fabnctl/pkg/term"
 )
 
@@ -16,7 +15,7 @@ func WithHandleErrors(fn func(cmd *cobra.Command, args []string) error) func(*co
 				return err
 			}
 
-			cmd.Println(viper.GetString("cli.error_emoji"), "Error:", err)
+			cmd.Println("Error:", err)
 		}
 
 		return nil
