@@ -318,7 +318,7 @@ func (c *Chaincode) Install(ctx context.Context) error {
 		)
 	} else {
 		c.logger.Okf(
-			"%s Chaincode has been approved by all organizations on '%s' channel, it's ready to be committed",
+			"Chaincode has been approved by all organizations on '%s' channel, it's ready to be committed",
 			c.channel,
 		)
 	}
@@ -368,7 +368,7 @@ func (c *Chaincode) Install(ctx context.Context) error {
 				)
 			}
 
-			return fmt.Errorf("Failed to execute command on '%s' pod: %w", availableCliPod, err)
+			return fmt.Errorf("failed to execute command on '%s' pod: %w", availableCliPod, err)
 		}
 
 		return nil
