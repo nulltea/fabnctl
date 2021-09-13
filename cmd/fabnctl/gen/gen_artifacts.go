@@ -177,7 +177,7 @@ func genArtifacts(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to copy channel-artifacts: %w", err)
 	}
 
-	logger.Successf("Files 'channel-artifacts' has been downloaded to", channelArtifactsDir)
+	logger.Successf("Files 'channel-artifacts' has been downloaded to %s", channelArtifactsDir)
 
 	cmd.Println("🎉 Network artifacts generation done!")
 
