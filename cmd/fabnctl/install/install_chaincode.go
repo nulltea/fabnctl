@@ -64,6 +64,7 @@ If nothing passed docker auth config would be searched for credentials by given 
 	chaincodeCmd.Flags().StringP("dockerfile", "f", "docker/{chaincode}.Dockerfile",
 		"Dockerfile path relative to working path",
 	)
+	chaincodeCmd.Flags().Bool("push", false, "Push image to remote registry")
 	chaincodeCmd.Flags().Bool("ssh", true, "Build over SSH")
 	chaincodeCmd.Flags().String("host", kube.Config.Host, "Remote host for SSH connection (default: get from .kube config)")
 	chaincodeCmd.Flags().Int("port", 22, "Remote port for SSH connection")
@@ -134,6 +135,11 @@ func installChaincode(cmd *cobra.Command, srcPath string) error {
 		} else {
 			options = append(options,
 				fabric.WithDockerfileFlag(cmd.Flags(), "dockerfile"),
+			)
+		}
+
+		if pushImage, _ := cmd.Flags().GetBool("push"); pushImage {
+			options = append(options,
 				fabric.WithDockerPushFlag(cmd.Flags(), "registry", "registry-auth"),
 			)
 		}

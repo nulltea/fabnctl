@@ -82,15 +82,24 @@ func (c *Chaincode) buildSSH(ctx context.Context, args *buildArgs) error {
 		buildCmd = kube.FormCommand("docker", "build",
 			"-t", c.imageName,
 			"-f", filepath.Join(remotePath, args.dockerfile),
-			"--push",
 			remotePath,
 		)
+
+		if args.pushImage {
+			buildCmd = kube.FormCommand(buildCmd, "--push")
+		}
 	} else {
 		buildCmd = kube.FormCommand(
 			"cd", remotePath,
 			"&&",
 			"bazel", "run", fmt.Sprintf("//smartcontracts/%s:image", c.chaincodeName),
 		)
+
+		if args.pushImage {
+			buildCmd = kube.FormCommand(buildCmd, "&&",
+				"bazel", "run", fmt.Sprintf("//smartcontracts/%s:image-push", c.chaincodeName),
+			)
+		}
 	}
 
 	if _, _, err := args.sshOperator.Execute(buildCmd, ssh.WithStream(true)); err != nil {
@@ -127,7 +136,7 @@ func (c *Chaincode) buildDocker(ctx context.Context, args *buildArgs) error {
 	c.logger.Successf("Successfully built chaincode image and tagged it: %s", c.imageName)
 
 	// Pushing chaincode image to registry
-	if !args.dockerPush {
+	if !args.pushImage {
 		return nil
 	}
 

@@ -166,7 +166,7 @@ type (
 		useDocker      bool
 		dockerfile     string
 		dockerDriver   []build.DriverInfo
-		dockerPush     bool
+		pushImage      bool
 		dockerRegistry string
 		dockerAuth     string
 		ignore         []string
@@ -217,7 +217,7 @@ func WithDockerfileFlag(flags *pflag.FlagSet, name string) BuildOption {
 // WithDockerPush ...
 func WithDockerPush(registry, auth string) BuildOption {
 	return func(args *buildArgs) {
-		args.dockerPush = true
+		args.pushImage = true
 		args.dockerRegistry = registry
 		args.dockerAuth = auth
 	}
@@ -240,7 +240,7 @@ func WithDockerPushFlag(flags *pflag.FlagSet, registryFlag, authFlag string) Bui
 			)
 		}
 
-		args.dockerPush = true
+		args.pushImage = true
 	}
 }
 
