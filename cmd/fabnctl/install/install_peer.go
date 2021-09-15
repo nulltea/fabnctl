@@ -50,8 +50,8 @@ func installPeer(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%w: failed to parse required parameter 'org' (organization): %s", term.ErrInvalidArgs, err)
 	}
 
-	if peerName, err = cmd.Flags().GetString("peerName"); err != nil {
-		return fmt.Errorf("%w: failed to parse 'peerName' parameter: %s", term.ErrInvalidArgs, err)
+	if peerName, err = cmd.Flags().GetString("peer"); err != nil {
+		return fmt.Errorf("%w: failed to parse 'peer' parameter: %s", term.ErrInvalidArgs, err)
 	}
 
 	peer, err := fabric.NewPeer(org, peerName,

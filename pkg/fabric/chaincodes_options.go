@@ -150,7 +150,9 @@ func WithVersionFlag(flags *pflag.FlagSet, name string) ChaincodeOption {
 			)
 		}
 
-		args.customVersion = true
+		if flags.Changed(name) {
+			args.customVersion = true
+		}
 	}
 }
 

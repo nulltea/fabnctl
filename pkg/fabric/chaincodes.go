@@ -68,10 +68,6 @@ func NewChaincode(name, channel string, options ...ChaincodeOption) (*Chaincode,
 }
 
 func (c *Chaincode) Install(ctx context.Context) error {
-	var (
-		orgPeers = make(map[string]string)
-	)
-
 	if committed, ver, seq, err := c.checkChaincodeCommitStatus(ctx); err != nil {
 		return err
 	} else if committed {
@@ -335,23 +331,25 @@ func (c *Chaincode) Install(ctx context.Context) error {
 	)
 
 	// Committing chaincode on peers of all given organizations:
-	for org, peer := range orgPeers {
-		var (
-			orgHost              = fmt.Sprintf("%s.org.%s", org, c.domain)
-			peerHost             = fmt.Sprintf("%s.%s", peer, orgHost)
-			cryptoConfigPathBase = "/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto-config"
-			commitCmdEnding      = kube.FormCommand(
-				"--peerAddresses", fmt.Sprintf("%s:443", peerHost),
-				"--tlsRootCertFiles", path.Join(
-					cryptoConfigPathBase,
-					"peerOrganizations", orgHost,
-					"peers", peerHost,
-					"tls", "ca.crt",
-				),
+	for org, peers := range c.orgpeers {
+		for _, peer := range peers {
+			var (
+				orgHost              = fmt.Sprintf("%s.org.%s", org, c.domain)
+				peerHost             = fmt.Sprintf("%s.%s", peer, orgHost)
+				cryptoConfigPathBase = "/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto-config"
+				commitCmdEnding      = kube.FormCommand(
+					"--peerAddresses", fmt.Sprintf("%s:443", peerHost),
+					"--tlsRootCertFiles", path.Join(
+						cryptoConfigPathBase,
+						"peerOrganizations", orgHost,
+						"peers", peerHost,
+						"tls", "ca.crt",
+					),
+				)
 			)
-		)
 
-		commitCmd = kube.FormCommand(commitCmd, commitCmdEnding)
+			commitCmd = kube.FormCommand(commitCmd, commitCmdEnding)
+		}
 	}
 
 	c.logger.NewLine()
