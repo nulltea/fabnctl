@@ -2,6 +2,7 @@ package fabnctl
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/timoth-y/fabnctl/cmd/fabnctl/build"
 	"github.com/timoth-y/fabnctl/cmd/fabnctl/gen"
 	"github.com/timoth-y/fabnctl/cmd/fabnctl/install"
 	"github.com/timoth-y/fabnctl/cmd/fabnctl/shared"
@@ -24,6 +25,7 @@ func init() {
 	shared.AddGlobalFlags(rootCmd)
 
 	gen.AddTo(rootCmd)
+	build.AddTo(rootCmd)
 	install.AddTo(rootCmd)
 	update.AddTo(rootCmd)
 }

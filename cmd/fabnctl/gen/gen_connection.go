@@ -49,7 +49,7 @@ func init() {
 
 	connectionCmd.Flags().StringP("org", "o", "", "Owner organization name (required)")
 	connectionCmd.Flags().StringP("channel", "c", "", "Channel name (required)")
-	connectionCmd.Flags().StringP("name", "n", "",
+	connectionCmd.Flags().String("name", "",
 		"Connection profile name (default is {org}-connection)",
 	)
 	connectionCmd.Flags().String("description", "", "Connection profile description")

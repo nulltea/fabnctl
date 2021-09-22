@@ -23,12 +23,12 @@ import (
 	"github.com/timoth-y/fabnctl/pkg/kube"
 	"github.com/timoth-y/fabnctl/pkg/ssh"
 	"github.com/timoth-y/fabnctl/pkg/term"
-	"k8s.io/kubectl/pkg/cmd/util"
 )
 
-func (c *Chaincode) Build(ctx context.Context, sourcePath string, options ...BuildOption) error {
+func (c *Chaincode) Build(ctx context.Context, sourcePath string, options ...ChaincodeBuildOption) error {
 	var (
 		args = &buildArgs{
+			target: fmt.Sprintf("smartcontracts/%s", c.chaincodeName),
 			sourcePath: sourcePath,
 			sourcePathAbs: sourcePath,
 			useSSH: true,
@@ -42,7 +42,7 @@ func (c *Chaincode) Build(ctx context.Context, sourcePath string, options ...Bui
 	}
 
 	if len(args.initErrors) > 0 {
-		return fmt.Errorf(util.MultipleErrors("invalid args", args.initErrors))
+		return args.Error()
 	}
 
 	if args.sourcePathAbs, err = filepath.Abs(sourcePath); err != nil {
@@ -80,7 +80,7 @@ func (c *Chaincode) buildSSH(ctx context.Context, args *buildArgs) error {
 
 	if _, err := os.Stat(filepath.Join(args.sourcePathAbs, "BUILD")); os.IsNotExist(err)  {
 		buildCmd = kube.FormCommand("docker", "build",
-			"-t", c.imageName,
+			"-t", args.target,
 			"-f", filepath.Join(remotePath, args.dockerfile),
 			remotePath,
 		)
@@ -92,12 +92,12 @@ func (c *Chaincode) buildSSH(ctx context.Context, args *buildArgs) error {
 		buildCmd = kube.FormCommand(
 			"cd", remotePath,
 			"&&",
-			"bazel", "run", fmt.Sprintf("//smartcontracts/%s:image", c.chaincodeName),
+			"bazel", "run", fmt.Sprintf("//%s:image", args.target),
 		)
 
 		if args.pushImage {
 			buildCmd = kube.FormCommand(buildCmd, "&&",
-				"bazel", "run", fmt.Sprintf("//smartcontracts/%s:image-push", c.chaincodeName),
+				"bazel", "run", fmt.Sprintf("//%s:image-push", args.target),
 			)
 		}
 	}
@@ -121,7 +121,7 @@ func (c *Chaincode) buildDocker(ctx context.Context, args *buildArgs) error {
 				Architecture: c.arch,
 				OS:           "linux",
 			}},
-			Tags: []string{c.imageName},
+			Tags: []string{args.target},
 			Inputs: build.Inputs{
 				ContextPath:    args.sourcePathAbs,
 				DockerfilePath: path.Join(args.sourcePathAbs, args.dockerfile),
@@ -133,7 +133,7 @@ func (c *Chaincode) buildDocker(ctx context.Context, args *buildArgs) error {
 
 	_ = printer.Wait()
 
-	c.logger.Successf("Successfully built chaincode image and tagged it: %s", c.imageName)
+	c.logger.Successf("Successfully built chaincode image and tagged it: %s", args.target)
 
 	// Pushing chaincode image to registry
 	if !args.pushImage {
@@ -146,7 +146,7 @@ func (c *Chaincode) buildDocker(ctx context.Context, args *buildArgs) error {
 
 	c.logger.Infof("Pushing chaincode image to '%s' registry", args.dockerRegistry)
 
-	resp, err := docker.Client.ImagePush(ctx, c.imageName, types.ImagePushOptions{
+	resp, err := docker.Client.ImagePush(ctx, args.target, types.ImagePushOptions{
 		Platform:     platform,
 		RegistryAuth: args.dockerRegistry,
 		All:          true,
@@ -157,7 +157,7 @@ func (c *Chaincode) buildDocker(ctx context.Context, args *buildArgs) error {
 
 	_ = jsonmessage.DisplayJSONMessagesToStream(resp, docker.CLI.Out(), nil)
 
-	c.logger.Successf("Chaincode image '%s' has been pushed to registry", c.imageName)
+	c.logger.Successf("Chaincode image '%s' has been pushed to registry", args.target)
 
 	return nil
 }
