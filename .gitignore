@@ -5,18 +5,10 @@
 *.tx
 *.block
 
-.crypto-config.*.network
-.channel-artifacts.*.network
-
 bin
 
 .env
 .lego
 
-fabnctl
-fabnctl.exe
-
 connection.yaml
 network-config.yaml
-
-
