@@ -2,6 +2,7 @@ package fabric
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/pflag"
@@ -12,13 +13,17 @@ type (
 	SharedOption func(*sharedArgs)
 
 	sharedArgs struct {
-		domain       string
-		arch         string
-		configPath   string
+		domain        string
+		arch          string
+		configPath    string
 		chartsPath    string
 		kubeNamespace string
 		logger        *term.Logger
-		initErrors    []error
+		initErrorArgs
+	}
+
+	initErrorArgs struct {
+		initErrors []error
 	}
 )
 
@@ -36,7 +41,7 @@ func WithDomainFlag(flags *pflag.FlagSet, name string) SharedOption {
 
 		if args.domain, err = flags.GetString(name); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("failed to parse required parameter '%s' (domain name): %s", name, err),
+				fmt.Errorf("failed to parse parameter '%s' (domain name): %s", name, err),
 			)
 		}
 	}
@@ -56,7 +61,7 @@ func WithNetworkConfigFlag(flags *pflag.FlagSet, name string) SharedOption {
 
 		if args.domain, err = flags.GetString(name); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("failed to parse required parameter '%s' (network config path): %s", name, err),
+				fmt.Errorf("failed to parse parameter '%s' (network config path): %s", name, err),
 			)
 		}
 	}
@@ -76,7 +81,7 @@ func WithKubeNamespaceFlag(flags *pflag.FlagSet, name string) SharedOption {
 
 		if args.kubeNamespace, err = flags.GetString(name); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("failed to parse required parameter '%s' (Kubernetes namespace): %s", name, err),
+				fmt.Errorf("failed to parse parameter '%s' (Kubernetes namespace): %s", name, err),
 			)
 		}
 	}
@@ -85,20 +90,26 @@ func WithKubeNamespaceFlag(flags *pflag.FlagSet, name string) SharedOption {
 // WithCustomDeployCharts ...
 func WithCustomDeployCharts(path string) SharedOption {
 	return func(args *sharedArgs) {
-		args.chartsPath = path
+		var err error
+		if args.chartsPath, err = filepath.Abs(path); err != nil {
+			args.initErrors = append(args.initErrors,
+				fmt.Errorf("absolute path '%s' of source does not exists: %w", path, err),
+			)
+		}
 	}
 }
 
 // WithCustomDeployChartsFlag ...
 func WithCustomDeployChartsFlag(flags *pflag.FlagSet, name string) SharedOption {
 	return func(args *sharedArgs) {
-		var err error
-
-		if args.chartsPath, err = flags.GetString(name); err != nil {
+		path, err := flags.GetString(name)
+		if err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("failed to parse required parameter '%s' (helm charts path): %s", name, err),
+				fmt.Errorf("failed to parse parameter '%s' (helm charts path): %s", name, err),
 			)
 		}
+
+		WithCustomDeployCharts(path)(args)
 	}
 }
 
@@ -116,7 +127,7 @@ func WithArchFlag(flags *pflag.FlagSet, name string) SharedOption {
 
 		if args.arch, err = flags.GetString(name); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("failed to parse required parameter '%s' (architecture): %s", name, err),
+				fmt.Errorf("failed to parse parameter '%s' (architecture): %s", name, err),
 			)
 		}
 	}
@@ -134,7 +145,7 @@ func WithLogger(logger *term.Logger, options ...term.LoggerOption) SharedOption 
 	}
 }
 
-func (a *sharedArgs) Error() error {
+func (a *initErrorArgs) Error() error {
 	var errs = make([]string, 0, len(a.initErrors))
 
 	for _, err := range a.initErrors {

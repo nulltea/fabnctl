@@ -26,7 +26,7 @@ func WithCAFlag(flags *pflag.FlagSet, name string) PeerOption {
 		var err error
 		if args.installCA, err = flags.GetBool("withCA"); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("failed to parse required parameter '%s': %s", name, err),
+				fmt.Errorf("failed to parse parameter '%s': %s", name, err),
 			)
 		}
 	}

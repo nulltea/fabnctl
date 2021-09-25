@@ -2,9 +2,11 @@ package term
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/gernest/wow"
 	"github.com/gernest/wow/spin"
@@ -43,9 +45,7 @@ func NewLogger(options ...LoggerOption) *Logger {
 }
 
 func (l *Logger) Success(message string) {
-	_, _ = fmt.Fprintln(l.stdout, aec.GreenF,
-		message, aec.DefaultF,
-	)
+	println(l.stdout, aec.GreenF, message, aec.DefaultF)
 }
 
 func (l *Logger) Successf(format string, a ...interface{}) {
@@ -90,6 +90,14 @@ func (l *Logger) NewLine() {
 	_, _ = fmt.Fprintln(l.stdout)
 }
 
+func (l *Logger) println(writer io.Writer, a ...interface{}) {
+	var s = make([]string, len(a))
+	for i := range a {
+		s[i] = a[i].(string)
+	}
+
+	_, _ = fmt.Fprintln(l.stdout, strings.Join(s, ""))
+}
 
 func init() {
 	log.SetOutput(ioutil.Discard)

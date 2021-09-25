@@ -40,13 +40,13 @@ func WithChannelPeersFlag(flags *pflag.FlagSet, orgsFlag, peersFlag string) Chan
 
 		if orgs, err = flags.GetStringArray(orgsFlag); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("failed to parse required parameter '%s' (organization): %s", orgsFlag, err),
+				fmt.Errorf("failed to parse parameter '%s' (organization): %s", orgsFlag, err),
 			)
 		}
 
 		if peers, err = flags.GetStringArray(peersFlag); err != nil {
 			args.initErrors = append(args.initErrors,
-				fmt.Errorf("failed to parse required parameter '%s' (peers): %s", peersFlag, err),
+				fmt.Errorf("failed to parse parameter '%s' (peers): %s", peersFlag, err),
 			)
 		}
 

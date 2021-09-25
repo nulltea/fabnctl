@@ -105,7 +105,7 @@ func (c *Channel) Install(ctx context.Context) error {
 				if _, _, err := kube.ExecShellInPod(ctx, cliPodName, c.kubeNamespace, fetchCmd); err == nil {
 					channelExists = true
 					c.logger.Infof("Channel '%s' already created, fetched its genesis block", c.channelName)
-				} else if errors.Is(err, term.ErrRemoteCmdFailed) {
+				} else if !errors.Is(err, term.ErrRemoteCmdFailed) {
 					return fmt.Errorf("failed to execute command on '%s' pod: %w", cliPodName, err)
 				}
 			}

@@ -2,10 +2,10 @@ INSTALL_BIN=/usr/local/bin/fabnctl
 INSTALL_DIR=$(HOME)/fabnctl
 
 build:
-	go build -v  -o ./fabnctl .
+	go build -v  -o ./bin/fabnctl .
 
 install:
-	sudo cp ./fabnctl $(INSTALL_BIN)
+	sudo cp ./bin/fabnctl $(INSTALL_BIN)
 	sudo mkdir $(INSTALL_DIR) || echo $(INSTALL_DIR) exists
 	sudo cp -ur ./deploy/charts $(INSTALL_DIR)
 	sudo cp -ur ./template $(INSTALL_DIR)

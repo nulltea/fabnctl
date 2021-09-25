@@ -31,24 +31,20 @@ import (
 type Chaincode struct {
 	org           string
 	peer          string
-	channel       string
 	chaincodeName string
 	*chaincodeArgs
 }
 
 // NewChaincode constructs new Chaincode instance.
-func NewChaincode(name, channel string, options ...ChaincodeOption) (*Chaincode, error) {
+func NewChaincode(name string, options ...ChaincodeOption) (*Chaincode, error) {
 	args := &chaincodeArgs{
-		imageName: fmt.Sprintf("smartcontracts/%s:image", name),
+		channel:  "system",
 		orgpeers: make(map[string][]string),
-		version: 1,
-		sequence: 1,
-		update: true,
 		sharedArgs: &sharedArgs{
-			arch: "amd64",
+			arch:          "amd64",
 			kubeNamespace: "network",
-			logger: term.NewLogger(),
-			chartsPath: "./network-config.yaml",
+			logger:        term.NewLogger(),
+			chartsPath:    "./network-config.yaml",
 		},
 	}
 
@@ -61,16 +57,26 @@ func NewChaincode(name, channel string, options ...ChaincodeOption) (*Chaincode,
 	}
 
 	return &Chaincode{
-		channel:       channel,
 		chaincodeName: name,
 		chaincodeArgs: args,
 	}, nil
 }
 
-func (c *Chaincode) Install(ctx context.Context) error {
-	var (
-		orgPeers = make(map[string]string)
-	)
+func (c *Chaincode) Install(ctx context.Context, options ...ChaincodeInstallOption) error {
+	var args = &installArgs{
+		imageName: fmt.Sprintf("%s-contract:latest", c.chaincodeName),
+		version:   1,
+		sequence:  1,
+		update:    true,
+	}
+
+	for i := range options {
+		options[i](args)
+	}
+
+	if len(args.initErrors) > 0 {
+		return args.Error()
+	}
 
 	if committed, ver, seq, err := c.checkChaincodeCommitStatus(ctx); err != nil {
 		return err
@@ -80,16 +86,16 @@ func (c *Chaincode) Install(ctx context.Context) error {
 			c.chaincodeName, c.channel, ver, seq,
 		)
 
-		if !c.customVersion {
+		if !args.customVersion {
 			ver += 0.1
 		}
 
 		seq += 1
 
-		if c.update {
-			c.version = ver
-			c.sequence = seq
-			c.logger.Infof("It will be updated to version '%.1f' and sequence '%d'", c.version, c.sequence)
+		if args.update {
+			args.version = ver
+			args.sequence = seq
+			c.logger.Infof("It will be updated to version '%.1f' and sequence '%d'", args.version, args.sequence)
 		} else {
 			c.logger.Infof("Further steps will be skipped")
 			return nil
@@ -101,8 +107,8 @@ func (c *Chaincode) Install(ctx context.Context) error {
 		checkCommitReadinessCmd = kube.FormCommand(
 			"peer", "lifecycle", "chaincode", "checkcommitreadiness",
 			"-n", c.chaincodeName,
-			"-v", util.Vtoa(c.version),
-			"--sequence", stoa(c.sequence),
+			"-v", util.Vtoa(args.version),
+			"--sequence", stoa(args.sequence),
 			"-C", c.channel,
 			"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), c.domain),
 			"--tls", "--cafile", "$ORDERER_CA",
@@ -154,7 +160,7 @@ func (c *Chaincode) Install(ctx context.Context) error {
 
 			// Packaging chaincode into tar.gz archive:
 			if err := c.logger.Stream(func() error {
-				if err := c.packageExternalChaincodeInTarGzip(org, peer, &packageBuffer); err != nil {
+				if err := c.packageExternalChaincodeInTarGzip(org, peer, &packageBuffer, args); err != nil {
 					return fmt.Errorf("failed to package chaincode in '%s' archive: %w", packageTarGzip, err)
 				}
 				return nil
@@ -210,7 +216,7 @@ func (c *Chaincode) Install(ctx context.Context) error {
 			)
 
 			values["image"] = map[string]interface{}{
-				"repository": c.imageName,
+				"repository": args.imageName,
 			}
 
 			values["peer"] = peer
@@ -258,8 +264,8 @@ func (c *Chaincode) Install(ctx context.Context) error {
 			var approveCmd = kube.FormCommand(
 				"peer", "lifecycle", "chaincode", "approveformyorg",
 				"-n", c.chaincodeName,
-				"-v", util.Vtoa(c.version),
-				"--sequence", stoa(c.sequence),
+				"-v", util.Vtoa(args.version),
+				"--sequence", stoa(args.sequence),
 				"--package-id", packageID,
 				"--init-required=false",
 				"-C", c.channel,
@@ -326,8 +332,8 @@ func (c *Chaincode) Install(ctx context.Context) error {
 	var commitCmd = kube.FormCommand(
 		"peer", "lifecycle", "chaincode", "commit",
 		"-n", c.chaincodeName,
-		"-v", util.Vtoa(c.version),
-		"--sequence", stoa(c.sequence),
+		"-v", util.Vtoa(args.version),
+		"--sequence", stoa(args.sequence),
 		"--init-required=false",
 		"-C", c.channel,
 		"-o", fmt.Sprintf("%s.%s:443", viper.GetString("fabric.orderer_hostname_name"), c.domain),
@@ -335,23 +341,25 @@ func (c *Chaincode) Install(ctx context.Context) error {
 	)
 
 	// Committing chaincode on peers of all given organizations:
-	for org, peer := range orgPeers {
-		var (
-			orgHost              = fmt.Sprintf("%s.org.%s", org, c.domain)
-			peerHost             = fmt.Sprintf("%s.%s", peer, orgHost)
-			cryptoConfigPathBase = "/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto-config"
-			commitCmdEnding      = kube.FormCommand(
-				"--peerAddresses", fmt.Sprintf("%s:443", peerHost),
-				"--tlsRootCertFiles", path.Join(
-					cryptoConfigPathBase,
-					"peerOrganizations", orgHost,
-					"peers", peerHost,
-					"tls", "ca.crt",
-				),
+	for org, peers := range c.orgpeers {
+		for _, peer := range peers {
+			var (
+				orgHost              = fmt.Sprintf("%s.org.%s", org, c.domain)
+				peerHost             = fmt.Sprintf("%s.%s", peer, orgHost)
+				cryptoConfigPathBase = "/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto-config"
+				commitCmdEnding      = kube.FormCommand(
+					"--peerAddresses", fmt.Sprintf("%s:443", peerHost),
+					"--tlsRootCertFiles", path.Join(
+						cryptoConfigPathBase,
+						"peerOrganizations", orgHost,
+						"peers", peerHost,
+						"tls", "ca.crt",
+					),
+				)
 			)
-		)
 
-		commitCmd = kube.FormCommand(commitCmd, commitCmdEnding)
+			commitCmd = kube.FormCommand(commitCmd, commitCmdEnding)
+		}
 	}
 
 	c.logger.NewLine()
@@ -378,12 +386,12 @@ func (c *Chaincode) Install(ctx context.Context) error {
 		return c.logger.WrapWithStderrViewPrompt(err, stderr, false)
 	}
 
-	c.logger.Successf("Chaincode '%s' v%.1f successfully deployed!", c.chaincodeName, c.version)
+	c.logger.Successf("Chaincode '%s' v%.1f successfully deployed!", c.chaincodeName, args.version)
 
 	return nil
 }
 
-func (c *Chaincode) packageExternalChaincodeInTarGzip(org, peer string, writer io.Writer) error {
+func (c *Chaincode) packageExternalChaincodeInTarGzip(org, peer string, writer io.Writer, args *installArgs) error {
 	var (
 		codeBuffer bytes.Buffer
 		mdBuffer   bytes.Buffer
@@ -425,8 +433,8 @@ func (c *Chaincode) packageExternalChaincodeInTarGzip(org, peer string, writer i
 		return fmt.Errorf("failed to write 'connection.json' into 'code.tar.gz' archive: %w", err)
 	}
 
-	if c.withSource {
-		indexesPath := path.Join(c.sourcePathAbs, "META-INF", "statedb", "couchdb", "indexes")
+	if args.withSource {
+		indexesPath := path.Join(args.sourcePathAbs, "META-INF", "statedb", "couchdb", "indexes")
 		if indexes, err := ioutil.ReadDir(indexesPath); err == nil {
 			for _, index := range indexes {
 				indexBytes, err := ioutil.ReadFile(path.Join(indexesPath, index.Name()))
@@ -560,4 +568,3 @@ func atos(str string) int {
 
 	return sequence
 }
-
